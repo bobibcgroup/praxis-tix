@@ -144,13 +144,58 @@ export default async function handler(
       });
     }
     
-    // Prepare cleaned input
+    // Prepare cleaned input - ensure values are strings and not null/undefined
+    const humanImg = String(input.human_img || '').trim();
+    const garmImg = String(input.garm_img || '').trim();
+    
+    if (!humanImg || !garmImg) {
+      return res.status(400).json({
+        error: 'Missing required image inputs',
+        message: 'Both human_img and garm_img must be provided and non-empty',
+        received: {
+          has_human_img: !!humanImg,
+          has_garm_img: !!garmImg,
+          human_img_length: humanImg.length,
+          garm_img_length: garmImg.length,
+        }
+      });
+    }
+    
     const cleanedInput: Record<string, string> = {
-      human_img: input.human_img,
-      garm_img: input.garm_img,
+      human_img: humanImg,
+      garm_img: garmImg,
     };
     
     console.log(`Using model: ${model} with version: ${versionId}`);
+    console.log('Sending to Replicate:', {
+      human_img_preview: humanImg.substring(0, 100),
+      garm_img_preview: garmImg.substring(0, 100),
+      human_img_type: humanImg.startsWith('http') ? 'URL' : humanImg.startsWith('data:') ? 'data URL' : 'unknown',
+      garm_img_type: garmImg.startsWith('http') ? 'URL' : garmImg.startsWith('data:') ? 'data URL' : 'unknown',
+    });
+    
+    // Verify URLs are accessible (for HTTP URLs only)
+    if (humanImg.startsWith('http')) {
+      try {
+        const check = await fetch(humanImg, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+        if (!check.ok) {
+          console.warn(`human_img URL returned status ${check.status}`);
+        }
+      } catch (e) {
+        console.warn('Could not verify human_img URL:', e);
+      }
+    }
+    
+    if (garmImg.startsWith('http')) {
+      try {
+        const check = await fetch(garmImg, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+        if (!check.ok) {
+          console.warn(`garm_img URL returned status ${check.status}`);
+        }
+      } catch (e) {
+        console.warn('Could not verify garm_img URL:', e);
+      }
+    }
     
     // Create prediction using Replicate API
     const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
