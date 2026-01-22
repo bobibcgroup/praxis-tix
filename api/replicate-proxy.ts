@@ -487,7 +487,7 @@ export default async function handler(
         upscale: 1
       });
 
-      const result = await createPrediction(apiToken, versionId, cleanedInput);
+      const result = await createPrediction(apiToken, versionId, cleanedInput, true); // isFaceSwap = true for longer timeout
       
       if ('error' in result) {
         return res.status(500).json({
