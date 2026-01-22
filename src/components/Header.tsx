@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useUser, UserButton, SignInButton } from "@clerk/clerk-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, History } from "lucide-react";
+import { User, History, Heart } from "lucide-react";
 
 const Header = () => {
   const { user, isLoaded } = useUser();
@@ -34,6 +34,15 @@ const Header = () => {
               >
                 <History className="w-4 h-4" />
                 History
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/favorites')}
+                className="hidden sm:flex items-center gap-2"
+              >
+                <Heart className="w-4 h-4" />
+                Favorites
               </Button>
               <Button
                 variant="ghost"

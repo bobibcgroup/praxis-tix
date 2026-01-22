@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart, Edit2 } from 'lucide-react';
 import { getUserProfile } from '@/lib/userService';
 import type { PersonalData } from '@/types/praxis';
 import Header from '@/components/Header';
@@ -74,10 +74,27 @@ const Profile = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to flow
           </Button>
-          <h1 className="text-3xl font-medium text-foreground mb-2">My Style</h1>
-          <p className="text-muted-foreground">
-            Your personalized style profile
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-medium text-foreground mb-2">My Style</h1>
+              <p className="text-muted-foreground">
+                Your personalized style profile
+              </p>
+            </div>
+            {profile && profile.styleDNA && (
+              <Button
+                onClick={() => {
+                  navigate('/', { state: { editProfile: true } });
+                  window.location.reload(); // Force reload to trigger useEffect
+                }}
+                variant="outline"
+                size="sm"
+              >
+                <Edit2 className="w-4 h-4 mr-2" />
+                Edit Profile
+              </Button>
+            )}
+          </div>
         </div>
 
         {!profile || !profile.styleDNA ? (

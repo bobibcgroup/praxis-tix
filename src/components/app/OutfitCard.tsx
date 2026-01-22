@@ -1,7 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User, Share2 } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User, Share2, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useUser } from '@clerk/clerk-react';
+import { addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
 import type { Outfit, WardrobeItems } from '@/types/praxis';
 
 interface OutfitCardProps {
@@ -75,10 +77,50 @@ interface CarouselImage {
 }
 
 const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasPhotoAnalysis = false, hasProportionAnalysis = false, hasFaceAnalysis = false }: OutfitCardProps) => {
+  const { user } = useUser();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isFavorited, setIsFavorited] = useState(false);
+
+  // Check if outfit is favorited
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (user) {
+        try {
+          const favorites = await getFavorites(user.id);
+          setIsFavorited(favorites.includes(outfit.id));
+        } catch (error) {
+          console.error('Error checking favorite:', error);
+        }
+      }
+    };
+    checkFavorite();
+  }, [user, outfit.id]);
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      toast.info('Sign in to save favorites');
+      return;
+    }
+
+    try {
+      if (isFavorited) {
+        await removeFromFavorites(user.id, outfit.id);
+        setIsFavorited(false);
+        toast.success('Removed from favorites');
+      } else {
+        await addToFavorites(user.id, outfit.id);
+        setIsFavorited(true);
+        toast.success('Added to favorites');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('Failed to update favorites');
+    }
+  };
 
   // Build carousel images: user pieces first, then outfit image
   const carouselImages = useMemo<CarouselImage[]>(() => {
@@ -170,10 +212,21 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
           
           {/* Outfit tier label - only show on outfit image */}
           {!currentImage.isUserPiece && (
-            <div className="absolute top-3 left-3">
+            <div className="absolute top-3 left-3 flex items-center gap-2">
               <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${getLabelStyle(outfit.label)}`}>
                 {outfit.label}
               </span>
+              {user && (
+                <button
+                  onClick={handleToggleFavorite}
+                  className="p-1.5 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors"
+                  aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  <Heart 
+                    className={`w-4 h-4 ${isFavorited ? 'fill-primary text-primary' : 'text-muted-foreground'}`}
+                  />
+                </button>
+              )}
             </div>
           )}
 

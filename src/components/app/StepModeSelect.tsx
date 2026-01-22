@@ -23,6 +23,10 @@ const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps
       <p className="text-muted-foreground text-center mb-6 -mt-2">
         Choose how you want Praxis to work for you.
       </p>
+      <div className="text-xs text-muted-foreground/70 text-center mb-4 space-y-1">
+        <p>Quick recommendations based on occasion, or</p>
+        <p>Personalized style built around your profile</p>
+      </div>
       <div className="space-y-3">
         <button
           type="button"

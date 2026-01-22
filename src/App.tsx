@@ -9,6 +9,8 @@ import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
+import Favorites from "./pages/Favorites";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +31,8 @@ const App = () => (
             <Route path="/landing" element={<Landing />} />
             <Route path="/history" element={<History />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/settings" element={<Settings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

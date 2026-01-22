@@ -17,7 +17,7 @@ import StepPersonalLoading from '@/components/app/StepPersonalLoading';
 import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
 import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
 import { generatePersonalOutfits, deriveStyleColorProfile } from '@/lib/personalOutfitGenerator';
-import { saveOutfitToHistory } from '@/lib/userService';
+import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import type { 
   OccasionData, 
@@ -70,6 +70,7 @@ const initialPersonal: PersonalData = {
 //   10: Photo, 11: Fit Calibration, 12: Lifestyle, 13: Inspiration, 14: Wardrobe, 15: Loading, 16: Personal Results, 17: Virtual Try-On, 18: Style DNA (final)
 
 const Flow = () => {
+  const location = useLocation();
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<FlowMode | null>(null);
   
@@ -91,8 +92,23 @@ const Flow = () => {
   const [selectedOutfitId, setSelectedOutfitId] = useState<number | null>(null);
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   const [tryOnImageUrl, setTryOnImageUrl] = useState<string | null>(null);
+  const [historyEntryId, setHistoryEntryId] = useState<string | null>(null);
   
   const { user, isLoaded } = useUser();
+
+  // Check if we're editing profile or using outfit again
+  useEffect(() => {
+    const state = location.state as { editProfile?: boolean; occasion?: string } | null;
+    if (state?.editProfile && isLoaded && user) {
+      setMode('personal');
+      setStep(10);
+    } else if (state?.occasion && isLoaded && user) {
+      // Pre-select occasion for "Use this outfit again"
+      setMode('quick');
+      setOccasion({ event: state.occasion.toUpperCase() as OccasionType });
+      setStep(1);
+    }
+  }, [location.state, isLoaded, user]);
 
   // Guard: Redirect personal flow steps if not authenticated
   useEffect(() => {
@@ -204,6 +220,7 @@ const Flow = () => {
     setSelectedOutfitId(null);
     setSelectedOutfit(null);
     setTryOnImageUrl(null);
+    setHistoryEntryId(null);
     setStep(0);
   };
 
@@ -286,7 +303,7 @@ const Flow = () => {
             onRestart={handleRestart}
             onShowAlternatives={handleShowAlternatives}
             hasAlternatives={hasAlternatives}
-            onComplete={(outfitId: number) => {
+            onComplete={async (outfitId: number) => {
               setSelectedOutfitId(outfitId);
               const outfit = outfits.find(o => o.id === outfitId);
               if (outfit) {
@@ -297,6 +314,20 @@ const Flow = () => {
                   mode: 'quick',
                   timestamp: new Date().toISOString(),
                 }));
+                // Save to history if user is authenticated
+                if (user) {
+                  try {
+                    await saveOutfitToHistory(
+                      user.id,
+                      outfit,
+                      occasion.event as OccasionType,
+                      undefined, // No try-on for Quick Flow
+                      undefined
+                    );
+                  } catch (err) {
+                    console.error('Error saving Quick Flow outfit to history:', err);
+                  }
+                }
                 // Check if user has photo for try-on (only in personal flow, so skip to complete)
                 setStep(5); // Go to virtual try-on if photo available, otherwise complete
               }
@@ -501,7 +532,7 @@ const Flow = () => {
             outfits={personalOutfits}
             personalData={personal}
             onRestart={handleRestart}
-            onComplete={(outfitId: number) => {
+            onComplete={async (outfitId: number) => {
               setSelectedOutfitId(outfitId);
               const outfit = personalOutfits.find(o => o.id === outfitId);
               if (outfit) {
@@ -512,6 +543,21 @@ const Flow = () => {
                   mode: 'personal',
                   timestamp: new Date().toISOString(),
                 }));
+                // Save to history immediately if user is authenticated
+                if (user) {
+                  try {
+                    const entryId = await saveOutfitToHistory(
+                      user.id,
+                      outfit,
+                      personal.lifestyle as OccasionType || 'WORK',
+                      undefined, // Try-on URL will be added later if available
+                      undefined
+                    );
+                    setHistoryEntryId(entryId);
+                  } catch (err) {
+                    console.error('Error saving outfit to history:', err);
+                  }
+                }
                 // Go to virtual try-on if photo available
                 setStep(17);
               }
@@ -537,18 +583,12 @@ const Flow = () => {
               onComplete={async (tryOnUrl: string) => {
                 setTryOnImageUrl(tryOnUrl);
                 
-                // Save to history if user is authenticated
-                if (user && selectedOutfit) {
+                // Update history entry with try-on URL if we have a history entry ID
+                if (user && historyEntryId) {
                   try {
-                    await saveOutfitToHistory(
-                      user.id,
-                      selectedOutfit,
-                      personal.lifestyle as OccasionType || 'WORK',
-                      tryOnUrl,
-                      undefined // No video URL
-                    );
+                    await updateOutfitHistoryTryOn(user.id, historyEntryId, tryOnUrl);
                   } catch (err) {
-                    console.error('Error saving to history:', err);
+                    console.error('Error updating history with try-on URL:', err);
                   }
                 }
                 
@@ -628,6 +668,15 @@ const Flow = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   History
+                </button>
+                <button
+                  onClick={() => window.location.href = '/favorites'}
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  Favorites
                 </button>
                 <button
                   onClick={() => window.location.href = '/profile'}

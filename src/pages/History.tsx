@@ -1,17 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, Image as ImageIcon } from 'lucide-react';
-import { getOutfitHistory } from '@/lib/userService';
+import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter } from 'lucide-react';
+import { getOutfitHistory, deleteOutfitFromHistory, addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
 import Header from '@/components/Header';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { OccasionType } from '@/types/praxis';
 
 const History = () => {
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
   const [history, setHistory] = useState<OutfitHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [outfitToDelete, setOutfitToDelete] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [occasionFilter, setOccasionFilter] = useState<string>('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
     if (isLoaded) {
@@ -31,12 +50,81 @@ const History = () => {
       setLoading(true);
       const entries = await getOutfitHistory(user.id);
       setHistory(entries);
+      const favs = await getFavorites(user.id);
+      setFavorites(favs);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!user || !outfitToDelete) return;
+
+    try {
+      await deleteOutfitFromHistory(user.id, outfitToDelete);
+      setHistory(prev => prev.filter(entry => entry.id !== outfitToDelete));
+      setDeleteDialogOpen(false);
+      setOutfitToDelete(null);
+    } catch (error) {
+      console.error('Error deleting outfit:', error);
+    }
+  };
+
+  const handleToggleFavorite = async (outfitId: number) => {
+    if (!user) return;
+
+    try {
+      if (favorites.includes(outfitId)) {
+        await removeFromFavorites(user.id, outfitId);
+        setFavorites(prev => prev.filter(id => id !== outfitId));
+      } else {
+        await addToFavorites(user.id, outfitId);
+        setFavorites(prev => [...prev, outfitId]);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
+
+  const handleUseAgain = (entry: OutfitHistoryEntry) => {
+    navigate('/', { state: { occasion: entry.occasion } });
+  };
+
+  // Filter and sort history
+  const filteredAndSortedHistory = useMemo(() => {
+    let filtered = history;
+
+    // Filter by occasion
+    if (occasionFilter !== 'all') {
+      filtered = filtered.filter(entry => 
+        entry.occasion.toLowerCase() === occasionFilter.toLowerCase()
+      );
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(entry => {
+        const title = entry.outfitData.title?.toLowerCase() || '';
+        const top = entry.outfitData.items.top?.toLowerCase() || '';
+        const bottom = entry.outfitData.items.bottom?.toLowerCase() || '';
+        const shoes = entry.outfitData.items.shoes?.toLowerCase() || '';
+        return title.includes(query) || top.includes(query) || 
+               bottom.includes(query) || shoes.includes(query);
+      });
+    }
+
+    // Sort by date
+    filtered = [...filtered].sort((a, b) => {
+      const dateA = new Date(a.selectedAt).getTime();
+      const dateB = new Date(b.selectedAt).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  }, [history, occasionFilter, searchQuery, sortOrder]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -80,6 +168,46 @@ const History = () => {
           </p>
         </div>
 
+        {/* Filters and Search */}
+        {history.length > 0 && (
+          <div className="mb-6 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search outfits..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={occasionFilter} onValueChange={setOccasionFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Filter by occasion" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Occasions</SelectItem>
+                  <SelectItem value="work">Work</SelectItem>
+                  <SelectItem value="date">Date</SelectItem>
+                  <SelectItem value="dinner">Dinner</SelectItem>
+                  <SelectItem value="wedding">Wedding</SelectItem>
+                  <SelectItem value="party">Party</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortOrder} onValueChange={(value: 'newest' | 'oldest') => setSortOrder(value)}>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
         {history.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
@@ -88,16 +216,30 @@ const History = () => {
               Start styling
             </Button>
           </div>
+        ) : filteredAndSortedHistory.length === 0 ? (
+          <div className="text-center py-12">
+            <Search className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+            <p className="text-muted-foreground mb-2">No outfits match your filters</p>
+            <Button 
+              onClick={() => {
+                setSearchQuery('');
+                setOccasionFilter('all');
+              }} 
+              variant="outline"
+            >
+              Clear filters
+            </Button>
+          </div>
         ) : (
           <div className="space-y-4">
-            {history.map((entry) => (
+            {filteredAndSortedHistory.map((entry) => (
               <div
                 key={entry.id}
                 className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors"
               >
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* Image */}
-                  <div className="w-full md:w-48 aspect-[3/4] rounded-lg overflow-hidden bg-muted shrink-0">
+                  <div className="w-full md:w-48 aspect-[3/4] rounded-lg overflow-hidden bg-muted shrink-0 relative">
                     {entry.tryOnImageUrl ? (
                       <img
                         src={entry.tryOnImageUrl}
@@ -115,6 +257,15 @@ const History = () => {
                         <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
                       </div>
                     )}
+                    <button
+                      onClick={() => handleToggleFavorite(entry.outfitId)}
+                      className="absolute top-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors"
+                      aria-label={favorites.includes(entry.outfitId) ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Heart 
+                        className={`w-4 h-4 ${favorites.includes(entry.outfitId) ? 'fill-primary text-primary' : 'text-muted-foreground'}`}
+                      />
+                    </button>
                   </div>
 
                   {/* Details */}
@@ -148,12 +299,51 @@ const History = () => {
                       </div>
                     </div>
 
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        onClick={() => handleUseAgain(entry)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Use this outfit again
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setOutfitToDelete(entry.id);
+                          setDeleteDialogOpen(true);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Outfit</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this outfit from your history? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

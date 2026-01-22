@@ -77,6 +77,7 @@ export async function getUserProfile(userId: string): Promise<PersonalData | nul
 
 /**
  * Save outfit selection to history
+ * Returns the history entry ID for potential updates
  */
 export async function saveOutfitToHistory(
   userId: string,
@@ -84,11 +85,13 @@ export async function saveOutfitToHistory(
   occasion: string,
   tryOnImageUrl?: string,
   animatedVideoUrl?: string
-): Promise<void> {
+): Promise<string | null> {
   if (!supabase) {
     // Fallback to localStorage
     const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    const entryId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     history.push({
+      id: entryId,
       outfitId: outfit.id,
       occasion,
       outfitData: outfit,
@@ -97,11 +100,11 @@ export async function saveOutfitToHistory(
       selectedAt: new Date().toISOString(),
     });
     localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
-    return;
+    return entryId;
   }
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('outfit_history')
       .insert({
         user_id: userId,
@@ -111,14 +114,19 @@ export async function saveOutfitToHistory(
         try_on_image_url: tryOnImageUrl || null,
         animated_video_url: animatedVideoUrl || null,
         selected_at: new Date().toISOString(),
-      });
+      })
+      .select('id')
+      .single();
 
     if (error) throw error;
+    return data?.id || null;
   } catch (error) {
     console.error('Error saving outfit history:', error);
     // Fallback to localStorage
     const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    const entryId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     history.push({
+      id: entryId,
       outfitId: outfit.id,
       occasion,
       outfitData: outfit,
@@ -127,6 +135,80 @@ export async function saveOutfitToHistory(
       selectedAt: new Date().toISOString(),
     });
     localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
+    return entryId;
+  }
+}
+
+/**
+ * Update existing outfit history entry with try-on image URL
+ */
+export async function updateOutfitHistoryTryOn(
+  userId: string,
+  historyId: string,
+  tryOnImageUrl: string
+): Promise<void> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    const entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
+    if (entry) {
+      entry.tryOnImageUrl = tryOnImageUrl;
+      localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
+    }
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('outfit_history')
+      .update({
+        try_on_image_url: tryOnImageUrl,
+      })
+      .eq('id', historyId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error updating outfit history:', error);
+    // Fallback to localStorage
+    const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    const entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
+    if (entry) {
+      entry.tryOnImageUrl = tryOnImageUrl;
+      localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
+    }
+  }
+}
+
+/**
+ * Delete outfit from history
+ */
+export async function deleteOutfitFromHistory(
+  userId: string,
+  historyId: string
+): Promise<void> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    const updated = history.filter((e: OutfitHistoryEntry) => e.id !== historyId);
+    localStorage.setItem('praxis_outfit_history', JSON.stringify(updated));
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('outfit_history')
+      .delete()
+      .eq('id', historyId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting outfit history:', error);
+    // Fallback to localStorage
+    const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    const updated = history.filter((e: OutfitHistoryEntry) => e.id !== historyId);
+    localStorage.setItem('praxis_outfit_history', JSON.stringify(updated));
   }
 }
 
@@ -215,4 +297,37 @@ export async function removeFromFavorites(userId: string, outfitId: number): Pro
   } catch (error) {
     console.error('Error removing from favorites:', error);
   }
+}
+
+/**
+ * Get user's favorite outfit IDs
+ */
+export async function getFavorites(userId: string): Promise<number[]> {
+  if (!supabase) {
+    const favorites = JSON.parse(localStorage.getItem('praxis_favorites') || '[]');
+    return favorites;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('outfit_id')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    return (data || []).map(row => row.outfit_id);
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    const favorites = JSON.parse(localStorage.getItem('praxis_favorites') || '[]');
+    return favorites;
+  }
+}
+
+/**
+ * Get favorited outfit history entries
+ */
+export async function getFavoritedOutfits(userId: string): Promise<OutfitHistoryEntry[]> {
+  const favorites = await getFavorites(userId);
+  const history = await getOutfitHistory(userId);
+  return history.filter(entry => favorites.includes(entry.outfitId));
 }
