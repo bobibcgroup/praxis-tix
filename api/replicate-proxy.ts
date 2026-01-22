@@ -344,6 +344,36 @@ export default async function handler(
       return res.status(200).json({ output: result.output });
     }
 
+    // Check if this is a video/animation model - route directly, pass through inputs
+    const isVideoModel = model.includes('zeroscope') || model.includes('animate') || model.includes('video') || task === 'animate' || task === 'video';
+    
+    if (isVideoModel) {
+      // Get version ID
+      const versionId = await getVersionId(model, apiToken, version);
+      if (!versionId) {
+        return res.status(400).json({
+          error: 'Model version not found',
+          message: `Could not determine version for model ${model}. The model may not exist or may have been removed.`,
+          model: model
+        });
+      }
+
+      // For video models, pass through input as-is (they have their own schemas)
+      console.log(`Using video/animation model: ${model} with version: ${versionId}`);
+      console.log('Input keys:', Object.keys(input));
+
+      const result = await createPrediction(apiToken, versionId, input as Record<string, unknown>);
+      
+      if ('error' in result) {
+        return res.status(500).json({
+          error: result.error,
+          ...(typeof result.details === 'object' && result.details !== null ? result.details : { details: result.details })
+        });
+      }
+
+      return res.status(200).json({ output: result.output });
+    }
+
     // Determine task type: explicit task field OR infer from model name
     let taskType: 'faceswap' | 'tryon' | 'instantid' | null = null;
     
@@ -353,7 +383,7 @@ export default async function handler(
       } else {
         return res.status(400).json({
           error: 'Invalid task',
-          message: `Task must be one of: "faceswap", "tryon", "instantid"`,
+          message: `Task must be one of: "faceswap", "tryon", "instantid", "animate", "video"`,
           received: task
         });
       }

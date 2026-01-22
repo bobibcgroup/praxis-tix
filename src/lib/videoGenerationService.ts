@@ -39,6 +39,7 @@ export async function generateAnimatedVideo(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        task: "animate", // Explicit task for video generation
         model: "anotherjesse/zeroscope-v2-xl",
         input: {
           image: request.imageUrl,
