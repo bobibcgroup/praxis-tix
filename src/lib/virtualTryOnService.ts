@@ -37,21 +37,11 @@ export async function generateVirtualTryOn(
   }
 
   try {
-    // First, check if serverless function is available
-    try {
-      const healthCheck = await fetch(API_PROXY_URL, { method: 'GET' });
-      const health = await healthCheck.json();
-      if (!health.hasToken) {
-        throw new Error('Serverless function is not configured. REPLICATE_API_TOKEN missing in Vercel.');
-      }
-    } catch (healthError) {
-      console.warn('Health check failed:', healthError);
-      // Continue anyway, might be network issue
-    }
-
-    // Prepare images for Replicate (upload to Supabase Storage if available)
-    const userPhotoUrl = await prepareImageForReplicate(request.userPhoto, `user-${request.userId || 'anonymous'}.jpg`);
-    const outfitImageUrl = await prepareImageForReplicate(request.outfitImage, `outfit-${request.outfitId}.jpg`);
+    // Prepare images for Replicate in parallel (upload to Supabase Storage if available)
+    const [userPhotoUrl, outfitImageUrl] = await Promise.all([
+      prepareImageForReplicate(request.userPhoto, `user-${request.userId || 'anonymous'}.jpg`),
+      prepareImageForReplicate(request.outfitImage, `outfit-${request.outfitId}.jpg`)
+    ]);
 
     console.log('Attempting try-on generation via proxy', {
       userPhotoType: userPhotoUrl.substring(0, 50),

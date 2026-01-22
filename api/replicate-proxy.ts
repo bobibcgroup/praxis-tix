@@ -54,14 +54,15 @@ async function getVersionId(
 async function createPrediction(
   apiToken: string,
   versionId: string,
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
+  isFaceSwap = false // Face swap models may take longer
 ): Promise<{ output: unknown } | { error: string; details: unknown }> {
   const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiToken}`,
       'Content-Type': 'application/json',
-      'Prefer': 'wait=60',
+      'Prefer': isFaceSwap ? 'wait=120' : 'wait=60', // Longer wait for face swap
     },
     body: JSON.stringify({
       version: versionId,
@@ -95,22 +96,23 @@ async function createPrediction(
       }
     };
   } else {
-    // Poll for completion
+    // Poll for completion with adaptive intervals
     const predictionId = prediction.id;
     const startTime = Date.now();
-    const timeoutMs = 60000;
+    const timeoutMs = isFaceSwap ? 180000 : 60000; // 3 minutes for face swap, 1 minute for others
     let attempts = 0;
-    const maxAttempts = 60;
+    const maxAttempts = isFaceSwap ? 180 : 60; // More attempts for face swap
+    let pollInterval = 500; // Start with 500ms, increase gradually
 
     while (attempts < maxAttempts) {
       if (Date.now() - startTime > timeoutMs) {
         return {
           error: 'Request timeout',
-          details: { message: 'Prediction did not complete within 60 seconds' }
+          details: { message: `Prediction did not complete within ${timeoutMs / 1000} seconds` }
         };
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
 
       const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
         headers: {
@@ -143,6 +145,11 @@ async function createPrediction(
             ...statusData
           }
         };
+      }
+
+      // Increase poll interval gradually (up to 2 seconds max)
+      if (pollInterval < 2000) {
+        pollInterval = Math.min(2000, pollInterval * 1.1);
       }
 
       attempts++;
