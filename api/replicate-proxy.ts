@@ -44,7 +44,7 @@ export default async function handler(
   const replicate = new Replicate({ auth: apiToken });
 
   try {
-    const { model, input } = req.body;
+    const { model, input, version } = req.body;
 
     if (!model) {
       return res.status(400).json({ error: 'Model name is required' });
@@ -54,8 +54,10 @@ export default async function handler(
       return res.status(400).json({ error: 'Input parameters are required' });
     }
 
-    console.log(`[${new Date().toISOString()}] Running model: ${model}`);
+    console.log(`[${new Date().toISOString()}] Running model: ${model}${version ? ` (version: ${version})` : ''}`);
     console.log('Input keys:', Object.keys(input));
+    console.log('Request URL:', req.url);
+    console.log('Request body model:', model);
     
     // Validate image inputs exist (check multiple possible field names)
     const hasGarment = !!(input.garment || input.garment_img || input.garment_image);
@@ -72,13 +74,134 @@ export default async function handler(
       });
     }
 
-    // Run the model with timeout
-    const output = await Promise.race([
-      replicate.run(model as string, { input }),
-      new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout after 60s')), 60000)
-      )
-    ]) as string | string[];
+    // For community models, use the Replicate API directly with version ID
+    // Community models require POST /v1/predictions with version identifier
+    let versionId = version;
+    
+    if (!versionId) {
+      // Try to get the latest version using the SDK
+      try {
+        const [owner, modelName] = model.split('/');
+        if (owner && modelName) {
+          const modelInfo = await replicate.models.get(owner, modelName);
+          versionId = modelInfo.latest_version?.id;
+          
+          if (versionId) {
+            console.log(`Found version ID: ${versionId} for model ${model}`);
+          } else {
+            console.warn(`No version found for model ${model}`);
+          }
+        }
+      } catch (versionError: unknown) {
+        const verr = versionError as { status?: number; message?: string };
+        // If model doesn't exist (404), throw early
+        if (verr.status === 404) {
+          throw {
+            status: 404,
+            statusCode: 404,
+            message: `Model ${model} not found`,
+            response: {
+              status: 404,
+              statusText: 'Not Found',
+              data: { detail: 'The requested model could not be found.' },
+            },
+          };
+        }
+        console.warn(`Could not get version for ${model}, will try SDK run method:`, versionError);
+      }
+    }
+
+    let output: string | string[];
+    
+    if (versionId) {
+      // Use direct API call for community models with version ID
+      console.log(`Using direct API call for community model: ${model}:${versionId}`);
+      
+      const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          version: versionId,
+          input: input,
+        }),
+      });
+
+      if (!predictionResponse.ok) {
+        const errorData = await predictionResponse.json().catch(() => ({}));
+        throw {
+          status: predictionResponse.status,
+          statusCode: predictionResponse.status,
+          message: errorData.detail || errorData.error || `HTTP ${predictionResponse.status}`,
+          response: {
+            status: predictionResponse.status,
+            statusText: predictionResponse.statusText,
+            data: errorData,
+          },
+        };
+      }
+
+      const prediction = await predictionResponse.json();
+      const predictionId = prediction.id;
+
+      // Poll for completion with timeout
+      let completed = false;
+      let attempts = 0;
+      const maxAttempts = 60; // 60 seconds max
+      const startTime = Date.now();
+      const timeoutMs = 60000; // 60 seconds total timeout
+
+      while (!completed && attempts < maxAttempts) {
+        // Check overall timeout
+        if (Date.now() - startTime > timeoutMs) {
+          throw new Error('Request timeout after 60s');
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        
+        const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+          },
+        });
+
+        if (!statusResponse.ok) {
+          throw {
+            status: statusResponse.status,
+            message: `Failed to check prediction status: ${statusResponse.statusText}`,
+          };
+        }
+
+        const statusData = await statusResponse.json();
+        
+        if (statusData.status === 'succeeded') {
+          output = statusData.output;
+          completed = true;
+        } else if (statusData.status === 'failed') {
+          throw {
+            status: 500,
+            message: statusData.error || 'Prediction failed',
+          };
+        }
+        
+        attempts++;
+      }
+
+      if (!completed) {
+        throw new Error('Request timeout after 60s');
+      }
+    } else {
+      // Fall back to SDK for official models or if version lookup failed
+      console.log(`Using SDK run method for model: ${model}`);
+      output = await Promise.race([
+        replicate.run(model as string, { input }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout after 60s')), 60000)
+        )
+      ]) as string | string[];
+    }
 
     console.log('Model completed:', { 
       outputType: typeof output,
@@ -88,23 +211,39 @@ export default async function handler(
 
     res.status(200).json({ output });
   } catch (error: unknown) {
-    const err = error as { message?: string; status?: number; statusCode?: number; response?: { data?: unknown } };
+    const err = error as { 
+      message?: string; 
+      status?: number; 
+      statusCode?: number; 
+      response?: { 
+        data?: unknown;
+        status?: number;
+        statusText?: string;
+      };
+    };
+    
+    // Extract error details from Replicate SDK error
     const errorDetails = err?.response?.data || {};
     const errorString = JSON.stringify(errorDetails);
+    const httpStatus = err?.status || err?.statusCode || err?.response?.status;
     
     console.error('[ERROR] Replicate API error:', {
       message: err?.message,
-      status: err?.status,
+      status: httpStatus,
       statusCode: err?.statusCode,
-      details: errorString
+      responseStatus: err?.response?.status,
+      responseStatusText: err?.response?.statusText,
+      details: errorString,
+      model: req.body?.model
     });
     
-    // Handle model not found (404)
-    if (err?.status === 404 || err?.statusCode === 404 || errorString.includes('404') || errorString.includes('not found')) {
+    // Handle model not found (404) - forward the status code properly
+    if (httpStatus === 404 || errorString.includes('404') || errorString.includes('not found') || err?.message?.includes('404')) {
       return res.status(404).json({ 
         error: 'Model not found',
-        message: 'The requested model does not exist or has been removed. Trying alternative models...',
-        details: errorString
+        message: 'The requested model does not exist or has been removed.',
+        details: errorString || err?.message,
+        model: req.body?.model
       });
     }
     

@@ -59,30 +59,20 @@ export async function generateVirtualTryOn(
 
     // Try multiple models - using models that are currently available
     // Note: Models may change availability. Check Replicate.com for current options
+    // Only include models that actually exist on Replicate
     const models = [
       {
         name: "cuuupid/idm-vton",
-        input: {
-          human: userPhotoUrl,
-          garment: outfitImageUrl,
-        }
-      },
-      {
-        name: "levihsu/ootdiffusion",
-        input: {
-          model_type: "hd",
-          category: "upper_body",
-          garment_img: outfitImageUrl,
-          human_img: userPhotoUrl,
-        }
-      },
-      {
-        name: "yisol/idm-vton",
+        // Version ID for cuuupid/idm-vton - update if model changes
+        // You can find this at: https://replicate.com/cuuupid/idm-vton/versions
+        version: "c87165e6a873f4b2356614c5b1e78f8d5b0b1c4f",
         input: {
           human: userPhotoUrl,
           garment: outfitImageUrl,
         }
       }
+      // Removed invalid models: levihsu/ootdiffusion, yisol/idm-vton (404 errors)
+      // Add more working models here as you find them on Replicate.com
     ];
 
     let lastError: Error | null = null;
@@ -100,6 +90,7 @@ export async function generateVirtualTryOn(
           },
           body: JSON.stringify({
             model: modelConfig.name,
+            version: modelConfig.version, // Include version ID if available
             input: modelConfig.input,
           }),
         });
