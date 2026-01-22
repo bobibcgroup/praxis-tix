@@ -161,9 +161,14 @@ export default async function handler(
       });
     }
     
+    // The model requires garment_des (garment description) parameter
+    // If not provided, use a default description
+    const garmentDes = input.garment_des || input.garment_description || 'clothing';
+    
     const cleanedInput: Record<string, string> = {
       human_img: humanImg,
       garm_img: garmImg,
+      garment_des: String(garmentDes).trim(),
     };
     
     console.log(`Using model: ${model} with version: ${versionId}`);
