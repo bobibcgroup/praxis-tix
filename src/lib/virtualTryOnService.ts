@@ -59,18 +59,18 @@ export async function generateVirtualTryOn(
     });
 
     // Use IDM-VTON virtual try-on model
-    // human_img = user's photo (the person wearing the outfit - preserves face, hair, body features)
-    // garm_img = garment/clothing image (the outfit to try on)
-    // garment_des = description of the garment (helps model understand what to apply)
-    console.log('Attempting virtual try-on with cuuupid/idm-vton');
+    // IMPORTANT: To get the setting/background from the outfit image:
+    // - human_img = outfit image (this becomes the base, preserving its background/setting)
+    // - garm_img = user's photo (the person's features to apply)
+    // This way the outfit's background is preserved while the person's features are applied
+    console.log('Attempting virtual try-on with cuuupid/idm-vton (outfit background preserved)');
     
     if (!userPhotoUrl || !outfitImageUrl) {
       throw new Error('Missing required images: both user photo and outfit image are required');
     }
     
-    // Use a more descriptive garment description to help the model
-    // The model should preserve the person's face, hair, and body features while applying the outfit
-    const garmentDescription = 'outfit clothing apparel';
+    // Swap inputs: outfit image as base (preserves its background), human image as garment (applies person's features)
+    const garmentDescription = 'person human features face body';
     
     const response = await fetch(API_PROXY_URL, {
       method: 'POST',
@@ -80,8 +80,8 @@ export async function generateVirtualTryOn(
       body: JSON.stringify({
         model: "cuuupid/idm-vton",
         input: {
-          human_img: userPhotoUrl,
-          garm_img: outfitImageUrl,
+          human_img: outfitImageUrl, // Outfit image as base (preserves its background/setting)
+          garm_img: userPhotoUrl, // User photo to extract and apply person's features
           garment_des: garmentDescription,
         },
       }),
@@ -105,9 +105,9 @@ export async function generateVirtualTryOn(
           body: JSON.stringify({
             model: "cuuupid/idm-vton",
             input: {
-              human_img: userPhotoUrl,
-              garm_img: outfitImageUrl,
-              garment_des: 'outfit clothing apparel',
+              human_img: outfitImageUrl, // Outfit image as base (preserves background)
+              garm_img: userPhotoUrl, // User photo for person's features
+              garment_des: 'person human features face body',
             },
           }),
         });
