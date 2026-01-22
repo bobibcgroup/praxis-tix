@@ -58,18 +58,19 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Use face swap models that preserve facial features
-    // source_image = user's face photo (the face we want to keep)
+    // Use face swap models that preserve ALL facial features (hair, face structure, etc.)
+    // source_image = user's face photo (the face we want to keep completely)
     // target_image = outfit image (where we want to put the face)
-    // Priority: models that preserve identity/features better
+    // Priority: models with parameters to control feature preservation
     const models = [
       {
         name: "yan-ops/face_swap",
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          // Try to preserve features - some models support these parameters
-          preserve_identity: true,
+          // Lower strength/blend to preserve more original features
+          strength: 0.5, // Lower = more original features preserved
+          blend_ratio: 0.3, // Lower = less blending, more original
         }
       },
       {
@@ -77,13 +78,7 @@ export async function generateVirtualTryOn(
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-        }
-      },
-      {
-        name: "lucataco/faceswap",
-        input: {
-          source_image: userPhotoUrl,
-          target_image: outfitImageUrl,
+          strength: 0.5,
         }
       },
       {
@@ -91,6 +86,17 @@ export async function generateVirtualTryOn(
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
+          // Some models use different parameter names
+          preserve_identity: true,
+          strength: 0.6,
+        }
+      },
+      {
+        name: "lucataco/faceswap",
+        input: {
+          source_image: userPhotoUrl,
+          target_image: outfitImageUrl,
+          strength: 0.5,
         }
       },
       {
@@ -98,6 +104,7 @@ export async function generateVirtualTryOn(
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
+          strength: 0.5,
         }
       }
     ];
