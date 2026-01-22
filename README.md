@@ -95,8 +95,10 @@ This project is configured for deployment on Vercel. The `vercel.json` file cont
 5. **Set Up Supabase Storage**:
    - Go to your Supabase Dashboard → **Storage**
    - Create a new bucket named `images`
-   - Set it to **Public** (or configure RLS policies)
-   - This fixes the "Bucket not found" error
+   - Set it to **Public bucket: ON**
+   - Go to **SQL Editor** → New Query
+   - Copy and run the SQL from `supabase-storage-policies.sql`
+   - This fixes the "Bucket not found" and RLS policy errors
 
 ### Troubleshooting
 
