@@ -162,13 +162,32 @@ export async function generateVirtualTryOn(
         
         const output = data.output;
 
-        console.log('Model output received');
+        console.log('Model output received:', {
+          type: typeof output,
+          isArray: Array.isArray(output),
+          length: Array.isArray(output) ? output.length : 'N/A',
+          preview: typeof output === 'string' ? output.substring(0, 100) : JSON.stringify(output).substring(0, 100)
+        });
 
-        // Output is an array, get the first image
-        const imageUrl = Array.isArray(output) ? output[0] : output;
+        // Handle different output formats
+        let imageUrl: string | null = null;
         
-        if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0) {
-          console.log('Success! Generated image URL');
+        if (Array.isArray(output)) {
+          // If array, get first string URL
+          imageUrl = output.find((item: unknown) => typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:'))) || null;
+        } else if (typeof output === 'string') {
+          // Direct string URL
+          imageUrl = output;
+        } else if (output && typeof output === 'object') {
+          // Object with URL property
+          imageUrl = (output as { url?: string; image?: string; output?: string }).url || 
+                     (output as { url?: string; image?: string; output?: string }).image ||
+                     (output as { url?: string; image?: string; output?: string }).output ||
+                     null;
+        }
+        
+        if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
+          console.log('Success! Generated image URL:', imageUrl.substring(0, 100));
           // Cache the result
           imageCache.set(cacheKey, imageUrl);
           
@@ -177,7 +196,11 @@ export async function generateVirtualTryOn(
             cached: false,
           };
         } else {
-          console.warn(`Model ${modelConfig.name} returned invalid output`);
+          console.warn(`Model ${modelConfig.name} returned invalid output format:`, {
+            outputType: typeof output,
+            outputPreview: JSON.stringify(output).substring(0, 200),
+            extractedUrl: imageUrl
+          });
         }
       } catch (modelError: unknown) {
         console.error(`Model ${modelConfig.name} failed:`, modelError);
