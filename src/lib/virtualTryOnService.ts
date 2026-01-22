@@ -136,17 +136,30 @@ export async function generateVirtualTryOn(
             if (retryResponse.ok) {
               const retryData = await retryResponse.json();
               const output = retryData.output;
-              const imageUrl = Array.isArray(output) ? output[0] : output;
               
-              if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0) {
+              // Use improved output parsing
+              let imageUrl: string | null = null;
+              if (Array.isArray(output)) {
+                imageUrl = output.find((item: unknown) => typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:'))) || null;
+              } else if (typeof output === 'string') {
+                imageUrl = output;
+              } else if (output && typeof output === 'object') {
+                imageUrl = (output as { url?: string; image?: string; output?: string }).url || 
+                           (output as { url?: string; image?: string; output?: string }).image ||
+                           (output as { url?: string; image?: string; output?: string }).output ||
+                           null;
+              }
+              
+              if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
                 console.log('Success after retry!');
                 imageCache.set(cacheKey, imageUrl);
                 return { imageUrl, cached: false };
               }
             }
             
-            // If retry failed, throw with helpful message
-            throw new Error(`Rate limit exceeded. ${errorData.details || 'Please add a payment method to your Replicate account: https://replicate.com/account/billing'}`);
+            // If retry failed, continue to next model instead of throwing
+            console.warn(`Rate limit retry failed for ${modelConfig.name}, trying next model...`);
+            continue;
           }
           
           console.error(`API Error (${response.status}):`, errorMsg, errorData);
@@ -198,9 +211,14 @@ export async function generateVirtualTryOn(
         } else {
           console.warn(`Model ${modelConfig.name} returned invalid output format:`, {
             outputType: typeof output,
-            outputPreview: JSON.stringify(output).substring(0, 200),
-            extractedUrl: imageUrl
+            isArray: Array.isArray(output),
+            outputPreview: typeof output === 'string' 
+              ? output.substring(0, 200) 
+              : JSON.stringify(output).substring(0, 500),
+            extractedUrl: imageUrl,
+            fullOutput: output
           });
+          // Don't throw, continue to next model
         }
       } catch (modelError: unknown) {
         console.error(`Model ${modelConfig.name} failed:`, modelError);
