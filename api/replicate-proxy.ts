@@ -55,23 +55,30 @@ export default async function handler(
     console.log(`[${new Date().toISOString()}] Running model: ${model}${version ? ` (version: ${version})` : ''}`);
     console.log('Input keys:', Object.keys(input));
     
-    // Validate image inputs exist
-    const hasGarment = !!(input.garment || input.garment_img || input.garment_image || input.garm_img);
-    const hasHuman = !!(input.human || input.human_img || input.human_image);
+    // Validate image inputs exist - support both try-on and face swap models
+    // Try-on models: human_img/human, garm_img/garment
+    // Face swap models: source_image, target_image
+    const hasTryOnInputs = !!(input.garment || input.garment_img || input.garment_image || input.garm_img) && 
+                           !!(input.human || input.human_img || input.human_image);
+    const hasFaceSwapInputs = !!(input.source_image && input.target_image);
     
-    if (!hasGarment || !hasHuman) {
+    if (!hasTryOnInputs && !hasFaceSwapInputs) {
       return res.status(400).json({ 
         error: 'Missing required image inputs',
         details: { 
-          hasGarment, 
-          hasHuman,
+          hasTryOnInputs,
+          hasFaceSwapInputs,
           inputKeys: Object.keys(input)
         }
       });
     }
 
     // Validate that image inputs are valid URLs or data URLs
-    const requiredFields = ['human_img', 'garm_img'];
+    // Determine which type of model based on input fields
+    const isFaceSwap = hasFaceSwapInputs;
+    const requiredFields = isFaceSwap 
+      ? ['source_image', 'target_image']
+      : ['human_img', 'garm_img'];
     
     for (const field of requiredFields) {
       if (!input[field] || (typeof input[field] === 'string' && input[field].trim() === '')) {
@@ -144,63 +151,64 @@ export default async function handler(
       });
     }
     
-    // Prepare cleaned input - ensure values are strings and not null/undefined
-    const humanImg = String(input.human_img || '').trim();
-    const garmImg = String(input.garm_img || '').trim();
+    // Prepare cleaned input based on model type
+    let cleanedInput: Record<string, string>;
     
-    if (!humanImg || !garmImg) {
-      return res.status(400).json({
-        error: 'Missing required image inputs',
-        message: 'Both human_img and garm_img must be provided and non-empty',
-        received: {
-          has_human_img: !!humanImg,
-          has_garm_img: !!garmImg,
-          human_img_length: humanImg.length,
-          garm_img_length: garmImg.length,
-        }
-      });
+    if (isFaceSwap) {
+      // Face swap models: source_image and target_image
+      const sourceImg = String(input.source_image || '').trim();
+      const targetImg = String(input.target_image || '').trim();
+      
+      if (!sourceImg || !targetImg) {
+        return res.status(400).json({
+          error: 'Missing required image inputs',
+          message: 'Both source_image and target_image must be provided and non-empty',
+          received: {
+            has_source_image: !!sourceImg,
+            has_target_image: !!targetImg,
+          }
+        });
+      }
+      
+      cleanedInput = {
+        source_image: sourceImg,
+        target_image: targetImg,
+      };
+    } else {
+      // Try-on models: human_img, garm_img, and garment_des
+      const humanImg = String(input.human_img || '').trim();
+      const garmImg = String(input.garm_img || '').trim();
+      
+      if (!humanImg || !garmImg) {
+        return res.status(400).json({
+          error: 'Missing required image inputs',
+          message: 'Both human_img and garm_img must be provided and non-empty',
+          received: {
+            has_human_img: !!humanImg,
+            has_garm_img: !!garmImg,
+          }
+        });
+      }
+      
+      const garmentDes = input.garment_des || input.garment_description || 'clothing';
+      
+      cleanedInput = {
+        human_img: humanImg,
+        garm_img: garmImg,
+        garment_des: String(garmentDes).trim(),
+      };
     }
     
-    // The model requires garment_des (garment description) parameter
-    // If not provided, use a default description
-    const garmentDes = input.garment_des || input.garment_description || 'clothing';
-    
-    const cleanedInput: Record<string, string> = {
-      human_img: humanImg,
-      garm_img: garmImg,
-      garment_des: String(garmentDes).trim(),
-    };
-    
-    console.log(`Using model: ${model} with version: ${versionId}`);
+    console.log(`Using model: ${model} with version: ${versionId} (${isFaceSwap ? 'face swap' : 'try-on'})`);
     console.log('Sending to Replicate:', {
-      human_img_preview: humanImg.substring(0, 100),
-      garm_img_preview: garmImg.substring(0, 100),
-      human_img_type: humanImg.startsWith('http') ? 'URL' : humanImg.startsWith('data:') ? 'data URL' : 'unknown',
-      garm_img_type: garmImg.startsWith('http') ? 'URL' : garmImg.startsWith('data:') ? 'data URL' : 'unknown',
+      inputKeys: Object.keys(cleanedInput),
+      preview: Object.fromEntries(
+        Object.entries(cleanedInput).map(([key, value]) => [
+          key,
+          typeof value === 'string' ? value.substring(0, 100) : value
+        ])
+      ),
     });
-    
-    // Verify URLs are accessible (for HTTP URLs only)
-    if (humanImg.startsWith('http')) {
-      try {
-        const check = await fetch(humanImg, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-        if (!check.ok) {
-          console.warn(`human_img URL returned status ${check.status}`);
-        }
-      } catch (e) {
-        console.warn('Could not verify human_img URL:', e);
-      }
-    }
-    
-    if (garmImg.startsWith('http')) {
-      try {
-        const check = await fetch(garmImg, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
-        if (!check.ok) {
-          console.warn(`garm_img URL returned status ${check.status}`);
-        }
-      } catch (e) {
-        console.warn('Could not verify garm_img URL:', e);
-      }
-    }
     
     // Create prediction using Replicate API
     const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
