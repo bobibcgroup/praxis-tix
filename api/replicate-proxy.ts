@@ -753,4 +753,26 @@ export default async function handler(
  * - mask_img: string URL (optional)
  * 
  * Note: Both human_img and garm_img must be HTTP/HTTPS URLs (data URLs rejected).
+ * 
+ * Example request body for animation (image → video):
+ * 
+ * {
+ *   "task": "animate",
+ *   "input": {
+ *     "input_image": "https://example.com/final_tryon_image.jpg",
+ *     "prompt": "A man walking slowly toward the camera, natural steps, subtle motion"
+ *   }
+ * }
+ * 
+ * Input aliases supported:
+ * - input_image: input_image, image, source_image, frame (must be HTTP/HTTPS URL)
+ * - prompt: prompt, motion_prompt, animation_prompt (required)
+ * 
+ * Default parameters (optimized for human motion):
+ * - duration: 5 (seconds)
+ * - fps: 15 (natural motion)
+ * - seed: 42
+ * - guidance_scale: 7.5 (if supported)
+ * 
+ * Note: input_image must be a hosted HTTP/HTTPS URL (data URLs rejected).
  */
