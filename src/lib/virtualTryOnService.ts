@@ -58,197 +58,134 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Use face swap models designed for identity preservation
+    // Use INSwapper model for face swap
     // source_image = user's face photo (the face we want to keep completely)
     // target_image = outfit image (where we want to put the face)
-    // Priority: Models that preserve all features including hair
-    const models = [
-      {
-        name: "instantx/InstantID",
-        input: {
-          face_image: userPhotoUrl,
-          image: outfitImageUrl,
-          // InstantID is designed for identity preservation
-          controlnet_conditioning_scale: 0.8,
-          ip_adapter_scale: 0.8,
-        }
+    console.log('Attempting face swap with ddvinh1/inswapper');
+    
+    const response = await fetch(API_PROXY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      {
-        name: "fofr/face-swap",
+      body: JSON.stringify({
+        model: "ddvinh1/inswapper",
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          preserve_identity: true,
-          strength: 0.3,
-        }
-      },
-      {
-        name: "yan-ops/face_swap",
-        input: {
-          source_image: userPhotoUrl,
-          target_image: outfitImageUrl,
-          strength: 0.2,
-          blend_ratio: 0.2,
-        }
-      },
-      {
-        name: "logerzhu/face-swap",
-        input: {
-          source_image: userPhotoUrl,
-          target_image: outfitImageUrl,
-          strength: 0.3,
-        }
-      }
-    ];
+        },
+      }),
+    });
 
-    let lastError: Error | null = null;
-    let lastErrorDetails: unknown = null;
-
-    for (const modelConfig of models) {
-      try {
-        console.log(`Trying model: ${modelConfig.name}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+      
+      // Handle rate limiting with retry
+      if (response.status === 429) {
+        const retryAfter = errorData.retryAfter || 10;
+        console.warn(`Rate limited. Retrying after ${retryAfter}s...`);
         
-        // Call server-side proxy instead of direct API
-        const response = await fetch(API_PROXY_URL, {
+        // Wait and retry once
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        
+        const retryResponse = await fetch(API_PROXY_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: modelConfig.name,
-            version: modelConfig.version, // Include version ID if available
-            input: modelConfig.input,
+            model: "ddvinh1/inswapper",
+            input: {
+              source_image: userPhotoUrl,
+              target_image: outfitImageUrl,
+            },
           }),
         });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const errorMsg = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+        
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json();
+          const output = retryData.output;
           
-          // Skip 404 errors (model not found) and try next model
-          if (response.status === 404) {
-            console.warn(`Model ${modelConfig.name} not found (404), trying next model...`);
-            continue;
+          // Parse output
+          let imageUrl: string | null = null;
+          if (Array.isArray(output)) {
+            imageUrl = output.find((item: unknown) => typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:'))) || null;
+          } else if (typeof output === 'string') {
+            imageUrl = output;
+          } else if (output && typeof output === 'object') {
+            imageUrl = (output as { url?: string; image?: string; output?: string }).url || 
+                       (output as { url?: string; image?: string; output?: string }).image ||
+                       (output as { url?: string; image?: string; output?: string }).output ||
+                       null;
           }
           
-          // Handle rate limiting with retry
-          if (response.status === 429) {
-            const retryAfter = errorData.retryAfter || 10;
-            console.warn(`Rate limited. Retrying after ${retryAfter}s...`);
-            
-            // Wait and retry once
-            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-            
-            // Retry the same model
-            const retryResponse = await fetch(API_PROXY_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                model: modelConfig.name,
-                input: modelConfig.input,
-              }),
-            });
-            
-            if (retryResponse.ok) {
-              const retryData = await retryResponse.json();
-              const output = retryData.output;
-              
-              // Use improved output parsing
-              let imageUrl: string | null = null;
-              if (Array.isArray(output)) {
-                imageUrl = output.find((item: unknown) => typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:'))) || null;
-              } else if (typeof output === 'string') {
-                imageUrl = output;
-              } else if (output && typeof output === 'object') {
-                imageUrl = (output as { url?: string; image?: string; output?: string }).url || 
-                           (output as { url?: string; image?: string; output?: string }).image ||
-                           (output as { url?: string; image?: string; output?: string }).output ||
-                           null;
-              }
-              
-              if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
-                console.log('Success after retry!');
-                imageCache.set(cacheKey, imageUrl);
-                return { imageUrl, cached: false };
-              }
-            }
-            
-            // If retry failed, continue to next model instead of throwing
-            console.warn(`Rate limit retry failed for ${modelConfig.name}, trying next model...`);
-            continue;
+          if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
+            console.log('Success after retry!');
+            imageCache.set(cacheKey, imageUrl);
+            return { imageUrl, cached: false };
           }
-          
-          console.error(`API Error (${response.status}):`, errorMsg, errorData);
-          throw new Error(`Server error: ${errorMsg}`);
-        }
-
-        const data = await response.json();
-        
-        if (!data || !data.output) {
-          console.error('Invalid response from server:', data);
-          throw new Error('Invalid response from server - no output received');
         }
         
-        const output = data.output;
-
-        console.log('Model output received:', {
-          type: typeof output,
-          isArray: Array.isArray(output),
-          length: Array.isArray(output) ? output.length : 'N/A',
-          preview: typeof output === 'string' ? output.substring(0, 100) : JSON.stringify(output).substring(0, 100)
-        });
-
-        // Handle different output formats
-        let imageUrl: string | null = null;
-        
-        if (Array.isArray(output)) {
-          // If array, get first string URL
-          imageUrl = output.find((item: unknown) => typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:'))) || null;
-        } else if (typeof output === 'string') {
-          // Direct string URL
-          imageUrl = output;
-        } else if (output && typeof output === 'object') {
-          // Object with URL property
-          imageUrl = (output as { url?: string; image?: string; output?: string }).url || 
-                     (output as { url?: string; image?: string; output?: string }).image ||
-                     (output as { url?: string; image?: string; output?: string }).output ||
-                     null;
-        }
-        
-        if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
-          console.log('Success! Generated image URL:', imageUrl.substring(0, 100));
-          // Cache the result
-          imageCache.set(cacheKey, imageUrl);
-          
-          return {
-            imageUrl,
-            cached: false,
-          };
-        } else {
-          console.warn(`Model ${modelConfig.name} returned invalid output format:`, {
-            outputType: typeof output,
-            isArray: Array.isArray(output),
-            outputPreview: typeof output === 'string' 
-              ? output.substring(0, 200) 
-              : JSON.stringify(output).substring(0, 500),
-            extractedUrl: imageUrl,
-            fullOutput: output
-          });
-          // Don't throw, continue to next model
-        }
-      } catch (modelError: unknown) {
-        console.error(`Model ${modelConfig.name} failed:`, modelError);
-        lastErrorDetails = modelError;
-        lastError = modelError instanceof Error ? modelError : new Error(String(modelError));
-        // Try next model
-        continue;
+        throw new Error(`Rate limit exceeded. Please try again later.`);
       }
+      
+      console.error(`API Error (${response.status}):`, errorMsg, errorData);
+      throw new Error(`Server error: ${errorMsg}`);
     }
 
-    // If all models failed, provide detailed error
-    const errorDetails = lastErrorDetails?.message || lastError?.message || 'Unknown error';
-    console.error('All models failed. Last error:', errorDetails);
-    throw new Error(`Failed to generate try-on image: ${errorDetails}`);
+    const data = await response.json();
+    
+    if (!data || !data.output) {
+      console.error('Invalid response from server:', data);
+      throw new Error('Invalid response from server - no output received');
+    }
+    
+    const output = data.output;
+
+    console.log('Model output received:', {
+      type: typeof output,
+      isArray: Array.isArray(output),
+      length: Array.isArray(output) ? output.length : 'N/A',
+      preview: typeof output === 'string' ? output.substring(0, 100) : JSON.stringify(output).substring(0, 100)
+    });
+
+    // Handle different output formats
+    let imageUrl: string | null = null;
+    
+    if (Array.isArray(output)) {
+      // If array, get first string URL
+      imageUrl = output.find((item: unknown) => typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:'))) || null;
+    } else if (typeof output === 'string') {
+      // Direct string URL
+      imageUrl = output;
+    } else if (output && typeof output === 'object') {
+      // Object with URL property
+      imageUrl = (output as { url?: string; image?: string; output?: string }).url || 
+                 (output as { url?: string; image?: string; output?: string }).image ||
+                 (output as { url?: string; image?: string; output?: string }).output ||
+                 null;
+    }
+    
+    if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
+      console.log('Success! Generated image URL:', imageUrl.substring(0, 100));
+      // Cache the result
+      imageCache.set(cacheKey, imageUrl);
+      
+      return {
+        imageUrl,
+        cached: false,
+      };
+    } else {
+      console.error('Model returned invalid output format:', {
+        outputType: typeof output,
+        isArray: Array.isArray(output),
+        outputPreview: typeof output === 'string' 
+          ? output.substring(0, 200) 
+          : JSON.stringify(output).substring(0, 500),
+        extractedUrl: imageUrl,
+        fullOutput: output
+      });
+      throw new Error('Invalid output format from model');
+    }
   } catch (error) {
     console.error('Virtual try-on error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
