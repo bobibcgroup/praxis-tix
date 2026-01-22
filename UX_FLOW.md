@@ -67,16 +67,16 @@ Praxis Tix is a personalized outfit recommendation app that helps users find the
   - Select an outfit
 - **Navigation**: Back → Step 3, Select → Step 5
 
-### Step 5: Virtual Try-On (Optional)
-**Component**: `StepVirtualTryOn`
-- **Condition**: Only shown if user has uploaded a photo in Personal Flow
-- If no photo: Skips directly to Step 6
-- If photo available:
-  - Generates virtual try-on image using face swap
-  - Shows loading state with progress
-  - Displays result with download/share options
-  - **Note**: Uses async Replicate API (polls for completion)
-- **Navigation**: Back → Step 4, Continue → Step 6
+### Step 5: Complete
+**Component**: `StepComplete`
+- **Note**: Quick Flow skips virtual try-on (no photo upload in Quick Flow)
+- Shows completion message
+- **Upsell**: Prompts user to:
+  - Sign in (if not authenticated) to save outfits
+  - Build personal style profile (if authenticated)
+- **Actions**:
+  - "Style another moment" - Restarts Quick Flow
+  - "Build my style profile" - Starts Personal Flow (requires login)
 
 ### Step 6: Complete
 **Component**: `StepComplete`
@@ -246,10 +246,10 @@ Praxis Tix is a personalized outfit recommendation app that helps users find the
 
 ### 🔴 Critical Issues
 
-1. **Quick Flow Try-On Logic**
-   - **Issue**: Step 5 checks `personal.hasPhoto` but Quick Flow users don't have personal data
-   - **Current**: Always skips to Step 6 (no try-on for Quick Flow)
-   - **Suggestion**: Allow Quick Flow users to upload a photo on-the-fly for try-on, or remove try-on from Quick Flow entirely
+1. ~~**Quick Flow Try-On Logic**~~ ✅ **FIXED**
+   - **Issue**: Step 5 checked `personal.hasPhoto` but Quick Flow users don't have personal data
+   - **Fix**: Quick Flow now correctly skips try-on and goes directly to completion
+   - **Current**: Try-on is only available in Personal Flow where users upload photos
 
 2. **Mode Selection Confusion**
    - **Issue**: "Build my personal style" button shows sign-in prompt, but user might not understand why

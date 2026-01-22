@@ -144,12 +144,9 @@ export async function generateVirtualTryOn(
     }
 
     const predictionId = predictionData.id;
-    console.log('Prediction created:', predictionId, 'Status:', predictionData.status);
 
     // Step 2: Poll for completion
-    const result = await pollPredictionStatus(predictionId, (status) => {
-      console.log('Prediction status:', status);
-    });
+    const result = await pollPredictionStatus(predictionId);
 
     if (result.error) {
       throw new Error(result.error + (result.logs ? `\n\nLogs: ${result.logs}` : ''));
@@ -186,7 +183,6 @@ export async function generateVirtualTryOn(
     }
     
     if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
-      console.log('Success! Generated image URL:', imageUrl.substring(0, 100));
       // Cache the result
       imageCache.set(cacheKey, imageUrl);
       

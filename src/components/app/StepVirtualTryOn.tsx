@@ -37,6 +37,7 @@ const StepVirtualTryOn = ({
       setError('Photo or outfit image not available');
       setIsGenerating(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const generateTryOnImage = async () => {
