@@ -55,19 +55,22 @@ export default async function handler(
     console.log(`[${new Date().toISOString()}] Running model: ${model}${version ? ` (version: ${version})` : ''}`);
     console.log('Input keys:', Object.keys(input));
     
-    // Validate image inputs exist - support both try-on and face swap models
+    // Validate image inputs exist - support try-on, face swap, and InstantID models
     // Try-on models: human_img/human, garm_img/garment
     // Face swap models: source_image, target_image
+    // InstantID models: face_image, image
     const hasTryOnInputs = !!(input.garment || input.garment_img || input.garment_image || input.garm_img) && 
                            !!(input.human || input.human_img || input.human_image);
     const hasFaceSwapInputs = !!(input.source_image && input.target_image);
+    const hasInstantIDInputs = !!(input.face_image && input.image);
     
-    if (!hasTryOnInputs && !hasFaceSwapInputs) {
+    if (!hasTryOnInputs && !hasFaceSwapInputs && !hasInstantIDInputs) {
       return res.status(400).json({ 
         error: 'Missing required image inputs',
         details: { 
           hasTryOnInputs,
           hasFaceSwapInputs,
+          hasInstantIDInputs,
           inputKeys: Object.keys(input)
         }
       });
@@ -75,10 +78,13 @@ export default async function handler(
 
     // Validate that image inputs are valid URLs or data URLs
     // Determine which type of model based on input fields
-    const isFaceSwap = hasFaceSwapInputs;
-    const requiredFields = isFaceSwap 
-      ? ['source_image', 'target_image']
-      : ['human_img', 'garm_img'];
+    const isInstantID = hasInstantIDInputs;
+    const isFaceSwap = hasFaceSwapInputs && !isInstantID;
+    const requiredFields = isInstantID
+      ? ['face_image', 'image']
+      : isFaceSwap 
+        ? ['source_image', 'target_image']
+        : ['human_img', 'garm_img'];
     
     for (const field of requiredFields) {
       if (!input[field] || (typeof input[field] === 'string' && input[field].trim() === '')) {
@@ -152,9 +158,32 @@ export default async function handler(
     }
     
     // Prepare cleaned input based on model type
-    let cleanedInput: Record<string, string>;
+    let cleanedInput: Record<string, string | number>;
     
-    if (isFaceSwap) {
+    if (isInstantID) {
+      // InstantID models: face_image and image
+      const faceImg = String(input.face_image || '').trim();
+      const targetImg = String(input.image || '').trim();
+      
+      if (!faceImg || !targetImg) {
+        return res.status(400).json({
+          error: 'Missing required image inputs',
+          message: 'Both face_image and image must be provided and non-empty',
+          received: {
+            has_face_image: !!faceImg,
+            has_image: !!targetImg,
+          }
+        });
+      }
+      
+      cleanedInput = {
+        face_image: faceImg,
+        image: targetImg,
+        // InstantID parameters for better identity preservation
+        controlnet_conditioning_scale: input.controlnet_conditioning_scale || 0.8,
+        ip_adapter_scale: input.ip_adapter_scale || 0.8,
+      };
+    } else if (isFaceSwap) {
       // Face swap models: source_image and target_image
       const sourceImg = String(input.source_image || '').trim();
       const targetImg = String(input.target_image || '').trim();
@@ -174,6 +203,11 @@ export default async function handler(
         source_image: sourceImg,
         target_image: targetImg,
       };
+      
+      // Add optional parameters if provided
+      if (input.strength !== undefined) cleanedInput.strength = Number(input.strength);
+      if (input.blend_ratio !== undefined) cleanedInput.blend_ratio = Number(input.blend_ratio);
+      if (input.preserve_identity !== undefined) cleanedInput.preserve_identity = Boolean(input.preserve_identity);
     } else {
       // Try-on models: human_img, garm_img, and garment_des
       const humanImg = String(input.human_img || '').trim();

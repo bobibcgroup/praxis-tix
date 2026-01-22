@@ -58,27 +58,19 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Use face swap models that preserve ALL facial features (hair, face structure, etc.)
+    // Use face swap models designed for identity preservation
     // source_image = user's face photo (the face we want to keep completely)
     // target_image = outfit image (where we want to put the face)
-    // Using extremely low strength to preserve original features including hair
+    // Priority: Models that preserve all features including hair
     const models = [
       {
-        name: "yan-ops/face_swap",
+        name: "instantx/InstantID",
         input: {
-          source_image: userPhotoUrl,
-          target_image: outfitImageUrl,
-          // Extremely low strength - preserve 90%+ of original features
-          strength: 0.1, // Very minimal swap - only essential facial features
-          blend_ratio: 0.1, // Minimal blending
-        }
-      },
-      {
-        name: "logerzhu/face-swap",
-        input: {
-          source_image: userPhotoUrl,
-          target_image: outfitImageUrl,
-          strength: 0.1, // Extremely low strength
+          face_image: userPhotoUrl,
+          image: outfitImageUrl,
+          // InstantID is designed for identity preservation
+          controlnet_conditioning_scale: 0.8,
+          ip_adapter_scale: 0.8,
         }
       },
       {
@@ -87,23 +79,24 @@ export async function generateVirtualTryOn(
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
           preserve_identity: true,
-          strength: 0.1, // Very low strength
+          strength: 0.3,
         }
       },
       {
-        name: "lucataco/faceswap",
+        name: "yan-ops/face_swap",
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          strength: 0.1, // Very low strength
+          strength: 0.2,
+          blend_ratio: 0.2,
         }
       },
       {
-        name: "yan-ops/face-swap",
+        name: "logerzhu/face-swap",
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          strength: 0.1,
+          strength: 0.3,
         }
       }
     ];
