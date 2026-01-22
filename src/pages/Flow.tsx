@@ -93,7 +93,16 @@ const Flow = () => {
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   const [tryOnImageUrl, setTryOnImageUrl] = useState<string | null>(null);
   
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
+
+  // Guard: Redirect personal flow steps if not authenticated
+  useEffect(() => {
+    if (isLoaded && mode === 'personal' && !user) {
+      // If user tries to access personal flow without being logged in, reset to mode select
+      setMode(null);
+      setStep(0);
+    }
+  }, [isLoaded, user, mode]);
 
   // Quick flow handlers
   const handleGetOutfits = () => {
@@ -227,8 +236,14 @@ const Flow = () => {
               setStep(1);
             }}
             onSelectPersonal={() => {
-              setMode('personal');
-              setStep(10);
+              // Require authentication for personal flow
+              if (isLoaded && user) {
+                setMode('personal');
+                setStep(10);
+              } else {
+                // Show sign-in prompt - user needs to sign in first
+                // The StepModeSelect component will handle this
+              }
             }}
           />
         );
@@ -347,8 +362,14 @@ const Flow = () => {
           />
         );
       
-      // Personal flow
+      // Personal flow - require authentication
       case 10:
+        // Guard: If not authenticated, redirect to mode select
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         return (
           <StepPhoto
             onPhotoConfirmed={(result: { 
@@ -385,6 +406,12 @@ const Flow = () => {
           />
         );
       case 11:
+        // Guard: Require authentication
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         return (
           <StepFitCalibration
             onComplete={(data: { height?: number; heightUnit: HeightUnit; fitPreference?: FitPreference }) => {
@@ -403,6 +430,12 @@ const Flow = () => {
           />
         );
       case 12:
+        // Guard: Require authentication
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         return (
           <StepLifestyle
             value={personal.lifestyle}
@@ -414,6 +447,12 @@ const Flow = () => {
           />
         );
       case 13:
+        // Guard: Require authentication
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         return (
           <StepInspiration
             onInspirationPhoto={(photoData: string) => {
@@ -435,6 +474,12 @@ const Flow = () => {
           />
         );
       case 14:
+        // Guard: Require authentication
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         return (
           <StepWardrobe
             onWardrobeUpdate={(items: WardrobeItems) => {
@@ -451,6 +496,12 @@ const Flow = () => {
           />
         );
       case 15:
+        // Guard: Require authentication
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         // Loading/generating step
         return (
           <StepPersonalLoading
@@ -461,6 +512,12 @@ const Flow = () => {
           />
         );
       case 16:
+        // Guard: Require authentication
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         // Personal results - only show if we have outfits
         return (
           <StepPersonalResults
@@ -486,6 +543,12 @@ const Flow = () => {
           />
         );
       case 17:
+        // Guard: Require authentication
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         // Virtual Try-On for personal flow
         if (selectedOutfit && personal.hasPhoto && personal.photoCropped) {
           return (
@@ -527,6 +590,12 @@ const Flow = () => {
           />
         );
       case 18:
+        // Guard: Require authentication
+        if (isLoaded && !user) {
+          setMode(null);
+          setStep(0);
+          return null;
+        }
         return (
           <StepStyleDNA
             personalData={personal}

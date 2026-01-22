@@ -1,4 +1,7 @@
 import FlowStep from './FlowStep';
+import { useUser, SignInButton } from '@clerk/clerk-react';
+import { User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface StepModeSelectProps {
   onSelectQuick: () => void;
@@ -6,6 +9,15 @@ interface StepModeSelectProps {
 }
 
 const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps) => {
+  const { user, isLoaded } = useUser();
+
+  const handlePersonalClick = () => {
+    if (isLoaded && user) {
+      onSelectPersonal();
+    }
+    // If not logged in, the SignInButton will handle it
+  };
+
   return (
     <FlowStep title="What do you want to do today?">
       <p className="text-muted-foreground text-center mb-6 -mt-2">
@@ -25,18 +37,39 @@ const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps
           </span>
         </button>
 
-        <button
-          type="button"
-          onClick={onSelectPersonal}
-          className="w-full py-5 px-6 rounded-xl border border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-left transition-all group"
-        >
-          <span className="block text-lg font-medium text-foreground group-hover:text-foreground">
-            Build my personal style
-          </span>
-          <span className="block text-sm text-muted-foreground mt-1">
-            Personalized, precise, built around you
-          </span>
-        </button>
+        {isLoaded && user ? (
+          <button
+            type="button"
+            onClick={handlePersonalClick}
+            className="w-full py-5 px-6 rounded-xl border border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-left transition-all group"
+          >
+            <span className="block text-lg font-medium text-foreground group-hover:text-foreground">
+              Build my personal style
+            </span>
+            <span className="block text-sm text-muted-foreground mt-1">
+              Personalized, precise, built around you
+            </span>
+          </button>
+        ) : (
+          <div className="w-full py-5 px-6 rounded-xl border border-border bg-muted/30">
+            <div className="flex items-start gap-3 mb-3">
+              <User className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <span className="block text-lg font-medium text-foreground mb-1">
+                  Build my personal style
+                </span>
+                <span className="block text-sm text-muted-foreground mb-3">
+                  Personalized, precise, built around you
+                </span>
+                <SignInButton mode="modal">
+                  <Button variant="cta" size="sm" className="w-full">
+                    Sign in to continue
+                  </Button>
+                </SignInButton>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </FlowStep>
   );
