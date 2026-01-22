@@ -19,6 +19,7 @@ import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } fr
 import { generatePersonalOutfits, deriveStyleColorProfile } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
+import { useLocation } from 'react-router-dom';
 import type { 
   OccasionData, 
   ContextData, 
