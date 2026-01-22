@@ -61,16 +61,16 @@ export async function generateVirtualTryOn(
     // Use face swap models that preserve ALL facial features (hair, face structure, etc.)
     // source_image = user's face photo (the face we want to keep completely)
     // target_image = outfit image (where we want to put the face)
-    // Priority: models with parameters to control feature preservation
+    // Using very low strength/blend to preserve original features including hair
     const models = [
       {
         name: "yan-ops/face_swap",
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          // Lower strength/blend to preserve more original features
-          strength: 0.5, // Lower = more original features preserved
-          blend_ratio: 0.3, // Lower = less blending, more original
+          // Very low strength to preserve ALL original features (hair, face structure)
+          strength: 0.3, // Lower = more original features preserved (0.3 = preserve 70% original)
+          blend_ratio: 0.2, // Lower = less blending, more original features
         }
       },
       {
@@ -78,7 +78,7 @@ export async function generateVirtualTryOn(
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          strength: 0.5,
+          strength: 0.3, // Lower strength to preserve features
         }
       },
       {
@@ -86,9 +86,8 @@ export async function generateVirtualTryOn(
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          // Some models use different parameter names
           preserve_identity: true,
-          strength: 0.6,
+          strength: 0.3, // Lower strength
         }
       },
       {
@@ -96,15 +95,7 @@ export async function generateVirtualTryOn(
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          strength: 0.5,
-        }
-      },
-      {
-        name: "yan-ops/face-swap",
-        input: {
-          source_image: userPhotoUrl,
-          target_image: outfitImageUrl,
-          strength: 0.5,
+          strength: 0.3, // Lower strength
         }
       }
     ];
