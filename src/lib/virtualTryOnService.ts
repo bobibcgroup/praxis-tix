@@ -19,7 +19,8 @@ export interface TryOnResult {
 }
 
 /**
- * Generate virtual try-on image using Replicate IDM-VTON model
+ * Generate face-swapped image - replaces face in outfit image with user's face
+ * Uses face swap models for simpler and more reliable results
  */
 export async function generateVirtualTryOn(
   request: TryOnRequest
@@ -57,21 +58,31 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Try multiple models - using models that are currently available
-    // Note: Models may change availability. Check Replicate.com for current options
-    // The proxy will automatically fetch the latest version ID if not provided
+    // Use face swap models - simpler and more reliable for replacing face on outfit image
+    // source_image = user's face photo
+    // target_image = outfit image (where we want to put the face)
     const models = [
       {
-        name: "cuuupid/idm-vton",
-        // Version ID will be fetched automatically by the proxy if not provided
-        // Model expects: garm_img (garment image) and human_img (human image)
+        name: "yan-ops/face_swap",
         input: {
-          human_img: userPhotoUrl,
-          garm_img: outfitImageUrl,
+          source_image: userPhotoUrl,
+          target_image: outfitImageUrl,
+        }
+      },
+      {
+        name: "logerzhu/face-swap",
+        input: {
+          source_image: userPhotoUrl,
+          target_image: outfitImageUrl,
+        }
+      },
+      {
+        name: "lucataco/faceswap",
+        input: {
+          source_image: userPhotoUrl,
+          target_image: outfitImageUrl,
         }
       }
-      // Removed invalid models: levihsu/ootdiffusion, yisol/idm-vton (404 errors)
-      // Add more working models here as you find them on Replicate.com
     ];
 
     let lastError: Error | null = null;
