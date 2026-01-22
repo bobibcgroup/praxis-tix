@@ -305,39 +305,9 @@ const Flow = () => {
           />
         );
       case 5:
-        // Virtual Try-On (if user has photo) or skip to complete
-        if (selectedOutfit && personal.hasPhoto && personal.photoCropped) {
-          return (
-            <StepVirtualTryOn
-              outfit={selectedOutfit}
-              userPhoto={personal.photoCropped}
-              personalData={personal}
-              onBack={() => setStep(4)}
-              onComplete={async (tryOnUrl: string) => {
-                setTryOnImageUrl(tryOnUrl);
-                
-                // Save to history if user is authenticated
-                if (user && selectedOutfit) {
-                  try {
-                    await saveOutfitToHistory(
-                      user.id,
-                      selectedOutfit,
-                      occasion.event as OccasionType,
-                      tryOnUrl,
-                      undefined // No video URL
-                    );
-                  } catch (err) {
-                    console.error('Error saving to history:', err);
-                  }
-                }
-                
-                setStep(6);
-              }}
-              onSkip={() => setStep(6)}
-            />
-          );
-        }
-        // No photo, go directly to complete
+        // Virtual Try-On only available if user has completed Personal Flow and has photo
+        // Quick Flow users skip directly to completion
+        // Note: Quick Flow doesn't collect photos, so try-on is only for Personal Flow users
         return (
           <StepComplete 
             onRestart={handleRestart}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, AlertCircle, Download, Share2 } from 'lucide-react';
+import { Loader2, AlertCircle, Download, Share2 } from 'lucide-react';
 import FlowStep from './FlowStep';
 import { generateVirtualTryOn } from '@/lib/virtualTryOnService';
 import { useUser } from '@clerk/clerk-react';
@@ -72,29 +72,6 @@ const StepVirtualTryOn = ({
         setError(`Unable to generate preview: ${errorMessage}. Your outfit selection is still perfect—continue to see your Style DNA.`);
       }
       setIsGenerating(false);
-    }
-  };
-
-  const handleGenerateVideo = async () => {
-    if (!tryOnImage) return;
-
-    setIsGeneratingVideo(true);
-    setVideoError(null);
-
-    try {
-      const result = await generateAnimatedVideo({
-        imageUrl: tryOnImage,
-        outfitId: outfit.id,
-        userId: user?.id,
-      });
-
-      setVideoUrl(result.videoUrl);
-      setIsGeneratingVideo(false);
-    } catch (err) {
-      console.error('Video generation error:', err);
-      setVideoError(err instanceof Error ? err.message : 'Failed to generate video');
-      setIsGeneratingVideo(false);
-      toast.error('Failed to generate video. Please try again.');
     }
   };
 
