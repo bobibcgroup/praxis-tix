@@ -351,8 +351,123 @@ export default async function handler(
       return res.status(200).json({ output: result.output });
     }
 
+    // Task: Animate (image → video)
+    if (task === 'animate') {
+      // Force model to erjesse/zeroscope-v2-xl for animation
+      const animationModel = 'erjesse/zeroscope-v2-xl';
+      
+      // Get version ID
+      const versionId = await getVersionId(animationModel, apiToken, version);
+      if (!versionId) {
+        return res.status(400).json({
+          error: 'Model version not found',
+          message: `Could not determine version for model ${animationModel}. The model may not exist or may have been removed.`,
+          model: animationModel
+        });
+      }
+
+      // Normalize input aliases for ZeroScope
+      const imageAliases = ['input_image', 'image', 'source_image', 'frame'];
+      const promptAliases = ['prompt', 'motion_prompt', 'animation_prompt'];
+      
+      let inputImage: string | undefined;
+      let promptText: string | undefined;
+      
+      for (const alias of imageAliases) {
+        if (input[alias] && typeof input[alias] === 'string') {
+          inputImage = String(input[alias]).trim();
+          break;
+        }
+      }
+      
+      for (const alias of promptAliases) {
+        if (input[alias] && typeof input[alias] === 'string') {
+          promptText = String(input[alias]).trim();
+          break;
+        }
+      }
+
+      // Validate required fields
+      if (!inputImage || !promptText) {
+        const missingFields: string[] = [];
+        if (!inputImage) missingFields.push('input_image (or image, source_image, frame)');
+        if (!promptText) missingFields.push('prompt (or motion_prompt, animation_prompt)');
+        
+        return res.status(400).json({
+          error: 'Missing required inputs for animation',
+          message: 'Both input_image and prompt must be provided',
+          missingFields: missingFields,
+          received: {
+            has_input_image: !!inputImage,
+            has_prompt: !!promptText,
+            inputKeys: Object.keys(input)
+          }
+        });
+      }
+
+      // Validate input_image is HTTP/HTTPS URL (reject data URLs)
+      if (!inputImage.startsWith('http://') && !inputImage.startsWith('https://')) {
+        return res.status(400).json({
+          error: 'Invalid input_image',
+          message: 'input_image must be a valid HTTP/HTTPS URL (data URLs and base64 not supported)',
+        });
+      }
+
+      // Build cleaned input with safe defaults optimized for human motion
+      cleanedInput = {
+        input_image: inputImage,
+        prompt: promptText,
+        duration: 5, // Max 5 seconds
+        fps: 15, // Natural motion
+        seed: 42, // Consistent results
+      };
+
+      // Add optional parameters if provided
+      if (input.guidance_scale !== undefined) {
+        const guidanceScale = Number(input.guidance_scale);
+        if (!isNaN(guidanceScale) && guidanceScale > 0) {
+          cleanedInput.guidance_scale = guidanceScale;
+        }
+      } else {
+        cleanedInput.guidance_scale = 7.5; // Safe default for natural motion
+      }
+
+      // Motion strength (if supported by model)
+      if (input.motion_bucket_id !== undefined) {
+        const motionBucket = Number(input.motion_bucket_id);
+        if (!isNaN(motionBucket)) {
+          cleanedInput.motion_bucket_id = Math.round(motionBucket);
+        }
+      }
+
+      console.log(`Using animation model: ${animationModel} with version: ${versionId}`);
+      console.log('Input:', {
+        input_image: inputImage.substring(0, 100),
+        prompt: promptText.substring(0, 100),
+        duration: cleanedInput.duration,
+        fps: cleanedInput.fps,
+        seed: cleanedInput.seed,
+        guidance_scale: cleanedInput.guidance_scale
+      });
+
+      const result = await createPrediction(apiToken, versionId, cleanedInput, false);
+      
+      if ('error' in result) {
+        return res.status(500).json({
+          error: result.error,
+          ...(typeof result.details === 'object' && result.details !== null ? result.details : { details: result.details })
+        });
+      }
+
+      return res.status(200).json({
+        output: result.output,
+        model: animationModel,
+        duration: 5
+      });
+    }
+
     // Check if this is a video/animation model - route directly, pass through inputs
-    const isVideoModel = model.includes('zeroscope') || model.includes('runway') || model.includes('gen-2') || model.includes('gen2') || model.includes('animate') || model.includes('video') || task === 'animate' || task === 'video';
+    const isVideoModel = model.includes('zeroscope') || model.includes('runway') || model.includes('gen-2') || model.includes('gen2') || model.includes('video') || task === 'video';
     
     if (isVideoModel) {
       // Get version ID
