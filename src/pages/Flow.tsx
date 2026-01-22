@@ -5,7 +5,6 @@ import StepOccasion from '@/components/app/StepOccasion';
 import StepContext from '@/components/app/StepContext';
 import StepPreferences from '@/components/app/StepPreferences';
 import StepResults from '@/components/app/StepResults';
-import StepFeedback from '@/components/app/StepFeedback';
 import StepComplete from '@/components/app/StepComplete';
 import StepPhoto from '@/components/app/StepPhoto';
 import StepFitCalibration from '@/components/app/StepFitCalibration';

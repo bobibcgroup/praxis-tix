@@ -110,17 +110,3 @@ export async function prepareImageForReplicate(imageData: string, fileName = 'im
   return imageData;
 }
 
-/**
- * Upload image to a temporary hosting service (if needed)
- * For MVP, we'll try to use data URLs first
- */
-export async function uploadImageToTempHost(imageData: string): Promise<string> {
-  // For now, return the data URL
-  // In production, you might want to upload to:
-  // - Supabase Storage
-  // - Cloudinary
-  // - ImgBB API
-  // - Or another image hosting service
-  
-  return prepareImageForReplicate(imageData);
-}
