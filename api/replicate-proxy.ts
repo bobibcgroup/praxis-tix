@@ -587,4 +587,25 @@ export default async function handler(
  * }
  * 
  * Poll /api/replicate-status with { "id": "abc123..." } to check completion.
+ * 
+ * Example client flow (async):
+ * 
+ * // Step 1: Create prediction
+ * const response = await fetch('/api/replicate-proxy', {
+ *   method: 'POST',
+ *   body: JSON.stringify({ task: "faceswap", model: "ddvinh1/inswapper", input: {...} })
+ * });
+ * const { id, status } = await response.json();
+ * 
+ * // Step 2: Poll for completion (every 1.2s, max 90s)
+ * const pollStatus = async () => {
+ *   const statusRes = await fetch('/api/replicate-status', {
+ *     method: 'POST',
+ *     body: JSON.stringify({ id })
+ *   });
+ *   const { status, output, error } = await statusRes.json();
+ *   if (status === 'succeeded') return output;
+ *   if (status === 'failed') throw new Error(error);
+ *   // Continue polling if 'starting' or 'processing'
+ * };
  */
