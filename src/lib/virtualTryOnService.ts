@@ -58,18 +58,14 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Use INSwapper model with strict identity preservation
-    // source_img = user's face photo (the face we want to keep completely)
-    // target_img = outfit image (where we want to put the face)
-    console.log('Attempting face swap with ddvinh1/inswapper (strict identity mode)');
+    // Use IDM-VTON virtual try-on model
+    // human_img = user's photo (the person wearing the outfit)
+    // garm_img = garment/clothing image (the outfit to try on)
+    // garment_des = description of the garment
+    console.log('Attempting virtual try-on with cuuupid/idm-vton');
     
     if (!userPhotoUrl || !outfitImageUrl) {
       throw new Error('Missing required images: both user photo and outfit image are required');
-    }
-    
-    // Ensure source image is a URL (not data URL) for best results
-    if (userPhotoUrl.startsWith('data:')) {
-      throw new Error('Source image must be a hosted URL, not a data URL. Please upload to Supabase Storage first.');
     }
     
     const response = await fetch(API_PROXY_URL, {
@@ -78,10 +74,11 @@ export async function generateVirtualTryOn(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "ddvinh1/inswapper",
+        model: "cuuupid/idm-vton",
         input: {
-          source_img: userPhotoUrl,
-          target_img: outfitImageUrl,
+          human_img: userPhotoUrl,
+          garm_img: outfitImageUrl,
+          garment_des: 'clothing', // Default description
         },
       }),
     });
@@ -102,10 +99,11 @@ export async function generateVirtualTryOn(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: "ddvinh1/inswapper",
+            model: "cuuupid/idm-vton",
             input: {
-              source_img: userPhotoUrl,
-              target_img: outfitImageUrl,
+              human_img: userPhotoUrl,
+              garm_img: outfitImageUrl,
+              garment_des: 'clothing',
             },
           }),
         });
