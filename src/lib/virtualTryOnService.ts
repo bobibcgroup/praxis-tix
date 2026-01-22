@@ -64,10 +64,10 @@ export async function generateVirtualTryOn(
       {
         name: "cuuupid/idm-vton",
         // Version ID will be fetched automatically by the proxy if not provided
-        // You can optionally specify a version: "c87165e6a873f4b2356614c5b1e78f8d5b0b1c4f"
+        // Model expects: garm_img (garment image) and human_img (human image)
         input: {
-          human: userPhotoUrl,
-          garment: outfitImageUrl,
+          human_img: userPhotoUrl,
+          garm_img: outfitImageUrl,
         }
       }
       // Removed invalid models: levihsu/ootdiffusion, yisol/idm-vton (404 errors)

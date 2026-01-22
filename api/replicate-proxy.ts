@@ -60,7 +60,8 @@ export default async function handler(
     console.log('Request body model:', model);
     
     // Validate image inputs exist (check multiple possible field names)
-    const hasGarment = !!(input.garment || input.garment_img || input.garment_image);
+    // Support various naming conventions: garment/garment_img/garm_img, human/human_img
+    const hasGarment = !!(input.garment || input.garment_img || input.garment_image || input.garm_img);
     const hasHuman = !!(input.human || input.human_img || input.human_image);
     
     if (!hasGarment || !hasHuman) {
