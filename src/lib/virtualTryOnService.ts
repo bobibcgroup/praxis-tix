@@ -61,16 +61,18 @@ export async function generateVirtualTryOn(
     // Use face swap models that preserve ALL facial features (hair, face structure, etc.)
     // source_image = user's face photo (the face we want to keep completely)
     // target_image = outfit image (where we want to put the face)
-    // Using very low strength/blend to preserve original features including hair
+    // Using minimal strength to preserve original features - only swap face region, not hair
     const models = [
       {
         name: "yan-ops/face_swap",
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          // Very low strength to preserve ALL original features (hair, face structure)
-          strength: 0.3, // Lower = more original features preserved (0.3 = preserve 70% original)
-          blend_ratio: 0.2, // Lower = less blending, more original features
+          // Minimal strength - only swap facial features, preserve hair and structure
+          strength: 0.2, // Very low = preserve more original (0.2 = preserve 80% original)
+          blend_ratio: 0.15, // Very low blend to avoid generating new features
+          // Some models support face_only parameter to exclude hair
+          face_only: true,
         }
       },
       {
@@ -78,7 +80,7 @@ export async function generateVirtualTryOn(
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          strength: 0.3, // Lower strength to preserve features
+          strength: 0.2, // Very low strength
         }
       },
       {
@@ -87,7 +89,7 @@ export async function generateVirtualTryOn(
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
           preserve_identity: true,
-          strength: 0.3, // Lower strength
+          strength: 0.2,
         }
       },
       {
@@ -95,7 +97,7 @@ export async function generateVirtualTryOn(
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
-          strength: 0.3, // Lower strength
+          strength: 0.2,
         }
       }
     ];
