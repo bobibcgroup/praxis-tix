@@ -58,19 +58,18 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Use IDM-VTON virtual try-on model
-    // IMPORTANT: To get the setting/background from the outfit image:
-    // - human_img = outfit image (this becomes the base, preserving its background/setting)
-    // - garm_img = user's photo (the person's features to apply)
-    // This way the outfit's background is preserved while the person's features are applied
-    console.log('Attempting virtual try-on with cuuupid/idm-vton (outfit background preserved)');
+    // Use face swap to put user's face onto outfit/model image
+    // This preserves the outfit image's background/setting while applying the user's face
+    console.log('Attempting face swap: user face onto outfit image');
     
     if (!userPhotoUrl || !outfitImageUrl) {
       throw new Error('Missing required images: both user photo and outfit image are required');
     }
     
-    // Swap inputs: outfit image as base (preserves its background), human image as garment (applies person's features)
-    const garmentDescription = 'person human features face body';
+    // Ensure source image is a URL (not data URL) for best results
+    if (userPhotoUrl.startsWith('data:')) {
+      throw new Error('Source image must be a hosted URL, not a data URL. Please upload to Supabase Storage first.');
+    }
     
     const response = await fetch(API_PROXY_URL, {
       method: 'POST',
@@ -78,11 +77,11 @@ export async function generateVirtualTryOn(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "cuuupid/idm-vton",
+        task: "faceswap", // Explicit task to prevent misrouting
+        model: "ddvinh1/inswapper",
         input: {
-          human_img: outfitImageUrl, // Outfit image as base (preserves its background/setting)
-          garm_img: userPhotoUrl, // User photo to extract and apply person's features
-          garment_des: garmentDescription,
+          source_img: userPhotoUrl, // User's face (source)
+          target_img: outfitImageUrl, // Outfit/model image (target - preserves its background)
         },
       }),
     });
@@ -103,11 +102,11 @@ export async function generateVirtualTryOn(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: "cuuupid/idm-vton",
+            task: "faceswap",
+            model: "ddvinh1/inswapper",
             input: {
-              human_img: outfitImageUrl, // Outfit image as base (preserves background)
-              garm_img: userPhotoUrl, // User photo for person's features
-              garment_des: 'person human features face body',
+              source_img: userPhotoUrl,
+              target_img: outfitImageUrl,
             },
           }),
         });
