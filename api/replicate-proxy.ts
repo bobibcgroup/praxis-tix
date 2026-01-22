@@ -164,7 +164,7 @@ export default async function handler(
     }
     
     // Prepare cleaned input based on model type
-    let cleanedInput: Record<string, string | number>;
+    let cleanedInput: Record<string, string | number | boolean>;
     
     if (isINSwapper) {
       // INSwapper model: source_img and target_img
