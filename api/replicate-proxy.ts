@@ -5,25 +5,33 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  try {
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
 
-  // Health check
-  if (req.method === 'GET') {
-    const hasToken = !!process.env.REPLICATE_API_TOKEN;
-    return res.status(200).json({ 
-      status: 'ok',
-      hasToken,
-      message: hasToken 
-        ? 'Serverless function is ready' 
-        : 'REPLICATE_API_TOKEN not configured'
+    // Health check
+    if (req.method === 'GET') {
+      const hasToken = !!process.env.REPLICATE_API_TOKEN;
+      return res.status(200).json({ 
+        status: 'ok',
+        hasToken,
+        message: hasToken 
+          ? 'Serverless function is ready' 
+          : 'REPLICATE_API_TOKEN not configured'
+      });
+    }
+  } catch (error) {
+    console.error('Error in handler setup:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 
@@ -231,11 +239,14 @@ export default async function handler(
       });
     }
       
+      // Use Prefer: wait header to wait up to 60 seconds for completion
+      // This is simpler than polling according to Replicate API docs
       const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiToken}`,
           'Content-Type': 'application/json',
+          'Prefer': 'wait=60', // Wait up to 60 seconds for completion
         },
         body: JSON.stringify({
           version: versionId,
@@ -268,64 +279,89 @@ export default async function handler(
       }
 
       const prediction = await predictionResponse.json();
-      const predictionId = prediction.id;
+      
+      // With Prefer: wait header, if the prediction completes within 60s, 
+      // it will return with status 'succeeded' or 'failed'
+      if (prediction.status === 'succeeded') {
+        output = prediction.output;
+      } else if (prediction.status === 'failed') {
+        const errorMsg = prediction.error || prediction.detail || 'Prediction failed';
+        console.error('Prediction failed:', {
+          status: prediction.status,
+          error: errorMsg,
+          logs: prediction.logs,
+        });
+        throw {
+          status: 500,
+          statusCode: 500,
+          message: errorMsg,
+          response: {
+            status: 500,
+            data: prediction,
+          },
+        };
+      } else {
+        // If status is 'starting' or 'processing', the request timed out waiting
+        // We need to poll for completion
+        const predictionId = prediction.id;
+        console.log(`Prediction ${predictionId} still ${prediction.status}, polling for completion...`);
+        
+        let completed = false;
+        let attempts = 0;
+        const maxAttempts = 60; // 60 seconds max
+        const startTime = Date.now();
+        const timeoutMs = 60000; // 60 seconds total timeout
 
-      // Poll for completion with timeout
-      let completed = false;
-      let attempts = 0;
-      const maxAttempts = 60; // 60 seconds max
-      const startTime = Date.now();
-      const timeoutMs = 60000; // 60 seconds total timeout
+        while (!completed && attempts < maxAttempts) {
+          // Check overall timeout
+          if (Date.now() - startTime > timeoutMs) {
+            throw new Error('Request timeout after 60s');
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          
+          const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+            headers: {
+              'Authorization': `Bearer ${apiToken}`,
+            },
+          });
 
-      while (!completed && attempts < maxAttempts) {
-        // Check overall timeout
-        if (Date.now() - startTime > timeoutMs) {
+          if (!statusResponse.ok) {
+            throw {
+              status: statusResponse.status,
+              message: `Failed to check prediction status: ${statusResponse.statusText}`,
+            };
+          }
+
+          const statusData = await statusResponse.json();
+          
+          if (statusData.status === 'succeeded') {
+            output = statusData.output;
+            completed = true;
+          } else if (statusData.status === 'failed') {
+            const errorMsg = statusData.error || statusData.detail || 'Prediction failed';
+            console.error('Prediction failed:', {
+              status: statusData.status,
+              error: errorMsg,
+              logs: statusData.logs,
+            });
+            throw {
+              status: 500,
+              statusCode: 500,
+              message: errorMsg,
+              response: {
+                status: 500,
+                data: statusData,
+              },
+            };
+          }
+          
+          attempts++;
+        }
+
+        if (!completed) {
           throw new Error('Request timeout after 60s');
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-        
-        const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-          headers: {
-            'Authorization': `Bearer ${apiToken}`,
-          },
-        });
-
-        if (!statusResponse.ok) {
-          throw {
-            status: statusResponse.status,
-            message: `Failed to check prediction status: ${statusResponse.statusText}`,
-          };
-        }
-
-        const statusData = await statusResponse.json();
-        
-        if (statusData.status === 'succeeded') {
-          output = statusData.output;
-          completed = true;
-        } else if (statusData.status === 'failed') {
-          const errorMsg = statusData.error || statusData.detail || 'Prediction failed';
-          console.error('Prediction failed:', {
-            status: statusData.status,
-            error: errorMsg,
-            logs: statusData.logs,
-          });
-          throw {
-            status: 500,
-            statusCode: 500,
-            message: errorMsg,
-            response: {
-              status: 500,
-              data: statusData,
-            },
-          };
-        }
-        
-        attempts++;
-      }
-
-      if (!completed) {
-        throw new Error('Request timeout after 60s');
       }
     }
 
