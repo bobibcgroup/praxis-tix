@@ -191,18 +191,15 @@ export default async function handler(
       const cleanedInput: Record<string, string | number | boolean> = {
         source_img: sourceImg,
         target_img: targetImg,
-        // Conservative defaults to prevent artifacts
-        upscale: false, // Disable upscaling
-        face_restore: false, // Disable face restoration
-        face_upsample: false, // Disable face upsampling
+        // Conservative defaults to prevent artifacts (use integers where required)
+        upscale: 0, // Disable upscaling (0 = disabled, 1+ = scale factor)
       };
 
-      // Add face_only if model supports it (minimize hair artifacts)
+      // Only add optional parameters if they're provided or have safe defaults
+      // face_restore and face_upsample may not be supported, so we'll omit them
+      // face_only might be supported - use boolean if provided, otherwise omit
       if (input.face_only !== undefined) {
         cleanedInput.face_only = Boolean(input.face_only);
-      } else {
-        // Default to face_only=true for minimal artifacts
-        cleanedInput.face_only = true;
       }
 
       console.log(`Using INSwapper (strict identity mode) with version: ${versionId}`);
