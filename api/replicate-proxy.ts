@@ -174,11 +174,35 @@ export default async function handler(
     let output: string | string[];
     
     if (!versionId) {
-      return res.status(400).json({
-        error: 'Model version not found',
-        message: `Could not determine version for model ${model}. The model may not exist or may have been removed.`,
-        model: model
-      });
+      // Try one more time with direct API call to get version
+      try {
+        const [owner, modelName] = model.split('/');
+        if (owner && modelName) {
+          const modelResponse = await fetch(`https://api.replicate.com/v1/models/${owner}/${modelName}`, {
+            headers: {
+              'Authorization': `Bearer ${apiToken}`,
+            },
+          });
+          
+          if (modelResponse.ok) {
+            const modelData = await modelResponse.json();
+            versionId = modelData.latest_version?.id;
+            if (versionId) {
+              console.log(`Found version ID via direct API: ${versionId} for model ${model}`);
+            }
+          }
+        }
+      } catch (directApiError) {
+        console.error('Direct API version lookup failed:', directApiError);
+      }
+      
+      if (!versionId) {
+        return res.status(400).json({
+          error: 'Model version not found',
+          message: `Could not determine version for model ${model}. The model may not exist or may have been removed. Please check https://replicate.com/${model}`,
+          model: model
+        });
+      }
     }
     
     // Use direct API call for community models with version ID
@@ -303,15 +327,6 @@ export default async function handler(
       if (!completed) {
         throw new Error('Request timeout after 60s');
       }
-    } else {
-      // Fall back to SDK for official models or if version lookup failed
-      console.log(`Using SDK run method for model: ${model}`);
-      output = await Promise.race([
-        replicate.run(model as string, { input }),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout after 60s')), 60000)
-        )
-      ]) as string | string[];
     }
 
     console.log('Model completed:', { 
