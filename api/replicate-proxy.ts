@@ -212,6 +212,8 @@ export default async function handler(
     // Check if this is an IDM-VTON model - route directly to try-on, bypassing all other detection
     const isIDMVTON = model === 'cuuupid/idm-vton' || model.endsWith('/idm-vton');
     
+    let cleanedInput: Record<string, unknown>;
+    
     if (isIDMVTON) {
       // Get version ID
       const versionId = await getVersionId(model, apiToken, version);
