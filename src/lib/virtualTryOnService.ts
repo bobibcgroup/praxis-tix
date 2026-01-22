@@ -59,14 +59,18 @@ export async function generateVirtualTryOn(
     });
 
     // Use IDM-VTON virtual try-on model
-    // human_img = user's photo (the person wearing the outfit)
+    // human_img = user's photo (the person wearing the outfit - preserves face, hair, body features)
     // garm_img = garment/clothing image (the outfit to try on)
-    // garment_des = description of the garment
+    // garment_des = description of the garment (helps model understand what to apply)
     console.log('Attempting virtual try-on with cuuupid/idm-vton');
     
     if (!userPhotoUrl || !outfitImageUrl) {
       throw new Error('Missing required images: both user photo and outfit image are required');
     }
+    
+    // Use a more descriptive garment description to help the model
+    // The model should preserve the person's face, hair, and body features while applying the outfit
+    const garmentDescription = 'outfit clothing apparel';
     
     const response = await fetch(API_PROXY_URL, {
       method: 'POST',
@@ -78,7 +82,7 @@ export async function generateVirtualTryOn(
         input: {
           human_img: userPhotoUrl,
           garm_img: outfitImageUrl,
-          garment_des: 'clothing', // Default description
+          garment_des: garmentDescription,
         },
       }),
     });
@@ -103,7 +107,7 @@ export async function generateVirtualTryOn(
             input: {
               human_img: userPhotoUrl,
               garm_img: outfitImageUrl,
-              garment_des: 'clothing',
+              garment_des: 'outfit clothing apparel',
             },
           }),
         });
