@@ -39,12 +39,10 @@ export async function generateAnimatedVideo(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        task: "animate", // Explicit task for video generation
-        model: "anotherjesse/zeroscope-v2-xl", // Using zeroscope as Runway Gen-2 may not be available on Replicate
+        task: "animate", // Explicit task for image-to-video animation
         input: {
-          image: request.imageUrl,
-          num_frames: 30,
-          fps: 30,
+          input_image: request.imageUrl, // Use input_image alias (will be normalized)
+          prompt: "A person in an outfit, natural subtle movement, smooth camera motion", // Required prompt for animation
         },
       }),
     });
