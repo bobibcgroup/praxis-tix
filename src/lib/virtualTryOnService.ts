@@ -59,9 +59,13 @@ export async function generateVirtualTryOn(
     });
 
     // Use INSwapper model for face swap
-    // source_image = user's face photo (the face we want to keep completely)
-    // target_image = outfit image (where we want to put the face)
+    // source_img = user's face photo (the face we want to keep completely)
+    // target_img = outfit image (where we want to put the face)
     console.log('Attempting face swap with ddvinh1/inswapper');
+    
+    if (!userPhotoUrl || !outfitImageUrl) {
+      throw new Error('Missing required images: both user photo and outfit image are required');
+    }
     
     const response = await fetch(API_PROXY_URL, {
       method: 'POST',
@@ -71,8 +75,8 @@ export async function generateVirtualTryOn(
       body: JSON.stringify({
         model: "ddvinh1/inswapper",
         input: {
-          source_image: userPhotoUrl,
-          target_image: outfitImageUrl,
+          source_img: userPhotoUrl,
+          target_img: outfitImageUrl,
         },
       }),
     });
@@ -95,8 +99,8 @@ export async function generateVirtualTryOn(
           body: JSON.stringify({
             model: "ddvinh1/inswapper",
             input: {
-              source_image: userPhotoUrl,
-              target_image: outfitImageUrl,
+              source_img: userPhotoUrl,
+              target_img: outfitImageUrl,
             },
           }),
         });
