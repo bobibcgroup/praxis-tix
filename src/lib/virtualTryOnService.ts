@@ -59,13 +59,12 @@ export async function generateVirtualTryOn(
 
     // Try multiple models - using models that are currently available
     // Note: Models may change availability. Check Replicate.com for current options
-    // Only include models that actually exist on Replicate
+    // The proxy will automatically fetch the latest version ID if not provided
     const models = [
       {
         name: "cuuupid/idm-vton",
-        // Version ID for cuuupid/idm-vton - update if model changes
-        // You can find this at: https://replicate.com/cuuupid/idm-vton/versions
-        version: "c87165e6a873f4b2356614c5b1e78f8d5b0b1c4f",
+        // Version ID will be fetched automatically by the proxy if not provided
+        // You can optionally specify a version: "c87165e6a873f4b2356614c5b1e78f8d5b0b1c4f"
         input: {
           human: userPhotoUrl,
           garment: outfitImageUrl,
