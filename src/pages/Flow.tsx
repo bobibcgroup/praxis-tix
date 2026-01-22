@@ -19,7 +19,7 @@ import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
 import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
 import { generatePersonalOutfits, deriveStyleColorProfile } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory } from '@/lib/userService';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import type { 
   OccasionData, 
   ContextData, 
