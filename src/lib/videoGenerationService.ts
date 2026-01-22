@@ -40,11 +40,11 @@ export async function generateAnimatedVideo(
       },
       body: JSON.stringify({
         task: "animate", // Explicit task for video generation
-        model: "runwayml/gen-2",
+        model: "anotherjesse/zeroscope-v2-xl", // Using zeroscope as Runway Gen-2 may not be available on Replicate
         input: {
           image: request.imageUrl,
-          prompt: "smooth camera movement, cinematic", // Optional prompt for better results
-          duration: 5, // 5 seconds
+          num_frames: 30,
+          fps: 30,
         },
       }),
     });
