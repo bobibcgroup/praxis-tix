@@ -58,15 +58,18 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Use face swap models - simpler and more reliable for replacing face on outfit image
-    // source_image = user's face photo
+    // Use face swap models that preserve facial features
+    // source_image = user's face photo (the face we want to keep)
     // target_image = outfit image (where we want to put the face)
+    // Priority: models that preserve identity/features better
     const models = [
       {
         name: "yan-ops/face_swap",
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
+          // Try to preserve features - some models support these parameters
+          preserve_identity: true,
         }
       },
       {
@@ -78,6 +81,20 @@ export async function generateVirtualTryOn(
       },
       {
         name: "lucataco/faceswap",
+        input: {
+          source_image: userPhotoUrl,
+          target_image: outfitImageUrl,
+        }
+      },
+      {
+        name: "fofr/face-swap",
+        input: {
+          source_image: userPhotoUrl,
+          target_image: outfitImageUrl,
+        }
+      },
+      {
+        name: "yan-ops/face-swap",
         input: {
           source_image: userPhotoUrl,
           target_image: outfitImageUrl,
