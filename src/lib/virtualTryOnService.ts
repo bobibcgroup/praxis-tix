@@ -95,14 +95,8 @@ export async function generateVirtualTryOn(
       prepareImageForReplicate(request.outfitImage, `outfit-${request.outfitId}.jpg`)
     ]);
 
-    console.log('Attempting try-on generation via proxy', {
-      userPhotoType: userPhotoUrl.substring(0, 50),
-      outfitImageType: outfitImageUrl.substring(0, 50),
-    });
-
     // Use face swap to put user's face onto outfit/model image
     // This preserves the outfit image's background/setting while applying the user's face
-    console.log('Attempting face swap: user face onto outfit image');
     
     if (!userPhotoUrl || !outfitImageUrl) {
       throw new Error('Missing required images: both user photo and outfit image are required');
@@ -158,13 +152,6 @@ export async function generateVirtualTryOn(
 
     const output = result.output;
 
-    console.log('Model output received:', {
-      type: typeof output,
-      isArray: Array.isArray(output),
-      length: Array.isArray(output) ? output.length : 'N/A',
-      preview: typeof output === 'string' ? output.substring(0, 100) : JSON.stringify(output).substring(0, 100)
-    });
-
     // Handle different output formats
     let imageUrl: string | null = null;
     
@@ -191,15 +178,6 @@ export async function generateVirtualTryOn(
         cached: false,
       };
     } else {
-      console.error('Model returned invalid output format:', {
-        outputType: typeof output,
-        isArray: Array.isArray(output),
-        outputPreview: typeof output === 'string' 
-          ? output.substring(0, 200) 
-          : JSON.stringify(output).substring(0, 500),
-        extractedUrl: imageUrl,
-        fullOutput: output
-      });
       throw new Error('Invalid output format from model');
     }
   } catch (error) {
