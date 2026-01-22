@@ -638,14 +638,49 @@ const Flow = () => {
               </p>
             )}
           </div>
-          {showStartOver && (
-            <button
-              onClick={handleRestart}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Start over
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {showStartOver && (
+              <button
+                onClick={handleRestart}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Start over
+              </button>
+            )}
+            
+            {/* User actions */}
+            {isLoaded && user && (
+              <>
+                <button
+                  onClick={() => window.location.href = '/history'}
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  History
+                </button>
+                <button
+                  onClick={() => window.location.href = '/profile'}
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  My Style
+                </button>
+                <UserButton afterSignOutUrl="/" />
+              </>
+            )}
+            
+            {isLoaded && !user && (
+              <SignInButton mode="modal">
+                <button className="px-4 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                  Sign In
+                </button>
+              </SignInButton>
+            )}
+          </div>
         </div>
       </header>
 
