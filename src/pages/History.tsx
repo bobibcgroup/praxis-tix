@@ -148,15 +148,6 @@ const History = () => {
                       </div>
                     </div>
 
-                    {entry.animatedVideoUrl && (
-                      <div className="mt-3">
-                        <video
-                          src={entry.animatedVideoUrl}
-                          controls
-                          className="w-full max-w-md rounded-lg"
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

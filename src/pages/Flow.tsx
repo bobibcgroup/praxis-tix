@@ -92,7 +92,6 @@ const Flow = () => {
   const [selectedOutfitId, setSelectedOutfitId] = useState<number | null>(null);
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   const [tryOnImageUrl, setTryOnImageUrl] = useState<string | null>(null);
-  const [animatedVideoUrl, setAnimatedVideoUrl] = useState<string | null>(null);
   
   const { user } = useUser();
 
@@ -197,7 +196,6 @@ const Flow = () => {
     setSelectedOutfitId(null);
     setSelectedOutfit(null);
     setTryOnImageUrl(null);
-    setAnimatedVideoUrl(null);
     setStep(0);
   };
 
@@ -301,9 +299,8 @@ const Flow = () => {
               userPhoto={personal.photoCropped}
               personalData={personal}
               onBack={() => setStep(4)}
-              onComplete={async (tryOnUrl: string, videoUrl?: string) => {
+              onComplete={async (tryOnUrl: string) => {
                 setTryOnImageUrl(tryOnUrl);
-                if (videoUrl) setAnimatedVideoUrl(videoUrl);
                 
                 // Save to history if user is authenticated
                 if (user && selectedOutfit) {
@@ -313,7 +310,7 @@ const Flow = () => {
                       selectedOutfit,
                       occasion.event as OccasionType,
                       tryOnUrl,
-                      videoUrl
+                      undefined // No video URL
                     );
                   } catch (err) {
                     console.error('Error saving to history:', err);
@@ -497,9 +494,8 @@ const Flow = () => {
               userPhoto={personal.photoCropped}
               personalData={personal}
               onBack={() => setStep(16)}
-              onComplete={async (tryOnUrl: string, videoUrl?: string) => {
+              onComplete={async (tryOnUrl: string) => {
                 setTryOnImageUrl(tryOnUrl);
-                if (videoUrl) setAnimatedVideoUrl(videoUrl);
                 
                 // Save to history if user is authenticated
                 if (user && selectedOutfit) {
@@ -509,7 +505,7 @@ const Flow = () => {
                       selectedOutfit,
                       personal.lifestyle as OccasionType || 'WORK',
                       tryOnUrl,
-                      videoUrl
+                      undefined // No video URL
                     );
                   } catch (err) {
                     console.error('Error saving to history:', err);

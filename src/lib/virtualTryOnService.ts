@@ -2,9 +2,61 @@ import { prepareImageForReplicate } from './imageUploadService';
 
 // Use server-side proxy to avoid CORS issues
 const API_PROXY_URL = '/api/replicate-proxy';
+const API_STATUS_URL = '/api/replicate-status';
 
 // Cache for generated images
 const imageCache = new Map<string, string>();
+
+// Poll prediction status until completion
+async function pollPredictionStatus(
+  predictionId: string,
+  onStatusUpdate?: (status: string) => void
+): Promise<{ output: unknown; error?: string; logs?: string }> {
+  const startTime = Date.now();
+  const timeoutMs = 90000; // 90 seconds max
+  const pollInterval = 1200; // 1.2 seconds
+
+  while (Date.now() - startTime < timeoutMs) {
+    const response = await fetch(API_STATUS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: predictionId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (onStatusUpdate) {
+      onStatusUpdate(data.status);
+    }
+
+    if (data.status === 'succeeded') {
+      return { output: data.output };
+    } else if (data.status === 'failed') {
+      return {
+        output: null,
+        error: data.error || 'Prediction failed',
+        logs: data.logs
+      };
+    } else if (data.status === 'canceled') {
+      return {
+        output: null,
+        error: 'Prediction was canceled'
+      };
+    }
+
+    // Wait before next poll
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
+  }
+
+  throw new Error('Prediction timeout - still generating after 90 seconds. Please try again.');
+}
 
 export interface TryOnRequest {
   userPhoto: string; // Base64 or URL
@@ -61,6 +113,7 @@ export async function generateVirtualTryOn(
       throw new Error('Source image must be a hosted URL, not a data URL. Please upload to Supabase Storage first.');
     }
     
+    // Step 1: Create prediction (returns immediately with ID)
     const response = await fetch(API_PROXY_URL, {
       method: 'POST',
       headers: {
@@ -79,67 +132,34 @@ export async function generateVirtualTryOn(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMsg = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
-      
-      // Handle rate limiting with retry
-      if (response.status === 429) {
-        const retryAfter = errorData.retryAfter || 10;
-        console.warn(`Rate limited. Retrying after ${retryAfter}s...`);
-        
-        // Wait and retry once
-        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-        
-        const retryResponse = await fetch(API_PROXY_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            task: "faceswap",
-            model: "ddvinh1/inswapper",
-            input: {
-              source_img: userPhotoUrl,
-              target_img: outfitImageUrl,
-            },
-          }),
-        });
-        
-        if (retryResponse.ok) {
-          const retryData = await retryResponse.json();
-          const output = retryData.output;
-          
-          // Parse output
-          let imageUrl: string | null = null;
-          if (Array.isArray(output)) {
-            imageUrl = output.find((item: unknown) => typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:'))) || null;
-          } else if (typeof output === 'string') {
-            imageUrl = output;
-          } else if (output && typeof output === 'object') {
-            imageUrl = (output as { url?: string; image?: string; output?: string }).url || 
-                       (output as { url?: string; image?: string; output?: string }).image ||
-                       (output as { url?: string; image?: string; output?: string }).output ||
-                       null;
-          }
-          
-          if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
-            console.log('Success after retry!');
-            imageCache.set(cacheKey, imageUrl);
-            return { imageUrl, cached: false };
-          }
-        }
-        
-        throw new Error(`Rate limit exceeded. Please try again later.`);
-      }
-      
       console.error(`API Error (${response.status}):`, errorMsg, errorData);
       throw new Error(`Server error: ${errorMsg}`);
     }
 
-    const data = await response.json();
+    const predictionData = await response.json();
     
-    if (!data || !data.output) {
-      console.error('Invalid response from server:', data);
-      throw new Error('Invalid response from server - no output received');
+    if (!predictionData || !predictionData.id) {
+      console.error('Invalid response from server:', predictionData);
+      throw new Error('Invalid response from server - no prediction ID received');
     }
-    
-    const output = data.output;
+
+    const predictionId = predictionData.id;
+    console.log('Prediction created:', predictionId, 'Status:', predictionData.status);
+
+    // Step 2: Poll for completion
+    const result = await pollPredictionStatus(predictionId, (status) => {
+      console.log('Prediction status:', status);
+    });
+
+    if (result.error) {
+      throw new Error(result.error + (result.logs ? `\n\nLogs: ${result.logs}` : ''));
+    }
+
+    if (!result.output) {
+      throw new Error('No output received from prediction');
+    }
+
+    const output = result.output;
 
     console.log('Model output received:', {
       type: typeof output,

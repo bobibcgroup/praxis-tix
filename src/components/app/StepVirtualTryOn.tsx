@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, AlertCircle, Video, Download, Share2 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Download, Share2 } from 'lucide-react';
 import FlowStep from './FlowStep';
 import { generateVirtualTryOn } from '@/lib/virtualTryOnService';
-import { generateAnimatedVideo } from '@/lib/videoGenerationService';
 import { useUser } from '@clerk/clerk-react';
 import type { Outfit, PersonalData } from '@/types/praxis';
 import { toast } from 'sonner';
@@ -13,7 +12,7 @@ interface StepVirtualTryOnProps {
   userPhoto?: string; // Base64 or URL
   personalData?: PersonalData;
   onBack: () => void;
-  onComplete: (tryOnImageUrl: string, videoUrl?: string) => void;
+  onComplete: (tryOnImageUrl: string) => void;
   onSkip?: () => void;
 }
 
@@ -29,9 +28,6 @@ const StepVirtualTryOn = ({
   const [tryOnImage, setTryOnImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [videoError, setVideoError] = useState<string | null>(null);
 
   useEffect(() => {
     // Generate try-on image on mount
@@ -144,7 +140,7 @@ const StepVirtualTryOn = ({
 
   const handleContinue = () => {
     if (tryOnImage) {
-      onComplete(tryOnImage, videoUrl || undefined);
+      onComplete(tryOnImage);
     }
   };
 
@@ -194,42 +190,6 @@ const StepVirtualTryOn = ({
                 className="w-full h-auto"
               />
             </div>
-
-            {/* Video Section */}
-            {!videoUrl && !isGeneratingVideo && (
-              <Button
-                onClick={handleGenerateVideo}
-                variant="outline"
-                size="lg"
-                className="w-full"
-              >
-                <Video className="w-4 h-4 mr-2" />
-                See it animated
-              </Button>
-            )}
-
-            {isGeneratingVideo && (
-              <div className="flex items-center justify-center gap-2 py-4">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Generating animation...</p>
-              </div>
-            )}
-
-            {videoError && (
-              <div className="text-sm text-destructive text-center">{videoError}</div>
-            )}
-
-            {videoUrl && (
-              <div className="space-y-3">
-                <video
-                  src={videoUrl}
-                  controls
-                  className="w-full rounded-xl border border-border"
-                  autoPlay
-                  loop
-                />
-              </div>
-            )}
 
             {/* Action Buttons */}
             <div className="flex gap-3">

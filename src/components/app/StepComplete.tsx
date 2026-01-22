@@ -40,17 +40,36 @@ const StepComplete = ({ onRestart, showUpsell, onStartPersonal }: StepCompletePr
             )}
 
             <div className="space-y-3">
-              <Button 
-                onClick={onStartPersonal}
-                variant="cta"
-                size="lg"
-                className="w-full"
-              >
-                Build my style profile
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                One-time setup. Better results every time.
-              </p>
+              {isLoaded && user ? (
+                <>
+                  <Button 
+                    onClick={onStartPersonal}
+                    variant="cta"
+                    size="lg"
+                    className="w-full"
+                  >
+                    Build my style profile
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    One-time setup. Better results every time.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <SignInButton mode="modal">
+                    <Button 
+                      variant="cta"
+                      size="lg"
+                      className="w-full"
+                    >
+                      Sign in to build your style profile
+                    </Button>
+                  </SignInButton>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Sign in required to build your personalized style profile
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="space-y-2">

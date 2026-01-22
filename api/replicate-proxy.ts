@@ -50,19 +50,27 @@ async function getVersionId(
   }
 }
 
-// Helper function to create prediction and handle polling
+// Helper function to create prediction (async - returns immediately)
 async function createPrediction(
   apiToken: string,
   versionId: string,
   input: Record<string, unknown>,
-  isFaceSwap = false // Face swap models may take longer
-): Promise<{ output: unknown } | { error: string; details: unknown }> {
+  model: string
+): Promise<{ 
+  id: string; 
+  status: string; 
+  model: string;
+  get: string;
+  cancel: string;
+  created_at: string;
+  warnings?: string[];
+} | { error: string; details: unknown }> {
   const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiToken}`,
       'Content-Type': 'application/json',
-      'Prefer': 'wait=60', // Max allowed by Replicate API
+      // No Prefer header - return immediately
     },
     body: JSON.stringify({
       version: versionId,
@@ -83,83 +91,22 @@ async function createPrediction(
   }
 
   const prediction = await predictionResponse.json();
-
-  if (prediction.status === 'succeeded') {
-    return { output: prediction.output };
-  } else if (prediction.status === 'failed') {
-    return {
-      error: 'Prediction failed',
-      details: {
-        message: prediction.error || prediction.detail || 'Prediction failed',
-        logs: prediction.logs,
-        ...prediction
-      }
-    };
-  } else {
-    // Poll for completion with adaptive intervals
-    const predictionId = prediction.id;
-    const startTime = Date.now();
-    const timeoutMs = isFaceSwap ? 180000 : 60000; // 3 minutes for face swap, 1 minute for others
-    let attempts = 0;
-    const maxAttempts = isFaceSwap ? 180 : 60; // More attempts for face swap
-    let pollInterval = 500; // Start with 500ms, increase gradually
-
-    while (attempts < maxAttempts) {
-      if (Date.now() - startTime > timeoutMs) {
-        return {
-          error: 'Request timeout',
-          details: { message: `Prediction did not complete within ${timeoutMs / 1000} seconds` }
-        };
-      }
-
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-
-      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-        },
-      });
-
-      if (!statusResponse.ok) {
-        const errorData = await statusResponse.json().catch(() => ({}));
-        return {
-          error: 'Failed to check prediction status',
-          details: {
-            status: statusResponse.status,
-            message: statusResponse.statusText,
-            ...errorData
-          }
-        };
-      }
-
-      const statusData = await statusResponse.json();
-
-      if (statusData.status === 'succeeded') {
-        return { output: statusData.output };
-      } else if (statusData.status === 'failed') {
-        return {
-          error: 'Prediction failed',
-          details: {
-            message: statusData.error || statusData.detail || 'Prediction failed',
-            logs: statusData.logs,
-            ...statusData
-          }
-        };
-      }
-
-      // Increase poll interval gradually (up to 2 seconds max)
-      if (pollInterval < 2000) {
-        pollInterval = Math.min(2000, pollInterval * 1.1);
-      }
-
-      attempts++;
-    }
-
-    return {
-      error: 'Request timeout',
-      details: { message: 'Prediction did not complete within timeout period' }
-    };
+  
+  const warnings: string[] = [];
+  // Add warnings for face swap if needed
+  if (model === 'ddvinh1/inswapper') {
+    warnings.push('Best results come from a tight face crop; avoid visible hairline');
   }
+
+  return {
+    id: prediction.id,
+    status: prediction.status,
+    model: model,
+    get: prediction.urls?.get || '',
+    cancel: prediction.urls?.cancel || '',
+    created_at: prediction.created_at || new Date().toISOString(),
+    ...(warnings.length > 0 ? { warnings } : {})
+  };
 }
 
 export default async function handler(
@@ -209,122 +156,7 @@ export default async function handler(
       return res.status(400).json({ error: 'Input parameters are required' });
     }
 
-    // Task: Animate (image → video) - handle BEFORE model check since model is forced
-    if (task === 'animate') {
-      // Force model to erjesse/zeroscope-v2-xl for animation
-      const animationModel = 'erjesse/zeroscope-v2-xl';
-      
-      // Get version ID
-      const versionId = await getVersionId(animationModel, apiToken, version);
-      if (!versionId) {
-        return res.status(400).json({
-          error: 'Model version not found',
-          message: `Could not determine version for model ${animationModel}. The model may not exist or may have been removed.`,
-          model: animationModel
-        });
-      }
-
-      // Normalize input aliases for ZeroScope
-      const imageAliases = ['input_image', 'image', 'source_image', 'frame'];
-      const promptAliases = ['prompt', 'motion_prompt', 'animation_prompt'];
-      
-      let inputImage: string | undefined;
-      let promptText: string | undefined;
-      
-      for (const alias of imageAliases) {
-        if (input[alias] && typeof input[alias] === 'string') {
-          inputImage = String(input[alias]).trim();
-          break;
-        }
-      }
-      
-      for (const alias of promptAliases) {
-        if (input[alias] && typeof input[alias] === 'string') {
-          promptText = String(input[alias]).trim();
-          break;
-        }
-      }
-
-      // Validate required fields
-      if (!inputImage || !promptText) {
-        const missingFields: string[] = [];
-        if (!inputImage) missingFields.push('input_image (or image, source_image, frame)');
-        if (!promptText) missingFields.push('prompt (or motion_prompt, animation_prompt)');
-        
-        return res.status(400).json({
-          error: 'Missing required inputs for animation',
-          message: 'Both input_image and prompt must be provided',
-          missingFields: missingFields,
-          received: {
-            has_input_image: !!inputImage,
-            has_prompt: !!promptText,
-            inputKeys: Object.keys(input)
-          }
-        });
-      }
-
-      // Validate input_image is HTTP/HTTPS URL (reject data URLs)
-      if (!inputImage.startsWith('http://') && !inputImage.startsWith('https://')) {
-        return res.status(400).json({
-          error: 'Invalid input_image',
-          message: 'input_image must be a valid HTTP/HTTPS URL (data URLs and base64 not supported)',
-        });
-      }
-
-      // Build cleaned input with safe defaults optimized for human motion
-      const cleanedInput: Record<string, unknown> = {
-        input_image: inputImage,
-        prompt: promptText,
-        duration: 5, // Max 5 seconds
-        fps: 15, // Natural motion
-        seed: 42, // Consistent results
-      };
-
-      // Add optional parameters if provided
-      if (input.guidance_scale !== undefined) {
-        const guidanceScale = Number(input.guidance_scale);
-        if (!isNaN(guidanceScale) && guidanceScale > 0) {
-          cleanedInput.guidance_scale = guidanceScale;
-        }
-      } else {
-        cleanedInput.guidance_scale = 7.5; // Safe default for natural motion
-      }
-
-      // Motion strength (if supported by model)
-      if (input.motion_bucket_id !== undefined) {
-        const motionBucket = Number(input.motion_bucket_id);
-        if (!isNaN(motionBucket)) {
-          cleanedInput.motion_bucket_id = Math.round(motionBucket);
-        }
-      }
-
-      console.log(`Using animation model: ${animationModel} with version: ${versionId}`);
-      console.log('Input:', {
-        input_image: inputImage.substring(0, 100),
-        prompt: promptText.substring(0, 100),
-        duration: cleanedInput.duration,
-        fps: cleanedInput.fps,
-        seed: cleanedInput.seed,
-        guidance_scale: cleanedInput.guidance_scale
-      });
-
-      const result = await createPrediction(apiToken, versionId, cleanedInput, false);
-      
-      if ('error' in result) {
-        return res.status(500).json({
-          error: result.error,
-          ...(typeof result.details === 'object' && result.details !== null ? result.details : { details: result.details })
-        });
-      }
-
-      return res.status(200).json({
-        output: result.output,
-        model: animationModel,
-        duration: 5
-      });
-    }
-
-    // Model is required for all other tasks
+    // Model is required
     if (!model) {
       return res.status(400).json({ error: 'Model name is required' });
     }
@@ -455,7 +287,7 @@ export default async function handler(
         has_mask_img: !!cleanedInput.mask_img
       });
 
-      const result = await createPrediction(apiToken, versionId, cleanedInput);
+      const result = await createPrediction(apiToken, versionId, cleanedInput, model);
       
       if ('error' in result) {
         return res.status(500).json({
@@ -464,37 +296,7 @@ export default async function handler(
         });
       }
 
-      return res.status(200).json({ output: result.output });
-    }
-
-    // Check if this is a video/animation model - route directly, pass through inputs
-    const isVideoModel = model.includes('zeroscope') || model.includes('runway') || model.includes('gen-2') || model.includes('gen2') || model.includes('video') || task === 'video';
-    
-    if (isVideoModel) {
-      // Get version ID
-      const versionId = await getVersionId(model, apiToken, version);
-      if (!versionId) {
-        return res.status(400).json({
-          error: 'Model version not found',
-          message: `Could not determine version for model ${model}. The model may not exist or may have been removed.`,
-          model: model
-        });
-      }
-
-      // For video models, pass through input as-is (they have their own schemas)
-      console.log(`Using video/animation model: ${model} with version: ${versionId}`);
-      console.log('Input keys:', Object.keys(input));
-
-      const result = await createPrediction(apiToken, versionId, input as Record<string, unknown>);
-      
-      if ('error' in result) {
-        return res.status(500).json({
-          error: result.error,
-          ...(typeof result.details === 'object' && result.details !== null ? result.details : { details: result.details })
-        });
-      }
-
-      return res.status(200).json({ output: result.output });
+      return res.status(200).json(result);
     }
 
     // Determine task type: explicit task field OR infer from model name
@@ -506,7 +308,7 @@ export default async function handler(
       } else {
         return res.status(400).json({
           error: 'Invalid task',
-          message: `Task must be one of: "faceswap", "tryon", "instantid", "animate", "video"`,
+          message: `Task must be one of: "faceswap", "tryon", "instantid"`,
           received: task
         });
       }
@@ -603,7 +405,7 @@ export default async function handler(
         upscale: 1
       });
 
-      const result = await createPrediction(apiToken, versionId, cleanedInput, true); // isFaceSwap = true for longer timeout
+      const result = await createPrediction(apiToken, versionId, cleanedInput, model);
       
       if ('error' in result) {
         return res.status(500).json({
@@ -612,10 +414,18 @@ export default async function handler(
         });
       }
 
-      const response: { output: unknown; warnings?: string[] } = { output: result.output };
-      if (warnings.length > 0) {
-        response.warnings = warnings;
-      }
+      const response: { 
+        id: string; 
+        status: string; 
+        model: string;
+        get: string;
+        cancel: string;
+        created_at: string;
+        warnings?: string[];
+      } = { 
+        ...result,
+        ...(warnings.length > 0 ? { warnings } : {})
+      };
       return res.status(200).json(response);
     }
 
@@ -646,7 +456,7 @@ export default async function handler(
 
       console.log(`Using try-on model: ${model} with version: ${versionId}`);
       
-      const result = await createPrediction(apiToken, versionId, cleanedInput);
+      const result = await createPrediction(apiToken, versionId, cleanedInput, model);
       
       if ('error' in result) {
         return res.status(500).json({
@@ -655,7 +465,7 @@ export default async function handler(
         });
       }
 
-      return res.status(200).json({ output: result.output });
+      return res.status(200).json(result);
     }
 
     // Task: InstantID (only if NOT IDM-VTON)
@@ -684,7 +494,7 @@ export default async function handler(
 
       console.log(`Using InstantID model: ${model} with version: ${versionId}`);
       
-      const result = await createPrediction(apiToken, versionId, cleanedInput);
+      const result = await createPrediction(apiToken, versionId, cleanedInput, model);
       
       if ('error' in result) {
         return res.status(500).json({
@@ -693,7 +503,7 @@ export default async function handler(
         });
       }
 
-      return res.status(200).json({ output: result.output });
+      return res.status(200).json(result);
     }
 
     // Unknown task/model combination
@@ -755,25 +565,26 @@ export default async function handler(
  * 
  * Note: Both human_img and garm_img must be HTTP/HTTPS URLs (data URLs rejected).
  * 
- * Example request body for animation (image → video):
+ * Example request body for face swap (ddvinh1/inswapper):
  * 
  * {
- *   "task": "animate",
+ *   "task": "faceswap",
+ *   "model": "ddvinh1/inswapper",
  *   "input": {
- *     "input_image": "https://example.com/final_tryon_image.jpg",
- *     "prompt": "A man walking slowly toward the camera, natural steps, subtle motion"
+ *     "source_img": "https://example.com/my-face.jpg",
+ *     "target_img": "https://example.com/outfit.jpg"
  *   }
  * }
  * 
- * Input aliases supported:
- * - input_image: input_image, image, source_image, frame (must be HTTP/HTTPS URL)
- * - prompt: prompt, motion_prompt, animation_prompt (required)
+ * The API returns immediately with a prediction ID:
+ * {
+ *   "id": "abc123...",
+ *   "status": "starting",
+ *   "model": "ddvinh1/inswapper",
+ *   "get": "https://api.replicate.com/v1/predictions/abc123...",
+ *   "cancel": "https://api.replicate.com/v1/predictions/abc123.../cancel",
+ *   "created_at": "2024-01-01T00:00:00Z"
+ * }
  * 
- * Default parameters (optimized for human motion):
- * - duration: 5 (seconds)
- * - fps: 15 (natural motion)
- * - seed: 42
- * - guidance_scale: 7.5 (if supported)
- * 
- * Note: input_image must be a hosted HTTP/HTTPS URL (data URLs rejected).
+ * Poll /api/replicate-status with { "id": "abc123..." } to check completion.
  */
