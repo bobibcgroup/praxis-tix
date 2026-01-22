@@ -58,10 +58,10 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Use INSwapper model for face swap
-    // source_img = user's face photo (the face we want to keep completely)
-    // target_img = outfit image (where we want to put the face)
-    console.log('Attempting face swap with ddvinh1/inswapper');
+    // Use Roop face swap model for better hair preservation
+    // source_image = user's face photo (the face we want to keep completely)
+    // target_image = outfit image (where we want to put the face)
+    console.log('Attempting face swap with arabyai-replicate/roop_face_swap');
     
     if (!userPhotoUrl || !outfitImageUrl) {
       throw new Error('Missing required images: both user photo and outfit image are required');
@@ -73,10 +73,10 @@ export async function generateVirtualTryOn(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "ddvinh1/inswapper",
+        model: "arabyai-replicate/roop_face_swap",
         input: {
-          source_img: userPhotoUrl,
-          target_img: outfitImageUrl,
+          source_image: userPhotoUrl,
+          target_image: outfitImageUrl,
         },
       }),
     });
@@ -97,10 +97,10 @@ export async function generateVirtualTryOn(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: "ddvinh1/inswapper",
+            model: "arabyai-replicate/roop_face_swap",
             input: {
-              source_img: userPhotoUrl,
-              target_img: outfitImageUrl,
+              source_image: userPhotoUrl,
+              target_image: outfitImageUrl,
             },
           }),
         });
