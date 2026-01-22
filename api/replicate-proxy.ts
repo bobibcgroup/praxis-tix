@@ -191,8 +191,9 @@ export default async function handler(
       const cleanedInput: Record<string, string | number | boolean> = {
         source_img: sourceImg,
         target_img: targetImg,
-        // Conservative defaults to prevent artifacts (use integers where required)
-        upscale: 0, // Disable upscaling (0 = disabled, 1+ = scale factor)
+        // Conservative defaults to prevent artifacts
+        // upscale: 1 means no upscaling (1 = 1x scale, 2 = 2x scale, etc.)
+        upscale: 1, // Minimum value = no upscaling
       };
 
       // Only add optional parameters if they're provided or have safe defaults
