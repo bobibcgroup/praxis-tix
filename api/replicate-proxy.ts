@@ -77,6 +77,20 @@ export default async function handler(
 
     // Validate that image inputs are valid URLs or data URLs
     const imageFields = ['human_img', 'garm_img', 'human', 'garment', 'garment_img', 'human_image', 'garment_image'];
+    const requiredFields = ['human_img', 'garm_img']; // Required fields for cuuupid/idm-vton
+    
+    // Check required fields exist
+    for (const field of requiredFields) {
+      if (!input[field] || (typeof input[field] === 'string' && input[field].trim() === '')) {
+        return res.status(400).json({
+          error: 'Missing required field',
+          message: `Field ${field} is required but was ${input[field] === undefined ? 'undefined' : 'empty'}`,
+          received: input[field]
+        });
+      }
+    }
+    
+    // Validate all image fields
     for (const field of imageFields) {
       if (input[field]) {
         const value = input[field];
@@ -94,6 +108,28 @@ export default async function handler(
             error: 'Image too large',
             message: 'Data URL images must be under 10MB. Please use Supabase Storage or another image hosting service.',
           });
+        }
+        // Check data URL format is valid
+        if (value.startsWith('data:') && !value.includes('base64,')) {
+          return res.status(400).json({
+            error: 'Invalid data URL format',
+            message: `Field ${field} must be a valid base64 data URL`,
+          });
+        }
+      }
+    }
+    
+    // Verify HTTP URLs are accessible (quick HEAD request)
+    for (const field of ['human_img', 'garm_img']) {
+      if (input[field] && input[field].startsWith('http')) {
+        try {
+          const urlCheck = await fetch(input[field], { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+          if (!urlCheck.ok) {
+            console.warn(`URL ${field} returned status ${urlCheck.status}, but continuing anyway`);
+          }
+        } catch (urlError) {
+          console.warn(`Could not verify URL ${field}:`, urlError);
+          // Continue anyway - might be CORS or network issue, but Replicate might still be able to access it
         }
       }
     }
@@ -137,14 +173,39 @@ export default async function handler(
 
     let output: string | string[];
     
-    if (versionId) {
-      // Use direct API call for community models with version ID
-      console.log(`Using direct API call for community model: ${model}:${versionId}`);
-      console.log('Input summary:', {
-        keys: Object.keys(input),
-        human_img_type: input.human_img?.substring(0, 50),
-        garm_img_type: input.garm_img?.substring(0, 50),
+    if (!versionId) {
+      return res.status(400).json({
+        error: 'Model version not found',
+        message: `Could not determine version for model ${model}. The model may not exist or may have been removed.`,
+        model: model
       });
+    }
+    
+    // Use direct API call for community models with version ID
+    console.log(`Using direct API call for community model: ${model}:${versionId}`);
+    console.log('Input summary:', {
+      keys: Object.keys(input),
+      human_img_type: input.human_img?.substring(0, 50),
+      garm_img_type: input.garm_img?.substring(0, 50),
+      human_img_length: input.human_img?.length,
+      garm_img_length: input.garm_img?.length,
+    });
+    
+    // Ensure we only send the fields the model expects
+    const cleanedInput: Record<string, string> = {};
+    if (input.human_img) cleanedInput.human_img = input.human_img;
+    if (input.garm_img) cleanedInput.garm_img = input.garm_img;
+    
+    if (!cleanedInput.human_img || !cleanedInput.garm_img) {
+      return res.status(400).json({
+        error: 'Missing required image inputs',
+        message: 'Both human_img and garm_img are required',
+        received: {
+          has_human_img: !!cleanedInput.human_img,
+          has_garm_img: !!cleanedInput.garm_img,
+        }
+      });
+    }
       
       const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
         method: 'POST',
@@ -154,7 +215,7 @@ export default async function handler(
         },
         body: JSON.stringify({
           version: versionId,
-          input: input,
+          input: cleanedInput,
         }),
       });
 
@@ -219,9 +280,20 @@ export default async function handler(
           output = statusData.output;
           completed = true;
         } else if (statusData.status === 'failed') {
+          const errorMsg = statusData.error || statusData.detail || 'Prediction failed';
+          console.error('Prediction failed:', {
+            status: statusData.status,
+            error: errorMsg,
+            logs: statusData.logs,
+          });
           throw {
             status: 500,
-            message: statusData.error || 'Prediction failed',
+            statusCode: 500,
+            message: errorMsg,
+            response: {
+              status: 500,
+              data: statusData,
+            },
           };
         }
         
