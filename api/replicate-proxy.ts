@@ -55,19 +55,22 @@ export default async function handler(
     console.log(`[${new Date().toISOString()}] Running model: ${model}${version ? ` (version: ${version})` : ''}`);
     console.log('Input keys:', Object.keys(input));
     
-    // Validate image inputs exist - support try-on, face swap, InstantID, and INSwapper models
+    // Validate image inputs exist - support try-on, face swap, InstantID, INSwapper, and Roop models
     // Try-on models: human_img/human, garm_img/garment
     // Face swap models: source_image, target_image
     // InstantID models: face_image, image
     // INSwapper model: source_img, target_img
+    // Roop model: swap_image, target_video
     const isINSwapper = model === 'ddvinh1/inswapper';
+    const isRoop = model === 'arabyai-replicate/roop_face_swap';
     const hasTryOnInputs = !!(input.garment || input.garment_img || input.garment_image || input.garm_img) && 
                            !!(input.human || input.human_img || input.human_image);
     const hasFaceSwapInputs = !!(input.source_image && input.target_image);
     const hasINSwapperInputs = !!(input.source_img && input.target_img);
+    const hasRoopInputs = !!(input.swap_image && input.target_video);
     const hasInstantIDInputs = !!(input.face_image && input.image);
     
-    if (!hasTryOnInputs && !hasFaceSwapInputs && !hasInstantIDInputs && !hasINSwapperInputs) {
+    if (!hasTryOnInputs && !hasFaceSwapInputs && !hasInstantIDInputs && !hasINSwapperInputs && !hasRoopInputs) {
       return res.status(400).json({ 
         error: 'Missing required image inputs',
         details: { 
@@ -75,6 +78,7 @@ export default async function handler(
           hasFaceSwapInputs,
           hasInstantIDInputs,
           hasINSwapperInputs,
+          hasRoopInputs,
           inputKeys: Object.keys(input)
         }
       });
@@ -83,14 +87,16 @@ export default async function handler(
     // Validate that image inputs are valid URLs or data URLs
     // Determine which type of model based on input fields
     const isInstantID = hasInstantIDInputs;
-    const isFaceSwap = hasFaceSwapInputs && !isInstantID && !isINSwapper;
-    const requiredFields = isINSwapper
-      ? ['source_img', 'target_img']
-      : isInstantID
-        ? ['face_image', 'image']
-        : isFaceSwap 
-          ? ['source_image', 'target_image']
-          : ['human_img', 'garm_img'];
+    const isFaceSwap = hasFaceSwapInputs && !isInstantID && !isINSwapper && !isRoop;
+    const requiredFields = isRoop
+      ? ['swap_image', 'target_video']
+      : isINSwapper
+        ? ['source_img', 'target_img']
+        : isInstantID
+          ? ['face_image', 'image']
+          : isFaceSwap 
+            ? ['source_image', 'target_image']
+            : ['human_img', 'garm_img'];
     
     for (const field of requiredFields) {
       if (!input[field] || (typeof input[field] === 'string' && input[field].trim() === '')) {
@@ -166,7 +172,27 @@ export default async function handler(
     // Prepare cleaned input based on model type
     let cleanedInput: Record<string, string | number | boolean>;
     
-    if (isINSwapper) {
+    if (isRoop) {
+      // Roop model: swap_image and target_video (target_video can accept images)
+      const swapImg = String(input.swap_image || '').trim();
+      const targetVideo = String(input.target_video || '').trim();
+      
+      if (!swapImg || !targetVideo) {
+        return res.status(400).json({
+          error: 'Missing required image inputs',
+          message: 'Both swap_image and target_video must be provided and non-empty',
+          received: {
+            has_swap_image: !!swapImg,
+            has_target_video: !!targetVideo,
+          }
+        });
+      }
+      
+      cleanedInput = {
+        swap_image: swapImg,
+        target_video: targetVideo,
+      };
+    } else if (isINSwapper) {
       // INSwapper model: source_img and target_img
       const sourceImg = String(input.source_img || '').trim();
       const targetImg = String(input.target_img || '').trim();
@@ -259,7 +285,7 @@ export default async function handler(
       };
     }
     
-    console.log(`Using model: ${model} with version: ${versionId} (${isINSwapper ? 'INSwapper' : isFaceSwap ? 'face swap' : isInstantID ? 'InstantID' : 'try-on'})`);
+    console.log(`Using model: ${model} with version: ${versionId} (${isRoop ? 'Roop' : isINSwapper ? 'INSwapper' : isFaceSwap ? 'face swap' : isInstantID ? 'InstantID' : 'try-on'})`);
     console.log('Sending to Replicate:', {
       inputKeys: Object.keys(cleanedInput),
       preview: Object.fromEntries(

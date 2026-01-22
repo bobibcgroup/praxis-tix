@@ -59,8 +59,8 @@ export async function generateVirtualTryOn(
     });
 
     // Use Roop face swap model for better hair preservation
-    // source_image = user's face photo (the face we want to keep completely)
-    // target_image = outfit image (where we want to put the face)
+    // swap_image = user's face photo (the face we want to swap in)
+    // target_video = outfit image (where we want to put the face - accepts images too)
     console.log('Attempting face swap with arabyai-replicate/roop_face_swap');
     
     if (!userPhotoUrl || !outfitImageUrl) {
@@ -75,8 +75,8 @@ export async function generateVirtualTryOn(
       body: JSON.stringify({
         model: "arabyai-replicate/roop_face_swap",
         input: {
-          source_image: userPhotoUrl,
-          target_image: outfitImageUrl,
+          swap_image: userPhotoUrl,
+          target_video: outfitImageUrl,
         },
       }),
     });
@@ -99,8 +99,8 @@ export async function generateVirtualTryOn(
           body: JSON.stringify({
             model: "arabyai-replicate/roop_face_swap",
             input: {
-              source_image: userPhotoUrl,
-              target_image: outfitImageUrl,
+              swap_image: userPhotoUrl,
+              target_video: outfitImageUrl,
             },
           }),
         });
