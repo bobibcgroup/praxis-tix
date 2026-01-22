@@ -251,79 +251,194 @@ Praxis Tix is a personalized outfit recommendation app that helps users find the
    - **Fix**: Quick Flow now correctly skips try-on and goes directly to completion
    - **Current**: Try-on is only available in Personal Flow where users upload photos
 
-2. **Mode Selection Confusion**
+2. **History Not Saved for Quick Flow**
+   - **Issue**: Quick Flow outfits are never saved to history, even for signed-in users
+   - **Current**: Only Personal Flow try-on results are saved (step 17)
+   - **Suggestion**: Save Quick Flow outfit selections to history when user is authenticated, even without try-on
+
+3. **History Only Saves After Try-On**
+   - **Issue**: Personal Flow only saves to history if try-on completes successfully
+   - **Current**: If user skips try-on or it fails, outfit selection is lost
+   - **Suggestion**: Save outfit selection immediately when user selects an outfit, regardless of try-on status
+
+4. **Mode Selection Confusion**
    - **Issue**: "Build my personal style" button shows sign-in prompt, but user might not understand why
    - **Suggestion**: Add tooltip or helper text explaining that personal flow requires an account
 
-3. **No Clear Value Proposition**
+5. **No Clear Value Proposition**
    - **Issue**: Users don't understand the difference between Quick and Personal flows
    - **Suggestion**: Add brief descriptions under each option explaining benefits
 
 ### 🟡 Medium Priority Issues
 
-4. **Progress Indicator Inconsistency**
+4. **No Profile Management/Editing**
+   - **Issue**: Users cannot edit their profile after creation (Style DNA, fit preferences, lifestyle)
+   - **Current**: Profile is read-only, can only be created once
+   - **Suggestion**: Add "Edit Profile" button in Profile page to update Style DNA, fit preferences, lifestyle, and re-upload photo
+
+5. **No Account Settings**
+   - **Issue**: No account settings page for signed-in users
+   - **Missing**: Email preferences, notification settings, privacy controls, account deletion
+   - **Suggestion**: Create Settings page accessible from UserButton dropdown with:
+     - Account information (email, name)
+     - Notification preferences
+     - Privacy settings
+     - Data export option
+     - Account deletion option
+
+6. **History Page Lacks Functionality**
+   - **Issue**: History page is read-only with no controls
+   - **Missing**: Delete entries, filter by occasion/date, search, sort options, favorites
+   - **Suggestion**: Add:
+     - Delete button for each history entry
+     - Filter by occasion type
+     - Sort by date (newest/oldest)
+     - Search by outfit title/items
+     - "Add to favorites" button (favorites functions exist but not used in UI)
+     - "Use this outfit again" button to restart flow with same occasion
+
+7. **No Favorites Feature**
+   - **Issue**: `addToFavorites` and `removeFromFavorites` functions exist but are never called
+   - **Missing**: No UI to favorite outfits, no favorites page
+   - **Suggestion**: 
+     - Add heart icon to outfit cards in Results and History pages
+     - Create Favorites page showing all favorited outfits
+     - Add "Favorites" link in header navigation
+
+8. **Profile Page Missing Features**
+   - **Issue**: Profile page only shows Style DNA if it exists, no other controls
+   - **Missing**: Edit profile, view/delete photo, update preferences, export profile data
+   - **Suggestion**: Add:
+     - "Edit Profile" button to update Style DNA and preferences
+     - "View/Change Photo" option
+     - "Export My Data" button (download profile as JSON)
+     - "Delete Profile" option
+
+9. **Progress Indicator Inconsistency**
    - **Issue**: Progress shows 1-3 for Quick Flow, but there are 6 steps total
    - **Suggestion**: Show progress for all steps, or clarify what "progress" means
 
-5. **Error Handling**
-   - **Issue**: Some errors show technical messages to users
-   - **Suggestion**: Create user-friendly error messages with actionable steps
+10. **Error Handling**
+    - **Issue**: Some errors show technical messages to users
+    - **Suggestion**: Create user-friendly error messages with actionable steps
 
-6. **Loading States**
-   - **Issue**: Virtual try-on polling doesn't show progress percentage
-   - **Suggestion**: Add progress indicator or estimated time remaining
+11. **Loading States**
+    - **Issue**: Virtual try-on polling doesn't show progress percentage
+    - **Suggestion**: Add progress indicator or estimated time remaining
 
-7. **Navigation Confusion**
-   - **Issue**: "Start over" button in header might be confusing
-   - **Suggestion**: Rename to "Restart" or "New search" for clarity
+12. **Navigation Confusion**
+    - **Issue**: "Start over" button in header might be confusing
+    - **Suggestion**: Rename to "Restart" or "New search" for clarity
 
-8. **Missing Skip Options**
-   - **Issue**: Some steps don't have skip options, forcing users through all steps
-   - **Suggestion**: Add skip options where appropriate (e.g., Fit Calibration, Wardrobe)
+13. **Missing Skip Options**
+    - **Issue**: Some steps don't have skip options, forcing users through all steps
+    - **Suggestion**: Add skip options where appropriate (e.g., Fit Calibration, Wardrobe)
 
 ### 🟢 Low Priority / Enhancement Suggestions
 
-9. **Empty States**
-   - **Suggestion**: Add empty states for History page when user has no saved outfits
+14. **User Dashboard**
+    - **Suggestion**: Create a dashboard page showing:
+      - Recent outfit selections
+      - Style DNA summary
+      - Quick stats (outfits saved, occasions styled, etc.)
+      - Quick actions (start new flow, view history, edit profile)
 
-10. **Onboarding**
+15. **Profile Export/Import**
+    - **Suggestion**: Allow users to export their profile data (JSON) and import it on another device
+    - **Use Case**: Switching devices, backup, data portability
+
+16. **Outfit Collections**
+    - **Suggestion**: Allow users to create custom collections (e.g., "Work Outfits", "Date Night", "Weekend")
+    - **Suggestion**: Organize history into collections for better management
+
+17. **Outfit Sharing**
+    - **Suggestion**: Add "Share Outfit" button to history entries
+    - **Suggestion**: Generate shareable links for outfits (with try-on images)
+    - **Suggestion**: Social media sharing with pre-filled captions
+
+18. **Outfit Comparison**
+    - **Suggestion**: Allow users to compare multiple outfits side-by-side
+    - **Suggestion**: "Compare" button in History page to select 2-3 outfits
+
+19. **Outfit Recommendations Based on History**
+    - **Suggestion**: Analyze user's history to suggest similar outfits
+    - **Suggestion**: "You might also like" section based on past selections
+
+20. **Empty States**
+    - **Suggestion**: Add empty states for History page when user has no saved outfits
+    - **Suggestion**: Add empty state for Favorites page
+    - **Suggestion**: Add empty state for Profile when no Style DNA exists
+
+21. **Onboarding**
     - **Suggestion**: Add a brief onboarding tour for first-time users
+    - **Suggestion**: Show tooltips explaining features (History, Profile, Favorites)
 
-11. **Feedback Collection**
+22. **Feedback Collection**
     - **Issue**: StepFeedback component exists but is never used
     - **Suggestion**: Integrate feedback collection after outfit selection, or remove component
+    - **Suggestion**: Add "Rate this outfit" feature in History page
 
-12. **Accessibility**
+23. **Accessibility**
     - **Suggestion**: Add ARIA labels, keyboard navigation improvements, screen reader support
 
-13. **Mobile Optimization**
+24. **Mobile Optimization**
     - **Issue**: Some buttons are hidden on mobile (History, My Style)
     - **Suggestion**: Add mobile-friendly navigation menu
+    - **Suggestion**: Bottom navigation bar for mobile with quick access to Flow, History, Profile
 
-14. **Performance**
+25. **Performance**
     - **Suggestion**: Implement image lazy loading, optimize bundle size, add loading skeletons
+    - **Suggestion**: Paginate History page for users with many saved outfits
 
-15. **Analytics**
+26. **Analytics**
     - **Suggestion**: Add analytics tracking for:
       - Flow completion rates
       - Step drop-off points
       - Outfit selection patterns
       - Try-on usage
+      - History page views
+      - Profile edits
 
-16. **Social Sharing**
+27. **Social Sharing**
     - **Suggestion**: Enhance share functionality with pre-filled text, image previews
+    - **Suggestion**: Share Style DNA profile as a visual card
 
-17. **Retry Logic**
+28. **Retry Logic**
     - **Suggestion**: Add automatic retry for failed API calls with exponential backoff
 
-18. **Caching**
+29. **Caching**
     - **Suggestion**: Cache outfit recommendations to avoid regenerating same results
+    - **Suggestion**: Cache user profile data to reduce Supabase queries
 
-19. **Personalization**
+30. **Personalization**
     - **Suggestion**: Remember user preferences across sessions, show personalized greetings
+    - **Suggestion**: Show "Welcome back" message with last outfit selected
+    - **Suggestion**: Suggest outfits based on time of day, weather, or occasion frequency
 
-20. **Help/Support**
+31. **Help/Support**
     - **Suggestion**: Add help tooltips, FAQ section, or support chat
+    - **Suggestion**: Add "How to use" guide for new users
+
+32. **Data Management**
+    - **Suggestion**: Add "Clear History" option in Settings
+    - **Suggestion**: Add "Delete All Favorites" option
+    - **Suggestion**: Show storage usage (how many outfits saved, profile size)
+
+33. **Notifications**
+    - **Suggestion**: Email notifications for:
+      - New outfit recommendations
+      - Style DNA updates
+      - Weekly outfit suggestions
+    - **Suggestion**: In-app notifications for saved outfits, profile updates
+
+34. **Profile Photo Management**
+    - **Suggestion**: Allow users to update/replace their profile photo
+    - **Suggestion**: Show photo preview in Profile page
+    - **Suggestion**: Option to delete photo and re-upload
+
+35. **Style DNA Evolution**
+    - **Suggestion**: Show how Style DNA has changed over time
+    - **Suggestion**: Track style preferences evolution based on outfit selections
 
 ---
 
@@ -384,10 +499,31 @@ Praxis Tix is a personalized outfit recommendation app that helps users find the
 
 ## Next Steps for Improvement
 
-1. **Immediate**: Fix Quick Flow try-on logic (Step 5)
-2. **Short-term**: Add user-friendly error messages, improve loading states
-3. **Medium-term**: Add onboarding, improve mobile navigation
-4. **Long-term**: Add analytics, enhance personalization, implement feedback collection
+### Immediate (Critical for Signed-In Users)
+1. ✅ ~~Fix Quick Flow try-on logic (Step 5)~~ **COMPLETED**
+2. **Save Quick Flow outfits to history** - Currently only Personal Flow saves history
+3. **Save outfit selection immediately** - Don't wait for try-on completion
+4. **Add Edit Profile functionality** - Allow users to update Style DNA and preferences
+
+### Short-term (Essential User Features)
+5. **Create Account Settings page** - Email, notifications, privacy, account deletion
+6. **Add Favorites UI** - Implement favorites feature (functions exist but unused)
+7. **Enhance History page** - Add delete, filter, search, sort, favorites
+8. **Add user-friendly error messages** - Replace technical errors with actionable steps
+
+### Medium-term (Enhanced Experience)
+9. **Add onboarding tour** - Guide new users through features
+10. **Improve mobile navigation** - Bottom nav bar, better mobile menu
+11. **Add Profile photo management** - Update/replace photo, preview in Profile
+12. **Implement outfit sharing** - Shareable links, social media integration
+
+### Long-term (Advanced Features)
+13. **Create User Dashboard** - Overview of activity, stats, quick actions
+14. **Add Outfit Collections** - Custom collections for organizing outfits
+15. **Implement Analytics** - Track usage, completion rates, preferences
+16. **Add Notifications** - Email and in-app notifications for updates
+17. **Profile Export/Import** - Data portability and backup
+18. **Style DNA Evolution** - Track style changes over time
 
 ---
 
