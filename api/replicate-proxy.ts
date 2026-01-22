@@ -379,7 +379,6 @@ export default async function handler(
       });
     }
 
-    let cleanedInput: Record<string, unknown>;
     let warnings: string[] = [];
 
     // Task: Face Swap (only if NOT IDM-VTON)
