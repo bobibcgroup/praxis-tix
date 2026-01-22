@@ -209,6 +209,139 @@ export default async function handler(
     console.log(`[${new Date().toISOString()}] Running model: ${model}${version ? ` (version: ${version})` : ''}${task ? ` [task: ${task}]` : ''}`);
     console.log('Input keys:', Object.keys(input));
 
+    // Check if this is an IDM-VTON model - route directly to try-on, bypassing all other detection
+    const isIDMVTON = model === 'cuuupid/idm-vton' || model.endsWith('/idm-vton');
+    
+    if (isIDMVTON) {
+      // Get version ID
+      const versionId = await getVersionId(model, apiToken, version);
+      if (!versionId) {
+        return res.status(400).json({
+          error: 'Model version not found',
+          message: `Could not determine version for model ${model}. The model may not exist or may have been removed.`,
+          model: model
+        });
+      }
+
+      // Normalize garment/person keys for IDM-VTON
+      const humanAliases = ['human_img', 'human', 'human_image', 'person_img', 'model_img'];
+      const garmAliases = ['garm_img', 'garment_img', 'garment', 'garment_image'];
+      const garmentDesAliases = ['garment_des', 'garment_description', 'garment_desc'];
+      
+      let humanImg: string | undefined;
+      let garmImg: string | undefined;
+      
+      for (const alias of humanAliases) {
+        if (input[alias] && typeof input[alias] === 'string') {
+          humanImg = String(input[alias]).trim();
+          break;
+        }
+      }
+      
+      for (const alias of garmAliases) {
+        if (input[alias] && typeof input[alias] === 'string') {
+          garmImg = String(input[alias]).trim();
+          break;
+        }
+      }
+
+      // Validate required fields
+      if (!humanImg || !garmImg) {
+        const missingFields: string[] = [];
+        if (!humanImg) missingFields.push('human_img (or human, human_image, person_img, model_img)');
+        if (!garmImg) missingFields.push('garm_img (or garment_img, garment, garment_image)');
+        
+        return res.status(400).json({
+          error: 'Missing required image inputs for IDM-VTON',
+          message: 'Both human_img and garm_img must be provided',
+          missingFields: missingFields,
+          received: {
+            has_human_img: !!humanImg,
+            has_garm_img: !!garmImg,
+            inputKeys: Object.keys(input)
+          }
+        });
+      }
+
+      // Validate URLs - reject large data URLs
+      if (!humanImg.startsWith('http://') && !humanImg.startsWith('https://')) {
+        return res.status(400).json({
+          error: 'Invalid human_img',
+          message: 'human_img must be a valid HTTP/HTTPS URL (data URLs not supported to avoid Vercel limits)',
+        });
+      }
+
+      if (!garmImg.startsWith('http://') && !garmImg.startsWith('https://')) {
+        return res.status(400).json({
+          error: 'Invalid garm_img',
+          message: 'garm_img must be a valid HTTP/HTTPS URL (data URLs not supported to avoid Vercel limits)',
+        });
+      }
+
+      // Get garment description
+      let garmentDes = 'clothing';
+      for (const alias of garmentDesAliases) {
+        if (input[alias] && typeof input[alias] === 'string') {
+          garmentDes = String(input[alias]).trim();
+          break;
+        }
+      }
+
+      // Build cleaned input with optional parameters
+      cleanedInput = {
+        human_img: humanImg,
+        garm_img: garmImg,
+        garment_des: garmentDes,
+      };
+
+      // Optional parameters
+      if (input.steps !== undefined) {
+        const steps = Number(input.steps);
+        if (!isNaN(steps)) {
+          cleanedInput.steps = Math.max(20, Math.min(40, Math.round(steps))); // Clamp 20..40
+        }
+      } else {
+        cleanedInput.steps = 30; // Default
+      }
+
+      if (input.seed !== undefined) {
+        const seed = Number(input.seed);
+        if (!isNaN(seed)) {
+          cleanedInput.seed = Math.round(seed);
+        }
+      } else {
+        cleanedInput.seed = 42; // Default
+      }
+
+      if (input.mask_img !== undefined && typeof input.mask_img === 'string' && input.mask_img.trim()) {
+        const maskImg = String(input.mask_img).trim();
+        if (maskImg.startsWith('http://') || maskImg.startsWith('https://')) {
+          cleanedInput.mask_img = maskImg;
+        }
+      }
+
+      console.log(`Using IDM-VTON (try-on) with version: ${versionId}`);
+      console.log('Input:', {
+        human_img: humanImg.substring(0, 100),
+        garm_img: garmImg.substring(0, 100),
+        garment_des: garmentDes,
+        steps: cleanedInput.steps,
+        seed: cleanedInput.seed,
+        has_mask_img: !!cleanedInput.mask_img
+      });
+
+      const result = await createPrediction(apiToken, versionId, cleanedInput);
+      
+      if ('error' in result) {
+        return res.status(500).json({
+          error: result.error,
+          ...(typeof result.details === 'object' && result.details !== null ? result.details : { details: result.details })
+        });
+      }
+
+      return res.status(200).json({ output: result.output });
+    }
+
     // Determine task type: explicit task field OR infer from model name
     let taskType: 'faceswap' | 'tryon' | 'instantid' | null = null;
     
@@ -224,9 +357,10 @@ export default async function handler(
       }
     } else {
       // Fallback: infer from model name (for backward compatibility)
+      // NOTE: IDM-VTON models are already handled above, so they won't reach here
       if (model === 'ddvinh1/inswapper') {
         taskType = 'faceswap';
-      } else if (model === 'cuuupid/idm-vton' || model.includes('vton') || model.includes('try-on')) {
+      } else if (model.includes('vton') || model.includes('try-on')) {
         taskType = 'tryon';
       } else if (model.includes('instant-id') || model.includes('instantid')) {
         taskType = 'instantid';
@@ -246,8 +380,8 @@ export default async function handler(
     let cleanedInput: Record<string, unknown>;
     let warnings: string[] = [];
 
-    // Task: Face Swap
-    if (taskType === 'faceswap' || model === 'ddvinh1/inswapper') {
+    // Task: Face Swap (only if NOT IDM-VTON)
+    if ((taskType === 'faceswap' || model === 'ddvinh1/inswapper') && !isIDMVTON) {
       // Normalize input aliases - ONLY accept faceswap-specific aliases
       const sourceAliases = ['source_img', 'source_image', 'source'];
       const targetAliases = ['target_img', 'target_image', 'target'];
@@ -331,8 +465,8 @@ export default async function handler(
       return res.status(200).json(response);
     }
 
-    // Task: Virtual Try-On
-    if (taskType === 'tryon') {
+    // Task: Virtual Try-On (only if NOT IDM-VTON, which is handled above)
+    if (taskType === 'tryon' && !isIDMVTON) {
       const humanImg = String(input.human_img || input.human || input.human_image || '').trim();
       const garmImg = String(input.garm_img || input.garment || input.garment_img || input.garment_image || '').trim();
       
@@ -370,8 +504,8 @@ export default async function handler(
       return res.status(200).json({ output: result.output });
     }
 
-    // Task: InstantID
-    if (taskType === 'instantid') {
+    // Task: InstantID (only if NOT IDM-VTON)
+    if (taskType === 'instantid' && !isIDMVTON) {
       const faceImg = String(input.face_image || '').trim();
       const targetImg = String(input.image || '').trim();
       
@@ -439,3 +573,31 @@ export default async function handler(
     });
   }
 }
+
+/*
+ * Example request body for IDM-VTON (cuuupid/idm-vton):
+ * 
+ * {
+ *   "model": "cuuupid/idm-vton",
+ *   "input": {
+ *     "human_img": "https://example.com/person.jpg",
+ *     "garm_img": "https://example.com/outfit.jpg",
+ *     "garment_des": "clothing",
+ *     "steps": 30,
+ *     "seed": 42,
+ *     "mask_img": "https://example.com/mask.jpg"  // optional
+ *   }
+ * }
+ * 
+ * Input aliases supported:
+ * - human_img: human_img, human, human_image, person_img, model_img
+ * - garm_img: garm_img, garment_img, garment, garment_image
+ * - garment_des: garment_des, garment_description, garment_desc (default: "clothing")
+ * 
+ * Optional parameters:
+ * - steps: integer, default 30, clamped to 20-40
+ * - seed: integer, default 42
+ * - mask_img: string URL (optional)
+ * 
+ * Note: Both human_img and garm_img must be HTTP/HTTPS URLs (data URLs rejected).
+ */
