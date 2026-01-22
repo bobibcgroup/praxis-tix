@@ -62,7 +62,7 @@ async function createPrediction(
     headers: {
       'Authorization': `Bearer ${apiToken}`,
       'Content-Type': 'application/json',
-      'Prefer': isFaceSwap ? 'wait=120' : 'wait=60', // Longer wait for face swap
+      'Prefer': 'wait=60', // Max allowed by Replicate API
     },
     body: JSON.stringify({
       version: versionId,
