@@ -320,7 +320,7 @@ export default async function handler(
       if ('error' in result) {
         return res.status(500).json({
           error: result.error,
-          ...result.details
+          ...(typeof result.details === 'object' && result.details !== null ? result.details : { details: result.details })
         });
       }
 
@@ -363,7 +363,7 @@ export default async function handler(
       if ('error' in result) {
         return res.status(500).json({
           error: result.error,
-          ...result.details
+          ...(typeof result.details === 'object' && result.details !== null ? result.details : { details: result.details })
         });
       }
 
@@ -401,7 +401,7 @@ export default async function handler(
       if ('error' in result) {
         return res.status(500).json({
           error: result.error,
-          ...result.details
+          ...(typeof result.details === 'object' && result.details !== null ? result.details : { details: result.details })
         });
       }
 
