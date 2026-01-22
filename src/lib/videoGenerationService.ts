@@ -40,11 +40,11 @@ export async function generateAnimatedVideo(
       },
       body: JSON.stringify({
         task: "animate", // Explicit task for video generation
-        model: "anotherjesse/zeroscope-v2-xl",
+        model: "runwayml/gen-2",
         input: {
           image: request.imageUrl,
-          num_frames: 30,
-          fps: 30,
+          prompt: "smooth camera movement, cinematic", // Optional prompt for better results
+          duration: 5, // 5 seconds
         },
       }),
     });

@@ -345,7 +345,7 @@ export default async function handler(
     }
 
     // Check if this is a video/animation model - route directly, pass through inputs
-    const isVideoModel = model.includes('zeroscope') || model.includes('animate') || model.includes('video') || task === 'animate' || task === 'video';
+    const isVideoModel = model.includes('zeroscope') || model.includes('runway') || model.includes('gen-2') || model.includes('gen2') || model.includes('animate') || model.includes('video') || task === 'animate' || task === 'video';
     
     if (isVideoModel) {
       // Get version ID
