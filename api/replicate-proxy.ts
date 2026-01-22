@@ -75,6 +75,29 @@ export default async function handler(
       });
     }
 
+    // Validate that image inputs are valid URLs or data URLs
+    const imageFields = ['human_img', 'garm_img', 'human', 'garment', 'garment_img', 'human_image', 'garment_image'];
+    for (const field of imageFields) {
+      if (input[field]) {
+        const value = input[field];
+        // Check if it's a valid URL or data URL
+        if (typeof value !== 'string' || (!value.startsWith('http://') && !value.startsWith('https://') && !value.startsWith('data:'))) {
+          return res.status(400).json({
+            error: 'Invalid image input',
+            message: `Field ${field} must be a valid URL or data URL`,
+            received: typeof value === 'string' ? value.substring(0, 100) : typeof value
+          });
+        }
+        // Check data URL isn't too large (Replicate has limits)
+        if (value.startsWith('data:') && value.length > 10 * 1024 * 1024) { // 10MB limit
+          return res.status(400).json({
+            error: 'Image too large',
+            message: 'Data URL images must be under 10MB. Please use Supabase Storage or another image hosting service.',
+          });
+        }
+      }
+    }
+
     // For community models, use the Replicate API directly with version ID
     // Community models require POST /v1/predictions with version identifier
     let versionId = version;
@@ -117,6 +140,11 @@ export default async function handler(
     if (versionId) {
       // Use direct API call for community models with version ID
       console.log(`Using direct API call for community model: ${model}:${versionId}`);
+      console.log('Input summary:', {
+        keys: Object.keys(input),
+        human_img_type: input.human_img?.substring(0, 50),
+        garm_img_type: input.garm_img?.substring(0, 50),
+      });
       
       const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
         method: 'POST',
@@ -132,10 +160,20 @@ export default async function handler(
 
       if (!predictionResponse.ok) {
         const errorData = await predictionResponse.json().catch(() => ({}));
+        const errorMessage = errorData.detail || errorData.error || errorData.message || `HTTP ${predictionResponse.status}`;
+        
+        // Log detailed error for debugging
+        console.error('Replicate API error:', {
+          status: predictionResponse.status,
+          error: errorMessage,
+          errorData: JSON.stringify(errorData),
+          inputKeys: Object.keys(input),
+        });
+        
         throw {
           status: predictionResponse.status,
           statusCode: predictionResponse.status,
-          message: errorData.detail || errorData.error || `HTTP ${predictionResponse.status}`,
+          message: errorMessage,
           response: {
             status: predictionResponse.status,
             statusText: predictionResponse.statusText,

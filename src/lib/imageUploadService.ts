@@ -49,6 +49,8 @@ async function uploadToSupabaseStorage(imageData: string, fileName: string): Pro
       // Handle bucket not found gracefully
       if (error.message?.includes('Bucket not found') || error.message?.includes('not found')) {
         console.warn('Supabase Storage bucket "images" not found. Please create it in Supabase Dashboard > Storage.');
+      } else if (error.message?.includes('row-level security') || error.message?.includes('RLS')) {
+        console.warn('Supabase Storage RLS policy blocking upload. Please configure bucket policies in Supabase Dashboard > Storage > images > Policies.');
       } else {
         console.error('Supabase upload error:', error);
       }
