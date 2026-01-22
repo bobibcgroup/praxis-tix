@@ -34,6 +34,7 @@ async function uploadToSupabaseStorage(imageData: string, fileName: string): Pro
     }
 
     // Upload to Supabase Storage (public bucket)
+    // Note: Make sure 'images' bucket exists in Supabase Storage
     const fileExt = fileName.split('.').pop() || 'jpg';
     const filePath = `try-on/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
@@ -45,7 +46,12 @@ async function uploadToSupabaseStorage(imageData: string, fileName: string): Pro
       });
 
     if (error) {
-      console.error('Supabase upload error:', error);
+      // Handle bucket not found gracefully
+      if (error.message?.includes('Bucket not found') || error.message?.includes('not found')) {
+        console.warn('Supabase Storage bucket "images" not found. Please create it in Supabase Dashboard > Storage.');
+      } else {
+        console.error('Supabase upload error:', error);
+      }
       return null;
     }
 

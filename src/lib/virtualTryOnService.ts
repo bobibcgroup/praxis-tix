@@ -58,7 +58,15 @@ export async function generateVirtualTryOn(
     });
 
     // Try multiple models - using models that are currently available
+    // Note: Models may change availability. Check Replicate.com for current options
     const models = [
+      {
+        name: "cuuupid/idm-vton",
+        input: {
+          human: userPhotoUrl,
+          garment: outfitImageUrl,
+        }
+      },
       {
         name: "levihsu/ootdiffusion",
         input: {
@@ -69,7 +77,7 @@ export async function generateVirtualTryOn(
         }
       },
       {
-        name: "yisol/IDM-VTON",
+        name: "yisol/idm-vton",
         input: {
           human: userPhotoUrl,
           garment: outfitImageUrl,
