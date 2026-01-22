@@ -4,6 +4,157 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const versionCache = new Map<string, { versionId: string; timestamp: number }>();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+// Helper function to get version ID with caching
+async function getVersionId(
+  model: string,
+  apiToken: string,
+  providedVersion?: string
+): Promise<string | null> {
+  if (providedVersion) {
+    return providedVersion;
+  }
+
+  const cached = versionCache.get(model);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.versionId;
+  }
+
+  try {
+    const [owner, modelName] = model.split('/');
+    if (!owner || !modelName) {
+      return null;
+    }
+
+    const modelResponse = await fetch(`https://api.replicate.com/v1/models/${owner}/${modelName}`, {
+      headers: {
+        'Authorization': `Bearer ${apiToken}`,
+      },
+    });
+
+    if (!modelResponse.ok) {
+      return null;
+    }
+
+    const modelData = await modelResponse.json();
+    const versionId = modelData.latest_version?.id;
+    
+    if (versionId) {
+      versionCache.set(model, { versionId, timestamp: Date.now() });
+      console.log(`Found and cached version ID: ${versionId} for model ${model}`);
+    }
+    
+    return versionId || null;
+  } catch (error) {
+    console.error('Version lookup failed:', error);
+    return null;
+  }
+}
+
+// Helper function to create prediction and handle polling
+async function createPrediction(
+  apiToken: string,
+  versionId: string,
+  input: Record<string, unknown>
+): Promise<{ output: unknown } | { error: string; details: unknown }> {
+  const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiToken}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'wait=60',
+    },
+    body: JSON.stringify({
+      version: versionId,
+      input: input,
+    }),
+  });
+
+  if (!predictionResponse.ok) {
+    const errorData = await predictionResponse.json().catch(() => ({}));
+    return {
+      error: 'Replicate API error',
+      details: {
+        status: predictionResponse.status,
+        message: errorData.detail || errorData.error || errorData.message || `HTTP ${predictionResponse.status}`,
+        ...errorData
+      }
+    };
+  }
+
+  const prediction = await predictionResponse.json();
+
+  if (prediction.status === 'succeeded') {
+    return { output: prediction.output };
+  } else if (prediction.status === 'failed') {
+    return {
+      error: 'Prediction failed',
+      details: {
+        message: prediction.error || prediction.detail || 'Prediction failed',
+        logs: prediction.logs,
+        ...prediction
+      }
+    };
+  } else {
+    // Poll for completion
+    const predictionId = prediction.id;
+    const startTime = Date.now();
+    const timeoutMs = 60000;
+    let attempts = 0;
+    const maxAttempts = 60;
+
+    while (attempts < maxAttempts) {
+      if (Date.now() - startTime > timeoutMs) {
+        return {
+          error: 'Request timeout',
+          details: { message: 'Prediction did not complete within 60 seconds' }
+        };
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+        },
+      });
+
+      if (!statusResponse.ok) {
+        const errorData = await statusResponse.json().catch(() => ({}));
+        return {
+          error: 'Failed to check prediction status',
+          details: {
+            status: statusResponse.status,
+            message: statusResponse.statusText,
+            ...errorData
+          }
+        };
+      }
+
+      const statusData = await statusResponse.json();
+
+      if (statusData.status === 'succeeded') {
+        return { output: statusData.output };
+      } else if (statusData.status === 'failed') {
+        return {
+          error: 'Prediction failed',
+          details: {
+            message: statusData.error || statusData.detail || 'Prediction failed',
+            logs: statusData.logs,
+            ...statusData
+          }
+        };
+      }
+
+      attempts++;
+    }
+
+    return {
+      error: 'Request timeout',
+      details: { message: 'Prediction did not complete within timeout period' }
+    };
+  }
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -45,7 +196,7 @@ export default async function handler(
   }
 
   try {
-    const { model, input, version } = req.body;
+    const { model, input, version, task } = req.body;
 
     if (!model) {
       return res.status(400).json({ error: 'Model name is required' });
@@ -55,59 +206,78 @@ export default async function handler(
       return res.status(400).json({ error: 'Input parameters are required' });
     }
 
-    console.log(`[${new Date().toISOString()}] Running model: ${model}${version ? ` (version: ${version})` : ''}`);
+    console.log(`[${new Date().toISOString()}] Running model: ${model}${version ? ` (version: ${version})` : ''}${task ? ` [task: ${task}]` : ''}`);
     console.log('Input keys:', Object.keys(input));
 
-    // Normalize input aliases for face swap detection
-    const normalizedInput: Record<string, unknown> = { ...input };
+    // Determine task type: explicit task field OR infer from model name
+    let taskType: 'faceswap' | 'tryon' | 'instantid' | null = null;
     
-    // Map source image aliases to source_img
-    const sourceAliases = ['source_img', 'source_image', 'face_image', 'source', 'swap_image'];
-    const targetAliases = ['target_img', 'target_image', 'image', 'target', 'target_video'];
-    
-    let sourceImg: string | undefined;
-    let targetImg: string | undefined;
-    
-    for (const alias of sourceAliases) {
-      if (input[alias] && typeof input[alias] === 'string') {
-        sourceImg = String(input[alias]).trim();
-        break;
+    if (task) {
+      if (task === 'faceswap' || task === 'tryon' || task === 'instantid') {
+        taskType = task;
+      } else {
+        return res.status(400).json({
+          error: 'Invalid task',
+          message: `Task must be one of: "faceswap", "tryon", "instantid"`,
+          received: task
+        });
       }
-    }
-    
-    for (const alias of targetAliases) {
-      if (input[alias] && typeof input[alias] === 'string') {
-        targetImg = String(input[alias]).trim();
-        break;
+    } else {
+      // Fallback: infer from model name (for backward compatibility)
+      if (model === 'ddvinh1/inswapper') {
+        taskType = 'faceswap';
+      } else if (model === 'cuuupid/idm-vton' || model.includes('vton') || model.includes('try-on')) {
+        taskType = 'tryon';
+      } else if (model.includes('instant-id') || model.includes('instantid')) {
+        taskType = 'instantid';
       }
     }
 
-    // Determine model type
-    const isINSwapper = model === 'ddvinh1/inswapper';
-    const isFaceSwap = isINSwapper || (!!sourceImg && !!targetImg);
-    const hasTryOnInputs = !!(input.garment || input.garment_img || input.garment_image || input.garm_img) && 
-                           !!(input.human || input.human_img || input.human_image);
-    const hasInstantIDInputs = !!(input.face_image && input.image && !isFaceSwap);
-    
-    // Face swap: strict identity preservation mode
-    if (isFaceSwap) {
+    // Get version ID
+    const versionId = await getVersionId(model, apiToken, version);
+    if (!versionId) {
+      return res.status(400).json({
+        error: 'Model version not found',
+        message: `Could not determine version for model ${model}. The model may not exist or may have been removed.`,
+        model: model
+      });
+    }
+
+    let cleanedInput: Record<string, unknown>;
+    let warnings: string[] = [];
+
+    // Task: Face Swap
+    if (taskType === 'faceswap' || model === 'ddvinh1/inswapper') {
+      // Normalize input aliases - ONLY accept faceswap-specific aliases
+      const sourceAliases = ['source_img', 'source_image', 'source'];
+      const targetAliases = ['target_img', 'target_image', 'target'];
+      
+      let sourceImg: string | undefined;
+      let targetImg: string | undefined;
+      
+      for (const alias of sourceAliases) {
+        if (input[alias] && typeof input[alias] === 'string') {
+          sourceImg = String(input[alias]).trim();
+          break;
+        }
+      }
+      
+      for (const alias of targetAliases) {
+        if (input[alias] && typeof input[alias] === 'string') {
+          targetImg = String(input[alias]).trim();
+          break;
+        }
+      }
+
       if (!sourceImg || !targetImg) {
         return res.status(400).json({
-          error: 'Missing required image inputs',
+          error: 'Missing required image inputs for face swap',
           message: 'Both source_img and target_img must be provided',
           received: {
             has_source: !!sourceImg,
             has_target: !!targetImg,
             inputKeys: Object.keys(input)
           }
-        });
-      }
-
-      // Reject data URLs for source_img (hairline-heavy images cause artifacts)
-      if (sourceImg.startsWith('data:')) {
-        return res.status(400).json({
-          error: 'Invalid source image format',
-          message: 'Use hosted image URLs for best results. Data URLs are not supported for source images.',
         });
       }
 
@@ -127,268 +297,60 @@ export default async function handler(
       }
 
       // Check for full-body images (warning only)
-      const warnings: string[] = [];
       if (sourceImg.includes('full') || sourceImg.includes('body') || sourceImg.includes('fullbody')) {
         warnings.push('Best results come from a tight face crop; avoid visible hairline');
       }
-      if (targetImg.includes('full') || targetImg.includes('body') || targetImg.includes('fullbody')) {
-        warnings.push('Best results come from a tight face crop; avoid visible hairline');
-      }
 
-      // Get version ID with caching
-      let versionId = version;
-      if (!versionId) {
-        const cached = versionCache.get(model);
-        if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-          versionId = cached.versionId;
-          console.log(`Using cached version ID: ${versionId} for model ${model}`);
-        } else {
-          try {
-            const [owner, modelName] = model.split('/');
-            if (owner && modelName) {
-              const modelResponse = await fetch(`https://api.replicate.com/v1/models/${owner}/${modelName}`, {
-                headers: {
-                  'Authorization': `Bearer ${apiToken}`,
-                },
-              });
-              
-              if (modelResponse.ok) {
-                const modelData = await modelResponse.json();
-                versionId = modelData.latest_version?.id;
-                if (versionId) {
-                  versionCache.set(model, { versionId, timestamp: Date.now() });
-                  console.log(`Found and cached version ID: ${versionId} for model ${model}`);
-                }
-              } else {
-                const errorData = await modelResponse.json().catch(() => ({}));
-                return res.status(modelResponse.status).json({
-                  error: 'Model not found',
-                  message: `Model ${model} does not exist or has been removed.`,
-                  model: model,
-                  details: errorData
-                });
-              }
-            }
-          } catch (versionError) {
-            console.error('Version lookup failed:', versionError);
-            return res.status(500).json({
-              error: 'Version lookup failed',
-              message: versionError instanceof Error ? versionError.message : 'Unknown error'
-            });
-          }
-        }
-      }
-      
-      if (!versionId) {
-        return res.status(400).json({
-          error: 'Model version not found',
-          message: `Could not determine version for model ${model}. The model may not exist or may have been removed.`,
-          model: model
-        });
-      }
-
-      // Prepare strict identity preservation input for INSwapper
-      const cleanedInput: Record<string, string | number | boolean> = {
+      // Prepare conservative input for INSwapper
+      cleanedInput = {
         source_img: sourceImg,
         target_img: targetImg,
-        // Conservative defaults to prevent artifacts
-        // upscale: 1 means no upscaling (1 = 1x scale, 2 = 2x scale, etc.)
-        upscale: 1, // Minimum value = no upscaling
+        upscale: 1, // No upscaling
       };
 
-      // Only add optional parameters if they're provided or have safe defaults
-      // face_restore and face_upsample may not be supported, so we'll omit them
-      // face_only might be supported - use boolean if provided, otherwise omit
-      if (input.face_only !== undefined) {
-        cleanedInput.face_only = Boolean(input.face_only);
-      }
-
-      console.log(`Using INSwapper (strict identity mode) with version: ${versionId}`);
+      console.log(`Using face swap (INSwapper) with version: ${versionId}`);
       console.log('Input:', {
         source_img: sourceImg.substring(0, 100),
         target_img: targetImg.substring(0, 100),
-        ...cleanedInput
+        upscale: 1
       });
 
-      // Create prediction using Replicate API
-      const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'wait=60',
-        },
-        body: JSON.stringify({
-          version: versionId,
-          input: cleanedInput,
-        }),
-      });
-
-      if (!predictionResponse.ok) {
-        const errorData = await predictionResponse.json().catch(() => ({}));
-        
-        console.error('Replicate API error:', {
-          status: predictionResponse.status,
-          errorData: JSON.stringify(errorData),
-        });
-        
-        // Forward full error payload
-        return res.status(predictionResponse.status).json({
-          error: 'Replicate API error',
-          message: errorData.detail || errorData.error || errorData.message || `HTTP ${predictionResponse.status}`,
-          status: predictionResponse.status,
-          details: errorData
-        });
-      }
-
-      const prediction = await predictionResponse.json();
+      const result = await createPrediction(apiToken, versionId, cleanedInput);
       
-      // Handle prediction result
-      if (prediction.status === 'succeeded') {
-        const response: { output: unknown; warnings?: string[] } = { output: prediction.output };
-        if (warnings.length > 0) {
-          response.warnings = warnings;
-        }
-        return res.status(200).json(response);
-      } else if (prediction.status === 'failed') {
-        const errorMsg = prediction.error || prediction.detail || 'Prediction failed';
-        console.error('Prediction failed:', {
-          status: prediction.status,
-          error: errorMsg,
-          logs: prediction.logs,
-        });
+      if ('error' in result) {
         return res.status(500).json({
-          error: 'Prediction failed',
-          message: errorMsg,
-          details: prediction
-        });
-      } else {
-        // Prediction is still processing, poll for completion
-        const predictionId = prediction.id;
-        console.log(`Prediction ${predictionId} status: ${prediction.status}, polling...`);
-        
-        const startTime = Date.now();
-        const timeoutMs = 60000;
-        let attempts = 0;
-        const maxAttempts = 60;
-
-        while (attempts < maxAttempts) {
-          if (Date.now() - startTime > timeoutMs) {
-            return res.status(504).json({
-              error: 'Request timeout',
-              message: 'Prediction did not complete within 60 seconds',
-            });
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-            headers: {
-              'Authorization': `Bearer ${apiToken}`,
-            },
-          });
-
-          if (!statusResponse.ok) {
-            const errorData = await statusResponse.json().catch(() => ({}));
-            return res.status(statusResponse.status).json({
-              error: 'Failed to check prediction status',
-              message: statusResponse.statusText,
-              details: errorData
-            });
-          }
-
-          const statusData = await statusResponse.json();
-          
-          if (statusData.status === 'succeeded') {
-            const response: { output: unknown; warnings?: string[] } = { output: statusData.output };
-            if (warnings.length > 0) {
-              response.warnings = warnings;
-            }
-            return res.status(200).json(response);
-          } else if (statusData.status === 'failed') {
-            const errorMsg = statusData.error || statusData.detail || 'Prediction failed';
-            return res.status(500).json({
-              error: 'Prediction failed',
-              message: errorMsg,
-              details: statusData
-            });
-          }
-          
-          attempts++;
-        }
-
-        return res.status(504).json({
-          error: 'Request timeout',
-          message: 'Prediction did not complete within timeout period',
+          error: result.error,
+          ...result.details
         });
       }
+
+      const response: { output: unknown; warnings?: string[] } = { output: result.output };
+      if (warnings.length > 0) {
+        response.warnings = warnings;
+      }
+      return res.status(200).json(response);
     }
 
-    // Try-on models: human_img, garm_img
-    if (hasTryOnInputs) {
+    // Task: Virtual Try-On
+    if (taskType === 'tryon') {
       const humanImg = String(input.human_img || input.human || input.human_image || '').trim();
       const garmImg = String(input.garm_img || input.garment || input.garment_img || input.garment_image || '').trim();
       
       if (!humanImg || !garmImg) {
         return res.status(400).json({
-          error: 'Missing required image inputs',
+          error: 'Missing required image inputs for try-on',
           message: 'Both human_img and garm_img must be provided and non-empty',
           received: {
             has_human_img: !!humanImg,
             has_garm_img: !!garmImg,
+            inputKeys: Object.keys(input)
           }
         });
       }
 
       const garmentDes = input.garment_des || input.garment_description || 'clothing';
       
-      // Get version ID with caching
-      let versionId = version;
-      if (!versionId) {
-        const cached = versionCache.get(model);
-        if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-          versionId = cached.versionId;
-        } else {
-          try {
-            const [owner, modelName] = model.split('/');
-            if (owner && modelName) {
-              const modelResponse = await fetch(`https://api.replicate.com/v1/models/${owner}/${modelName}`, {
-                headers: {
-                  'Authorization': `Bearer ${apiToken}`,
-                },
-              });
-              
-              if (modelResponse.ok) {
-                const modelData = await modelResponse.json();
-                versionId = modelData.latest_version?.id;
-                if (versionId) {
-                  versionCache.set(model, { versionId, timestamp: Date.now() });
-                }
-              } else {
-                const errorData = await modelResponse.json().catch(() => ({}));
-                return res.status(modelResponse.status).json({
-                  error: 'Model not found',
-                  message: `Model ${model} does not exist or has been removed.`,
-                  model: model,
-                  details: errorData
-                });
-              }
-            }
-          } catch (versionError) {
-            console.error('Version lookup failed:', versionError);
-          }
-        }
-      }
-      
-      if (!versionId) {
-        return res.status(400).json({
-          error: 'Model version not found',
-          message: `Could not determine version for model ${model}.`,
-          model: model
-        });
-      }
-
-      const cleanedInput = {
+      cleanedInput = {
         human_img: humanImg,
         garm_img: garmImg,
         garment_des: String(garmentDes).trim(),
@@ -396,159 +358,36 @@ export default async function handler(
 
       console.log(`Using try-on model: ${model} with version: ${versionId}`);
       
-      const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'wait=60',
-        },
-        body: JSON.stringify({
-          version: versionId,
-          input: cleanedInput,
-        }),
-      });
-
-      if (!predictionResponse.ok) {
-        const errorData = await predictionResponse.json().catch(() => ({}));
-        return res.status(predictionResponse.status).json({
-          error: 'Replicate API error',
-          message: errorData.detail || errorData.error || errorData.message || `HTTP ${predictionResponse.status}`,
-          status: predictionResponse.status,
-          details: errorData
-        });
-      }
-
-      const prediction = await predictionResponse.json();
+      const result = await createPrediction(apiToken, versionId, cleanedInput);
       
-      if (prediction.status === 'succeeded') {
-        return res.status(200).json({ output: prediction.output });
-      } else if (prediction.status === 'failed') {
-        const errorMsg = prediction.error || prediction.detail || 'Prediction failed';
+      if ('error' in result) {
         return res.status(500).json({
-          error: 'Prediction failed',
-          message: errorMsg,
-          details: prediction
-        });
-      } else {
-        // Poll for completion (same logic as face swap)
-        const predictionId = prediction.id;
-        const startTime = Date.now();
-        const timeoutMs = 60000;
-        let attempts = 0;
-        const maxAttempts = 60;
-
-        while (attempts < maxAttempts) {
-          if (Date.now() - startTime > timeoutMs) {
-            return res.status(504).json({
-              error: 'Request timeout',
-              message: 'Prediction did not complete within 60 seconds',
-            });
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-            headers: {
-              'Authorization': `Bearer ${apiToken}`,
-            },
-          });
-
-          if (!statusResponse.ok) {
-            const errorData = await statusResponse.json().catch(() => ({}));
-            return res.status(statusResponse.status).json({
-              error: 'Failed to check prediction status',
-              message: statusResponse.statusText,
-              details: errorData
-            });
-          }
-
-          const statusData = await statusResponse.json();
-          
-          if (statusData.status === 'succeeded') {
-            return res.status(200).json({ output: statusData.output });
-          } else if (statusData.status === 'failed') {
-            const errorMsg = statusData.error || statusData.detail || 'Prediction failed';
-            return res.status(500).json({
-              error: 'Prediction failed',
-              message: errorMsg,
-              details: statusData
-            });
-          }
-          
-          attempts++;
-        }
-
-        return res.status(504).json({
-          error: 'Request timeout',
-          message: 'Prediction did not complete within timeout period',
+          error: result.error,
+          ...result.details
         });
       }
+
+      return res.status(200).json({ output: result.output });
     }
 
-    // InstantID models: face_image, image
-    if (hasInstantIDInputs) {
+    // Task: InstantID
+    if (taskType === 'instantid') {
       const faceImg = String(input.face_image || '').trim();
       const targetImg = String(input.image || '').trim();
       
       if (!faceImg || !targetImg) {
         return res.status(400).json({
-          error: 'Missing required image inputs',
+          error: 'Missing required image inputs for InstantID',
           message: 'Both face_image and image must be provided and non-empty',
           received: {
             has_face_image: !!faceImg,
             has_image: !!targetImg,
+            inputKeys: Object.keys(input)
           }
         });
       }
 
-      // Get version ID with caching
-      let versionId = version;
-      if (!versionId) {
-        const cached = versionCache.get(model);
-        if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-          versionId = cached.versionId;
-        } else {
-          try {
-            const [owner, modelName] = model.split('/');
-            if (owner && modelName) {
-              const modelResponse = await fetch(`https://api.replicate.com/v1/models/${owner}/${modelName}`, {
-                headers: {
-                  'Authorization': `Bearer ${apiToken}`,
-                },
-              });
-              
-              if (modelResponse.ok) {
-                const modelData = await modelResponse.json();
-                versionId = modelData.latest_version?.id;
-                if (versionId) {
-                  versionCache.set(model, { versionId, timestamp: Date.now() });
-                }
-              } else {
-                const errorData = await modelResponse.json().catch(() => ({}));
-                return res.status(modelResponse.status).json({
-                  error: 'Model not found',
-                  message: `Model ${model} does not exist or has been removed.`,
-                  model: model,
-                  details: errorData
-                });
-              }
-            }
-          } catch (versionError) {
-            console.error('Version lookup failed:', versionError);
-          }
-        }
-      }
-      
-      if (!versionId) {
-        return res.status(400).json({
-          error: 'Model version not found',
-          message: `Could not determine version for model ${model}.`,
-          model: model
-        });
-      }
-
-      const cleanedInput = {
+      cleanedInput = {
         face_image: faceImg,
         image: targetImg,
         controlnet_conditioning_scale: input.controlnet_conditioning_scale || 0.8,
@@ -557,102 +396,25 @@ export default async function handler(
 
       console.log(`Using InstantID model: ${model} with version: ${versionId}`);
       
-      const predictionResponse = await fetch('https://api.replicate.com/v1/predictions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'wait=60',
-        },
-        body: JSON.stringify({
-          version: versionId,
-          input: cleanedInput,
-        }),
-      });
-
-      if (!predictionResponse.ok) {
-        const errorData = await predictionResponse.json().catch(() => ({}));
-        return res.status(predictionResponse.status).json({
-          error: 'Replicate API error',
-          message: errorData.detail || errorData.error || errorData.message || `HTTP ${predictionResponse.status}`,
-          status: predictionResponse.status,
-          details: errorData
-        });
-      }
-
-      const prediction = await predictionResponse.json();
+      const result = await createPrediction(apiToken, versionId, cleanedInput);
       
-      if (prediction.status === 'succeeded') {
-        return res.status(200).json({ output: prediction.output });
-      } else if (prediction.status === 'failed') {
-        const errorMsg = prediction.error || prediction.detail || 'Prediction failed';
+      if ('error' in result) {
         return res.status(500).json({
-          error: 'Prediction failed',
-          message: errorMsg,
-          details: prediction
-        });
-      } else {
-        // Poll for completion (same logic as above)
-        const predictionId = prediction.id;
-        const startTime = Date.now();
-        const timeoutMs = 60000;
-        let attempts = 0;
-        const maxAttempts = 60;
-
-        while (attempts < maxAttempts) {
-          if (Date.now() - startTime > timeoutMs) {
-            return res.status(504).json({
-              error: 'Request timeout',
-              message: 'Prediction did not complete within 60 seconds',
-            });
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-            headers: {
-              'Authorization': `Bearer ${apiToken}`,
-            },
-          });
-
-          if (!statusResponse.ok) {
-            const errorData = await statusResponse.json().catch(() => ({}));
-            return res.status(statusResponse.status).json({
-              error: 'Failed to check prediction status',
-              message: statusResponse.statusText,
-              details: errorData
-            });
-          }
-
-          const statusData = await statusResponse.json();
-          
-          if (statusData.status === 'succeeded') {
-            return res.status(200).json({ output: statusData.output });
-          } else if (statusData.status === 'failed') {
-            const errorMsg = statusData.error || statusData.detail || 'Prediction failed';
-            return res.status(500).json({
-              error: 'Prediction failed',
-              message: errorMsg,
-              details: statusData
-            });
-          }
-          
-          attempts++;
-        }
-
-        return res.status(504).json({
-          error: 'Request timeout',
-          message: 'Prediction did not complete within timeout period',
+          error: result.error,
+          ...result.details
         });
       }
+
+      return res.status(200).json({ output: result.output });
     }
 
-    // No matching model type
+    // Unknown task/model combination
     return res.status(400).json({
-      error: 'Unsupported model type',
-      message: 'Could not determine model type from input parameters',
+      error: 'Unknown task or model type',
+      message: 'Could not determine task type. Please provide a "task" field: "faceswap", "tryon", or "instantid"',
+      model: model,
       inputKeys: Object.keys(input),
-      model: model
+      hint: 'Add "task": "faceswap" | "tryon" | "instantid" to your request body'
     });
 
   } catch (error: unknown) {
