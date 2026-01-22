@@ -344,8 +344,12 @@ const Flow = () => {
             onRestart={handleRestart}
             showUpsell={true}
             onStartPersonal={() => {
-              setMode('personal');
-              setStep(10);
+              // Require authentication
+              if (isLoaded && user) {
+                setMode('personal');
+                setStep(10);
+              }
+              // If not authenticated, StepComplete will show sign-in button
             }}
           />
         );
@@ -356,8 +360,12 @@ const Flow = () => {
             onRestart={handleRestart}
             showUpsell={true}
             onStartPersonal={() => {
-              setMode('personal');
-              setStep(10);
+              // Require authentication
+              if (isLoaded && user) {
+                setMode('personal');
+                setStep(10);
+              }
+              // If not authenticated, StepComplete will show sign-in button
             }}
           />
         );
