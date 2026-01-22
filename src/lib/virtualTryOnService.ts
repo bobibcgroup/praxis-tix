@@ -58,13 +58,18 @@ export async function generateVirtualTryOn(
       outfitImageType: outfitImageUrl.substring(0, 50),
     });
 
-    // Use Roop face swap model for better hair preservation
-    // swap_image = user's face photo (the face we want to swap in)
-    // target_video = outfit image (where we want to put the face - accepts images too)
-    console.log('Attempting face swap with arabyai-replicate/roop_face_swap');
+    // Use INSwapper model with strict identity preservation
+    // source_img = user's face photo (the face we want to keep completely)
+    // target_img = outfit image (where we want to put the face)
+    console.log('Attempting face swap with ddvinh1/inswapper (strict identity mode)');
     
     if (!userPhotoUrl || !outfitImageUrl) {
       throw new Error('Missing required images: both user photo and outfit image are required');
+    }
+    
+    // Ensure source image is a URL (not data URL) for best results
+    if (userPhotoUrl.startsWith('data:')) {
+      throw new Error('Source image must be a hosted URL, not a data URL. Please upload to Supabase Storage first.');
     }
     
     const response = await fetch(API_PROXY_URL, {
@@ -73,10 +78,10 @@ export async function generateVirtualTryOn(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "arabyai-replicate/roop_face_swap",
+        model: "ddvinh1/inswapper",
         input: {
-          swap_image: userPhotoUrl,
-          target_video: outfitImageUrl,
+          source_img: userPhotoUrl,
+          target_img: outfitImageUrl,
         },
       }),
     });
@@ -97,10 +102,10 @@ export async function generateVirtualTryOn(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: "arabyai-replicate/roop_face_swap",
+            model: "ddvinh1/inswapper",
             input: {
-              swap_image: userPhotoUrl,
-              target_video: outfitImageUrl,
+              source_img: userPhotoUrl,
+              target_img: outfitImageUrl,
             },
           }),
         });
