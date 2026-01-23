@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Trash2, Mail, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, Mail, User as UserIcon, Moon, Sun, Monitor } from 'lucide-react';
 import { getOutfitHistory, getUserProfile, getFavorites } from '@/lib/userService';
 import Header from '@/components/Header';
 import {
@@ -16,11 +16,16 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { useTheme } from 'next-themes';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 const Settings = () => {
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     if (isLoaded) {
@@ -111,6 +116,44 @@ const Settings = () => {
         </div>
 
         <div className="space-y-8">
+          {/* Appearance Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sun className="w-5 h-5" />
+                Appearance
+              </CardTitle>
+              <CardDescription>
+                Choose your preferred theme. Changes apply immediately.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup value={theme} onValueChange={setTheme} className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="light" id="light" />
+                  <Label htmlFor="light" className="flex items-center gap-2 cursor-pointer">
+                    <Sun className="w-4 h-4" />
+                    <span>Light</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="dark" id="dark" />
+                  <Label htmlFor="dark" className="flex items-center gap-2 cursor-pointer">
+                    <Moon className="w-4 h-4" />
+                    <span>Dark</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="system" id="system" />
+                  <Label htmlFor="system" className="flex items-center gap-2 cursor-pointer">
+                    <Monitor className="w-4 h-4" />
+                    <span>System</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
+
           {/* Account Information */}
           <div className="bg-card rounded-xl border border-border p-6">
             <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">

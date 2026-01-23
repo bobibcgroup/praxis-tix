@@ -90,33 +90,65 @@
   }
 
   .dark {
-    --background: 220 20% 8%;
-    --foreground: 40 20% 95%;
-    --card: 220 18% 12%;
-    --card-foreground: 40 20% 95%;
-    --popover: 220 20% 8%;
-    --popover-foreground: 40 20% 95%;
-    --primary: 145 30% 50%;
-    --primary-foreground: 220 20% 8%;
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 40 20% 90%;
-    --muted: 220 15% 20%;
-    --muted-foreground: 220 10% 60%;
-    --accent: 145 20% 20%;
-    --accent-foreground: 145 30% 70%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 145 30% 50%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Base/Canvas - Deep dark background (not pure black) */
+    --background: 220 15% 7%; /* #0f0f0f - deepest background */
+    --foreground: 220 10% 90%; /* #e4e4e7 - primary text (not pure white) */
+
+    /* Surface Level 1 - Cards, containers */
+    --card: 220 12% 10%; /* #1a1a1a */
+    --card-foreground: 220 10% 90%; /* #e4e4e7 */
+
+    /* Surface Level 2 - Elevated cards, modals */
+    --popover: 220 12% 12%; /* #1e1e1e */
+    --popover-foreground: 220 10% 90%; /* #e4e4e7 */
+
+    /* Primary - Sage green (reduced saturation, softer) */
+    --primary: 150 25% 55%; /* Softer sage green - reduced saturation from light mode */
+    --primary-foreground: 220 15% 7%; /* Dark background for contrast */
+
+    /* Secondary - Muted surface */
+    --secondary: 220 10% 15%; /* #242424 - elevated surface */
+    --secondary-foreground: 220 10% 88%; /* Slightly dimmer than primary text */
+
+    /* Muted - Subtle backgrounds */
+    --muted: 220 8% 14%; /* #1e1e1e - subtle background */
+    --muted-foreground: 220 8% 65%; /* #a1a1aa - secondary text */
+
+    /* Accent - Softer sage green accent */
+    --accent: 150 15% 18%; /* Darker sage for accent backgrounds */
+    --accent-foreground: 150 30% 75%; /* Lighter sage for accent text */
+
+    /* Destructive - Softer red (reduced saturation) */
+    --destructive: 0 70% 65%; /* #f87171 - softer red */
+    --destructive-foreground: 220 15% 7%; /* Dark background */
+
+    /* Borders - Subtle to medium */
+    --border: 220 8% 18%; /* #27272a - subtle borders */
+    --input: 220 8% 18%; /* Same as border */
+    --ring: 150 30% 55%; /* Focus ring - softer sage */
+
+    /* Custom tokens - Dark mode */
+    --text-primary: 220 10% 90%; /* #e4e4e7 - primary text */
+    --text-secondary: 220 8% 65%; /* #a1a1aa - secondary text */
+    --text-tertiary: 220 6% 50%; /* #71717a - tertiary text */
+    
+    /* Surface elevations */
+    --surface-elevated: 220 10% 12%; /* #1e1e1e - elevated surface */
+    --surface-subtle: 220 8% 10%; /* #1a1a1a - subtle surface */
+    
+    /* Accent variations */
+    --accent-soft: 150 12% 16%; /* Darker sage for subtle accents */
+    --accent-medium: 150 18% 22%; /* Medium sage for medium accents */
+    
+    /* Sidebar - Darker than main background */
+    --sidebar-background: 220 15% 6%; /* #0f0f0f - slightly darker than main */
+    --sidebar-foreground: 220 10% 88%; /* #e4e4e7 */
+    --sidebar-primary: 150 25% 55%; /* Sage green for active items */
+    --sidebar-primary-foreground: 220 15% 7%; /* Dark text on sage */
+    --sidebar-accent: 220 8% 12%; /* #1e1e1e - hover state */
+    --sidebar-accent-foreground: 220 10% 88%; /* Light text */
+    --sidebar-border: 220 8% 15%; /* #242424 - sidebar borders */
+    --sidebar-ring: 150 30% 55%; /* Focus ring */
   }
 }
 
@@ -127,15 +159,39 @@
 
   html {
     scroll-behavior: smooth;
+    /* Smooth theme transitions */
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+    /* Smooth theme transitions */
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   h1, h2, h3 {
     font-family: 'Instrument Serif', Georgia, serif;
+  }
+
+  /* Ensure images don't appear too bright in dark mode */
+  .dark img {
+    filter: brightness(0.9);
+    transition: filter 0.3s ease;
+  }
+
+  /* Subtle overlay for bright images */
+  .dark img[data-bright] {
+    filter: brightness(0.85);
+  }
+
+  /* Smooth transitions for theme changes - only apply to elements that need it */
+  /* This prevents interference with existing animations */
+  body,
+  body *:not([class*="animate-"]):not([class*="transition-none"]) {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 0.3s;
   }
 }
 

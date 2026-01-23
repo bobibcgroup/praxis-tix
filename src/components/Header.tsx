@@ -5,6 +5,7 @@ import { User, History, Heart, Settings, LayoutDashboard, Menu } from "lucide-re
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const MobileNavMenu = ({ navigate }: { navigate: (path: string) => void }) => {
   const [open, setOpen] = useState(false);
@@ -147,6 +148,9 @@ const Header = () => {
             {isLoaded && user && isMobile && (
               <MobileNavMenu navigate={navigate} />
             )}
+            
+            {/* Theme Toggle */}
+            <ThemeToggle />
             
             {/* User actions */}
             {isLoaded && user && (
