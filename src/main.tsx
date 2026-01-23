@@ -35,12 +35,10 @@ if (typeof window !== 'undefined') {
         );
         
         console.log('✅ [Global] History updated with try-on image:', historyEntryId);
-        console.log('📝 [Global] Style name saved:', styleName);
         
         // Clear localStorage
         localStorage.removeItem('praxis_active_generation');
         localStorage.removeItem('praxis_current_history_entry_id');
-        localStorage.removeItem('praxis_current_style_name');
       } catch (err) {
         console.error('❌ [Global] Error updating history with try-on URL:', err);
       }

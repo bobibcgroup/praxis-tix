@@ -235,7 +235,6 @@ const Flow = () => {
     // Clear generation tracking state
     localStorage.removeItem('praxis_active_generation');
     localStorage.removeItem('praxis_current_history_entry_id');
-    localStorage.removeItem('praxis_current_style_name');
     setStep(0);
   };
 
@@ -627,21 +626,12 @@ const Flow = () => {
               onComplete={async (tryOnUrl: string, styleName?: string) => {
                 setTryOnImageUrl(tryOnUrl);
                 
-                console.log('📝 onComplete called with style name:', styleName);
-                
                 // Update history entry with try-on URL, style name, DNA, and colors
                 if (user && historyEntryId && selectedOutfit) {
                   try {
                     const colorPalette = personal.skinTone?.bucket
                       ? getRecommendedSwatches(personal.skinTone.bucket).slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
                       : null;
-                    
-                    console.log('🔄 Updating history entry from onComplete:', {
-                      historyEntryId,
-                      userId: user.id,
-                      styleName,
-                      hasTryOnUrl: !!tryOnUrl
-                    });
                     
                     await updateOutfitHistoryTryOn(
                       user.id,
@@ -651,17 +641,9 @@ const Flow = () => {
                       personal.styleDNA || undefined,
                       colorPalette || undefined
                     );
-                    
-                    console.log('✅ History updated successfully from onComplete');
                   } catch (err) {
-                    console.error('❌ Error updating history with try-on URL:', err);
+                    console.error('Error updating history with try-on URL:', err);
                   }
-                } else {
-                  console.warn('⚠️ Missing data for history update:', {
-                    hasUser: !!user,
-                    hasHistoryEntryId: !!historyEntryId,
-                    hasSelectedOutfit: !!selectedOutfit
-                  });
                 }
                 
                 setStep(18);

@@ -130,7 +130,7 @@ export async function saveOutfitToHistory(
 
     console.log('Saving outfit to history:', { userId, outfitId: outfit.id, occasion });
     
-    // Build insert object - exclude color_palette and style_dna as columns don't exist in database
+    // Build insert object - exclude color_palette as column doesn't exist in database
     const insertData: any = {
       user_id: userId,
       outfit_id: outfit.id,
@@ -140,7 +140,8 @@ export async function saveOutfitToHistory(
       animated_video_url: animatedVideoUrl || null,
       selected_at: new Date().toISOString(),
       style_name: styleName || null,
-      // Note: style_dna and color_palette columns don't exist in database schema
+      style_dna: styleDNA || null,
+      // Note: color_palette column doesn't exist in database schema, so we don't include it
       // The data will be stored in localStorage fallback if needed
     };
     
@@ -204,29 +205,19 @@ export async function updateOutfitHistoryTryOn(
     const entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
     if (entry) {
       entry.tryOnImageUrl = tryOnImageUrl;
-      if (styleName) entry.styleName = styleName;
-      if (styleDNA) entry.styleDNA = styleDNA;
-      if (colorPalette) entry.colorPalette = colorPalette;
       localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
     }
     return;
   }
 
   try {
-    // Build update object - exclude color_palette and style_dna as columns don't exist in database
+    // Build update object - exclude color_palette as column doesn't exist in database
     const updateData: any = {
       try_on_image_url: tryOnImageUrl,
       style_name: styleName || null,
-      // Note: style_dna and color_palette columns don't exist in database schema
+      style_dna: styleDNA || null,
+      // Note: color_palette column doesn't exist in database schema
     };
-    
-    console.log('🔄 Updating history entry:', { 
-      historyId, 
-      userId, 
-      styleName, 
-      hasTryOnUrl: !!tryOnImageUrl,
-      updateData 
-    });
     
     const { error } = await supabase
       .from('outfit_history')
@@ -234,12 +225,7 @@ export async function updateOutfitHistoryTryOn(
       .eq('id', historyId)
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('❌ Supabase update error:', error);
-      throw error;
-    }
-    
-    console.log('✅ History entry updated successfully with style name:', styleName);
+    if (error) throw error;
   } catch (error) {
     console.error('Error updating outfit history:', error);
     // Fallback to localStorage
@@ -247,9 +233,6 @@ export async function updateOutfitHistoryTryOn(
     const entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
     if (entry) {
       entry.tryOnImageUrl = tryOnImageUrl;
-      if (styleName) entry.styleName = styleName;
-      if (styleDNA) entry.styleDNA = styleDNA;
-      if (colorPalette) entry.colorPalette = colorPalette;
       localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
     }
   }
