@@ -324,10 +324,23 @@ export async function getFavorites(userId: string): Promise<number[]> {
 }
 
 /**
- * Get favorited outfit history entries
+ * Get favorited outfit history entries (deduplicated)
  */
 export async function getFavoritedOutfits(userId: string): Promise<OutfitHistoryEntry[]> {
   const favorites = await getFavorites(userId);
   const history = await getOutfitHistory(userId);
-  return history.filter(entry => favorites.includes(entry.outfitId));
+  const favoritedEntries = history.filter(entry => favorites.includes(entry.outfitId));
+  
+  // Deduplicate by outfitId - keep only the most recent entry for each outfit
+  const seen = new Map<number, OutfitHistoryEntry>();
+  favoritedEntries.forEach(entry => {
+    const existing = seen.get(entry.outfitId);
+    if (!existing || new Date(entry.selectedAt) > new Date(existing.selectedAt)) {
+      seen.set(entry.outfitId, entry);
+    }
+  });
+  
+  return Array.from(seen.values()).sort((a, b) => 
+    new Date(b.selectedAt).getTime() - new Date(a.selectedAt).getTime()
+  );
 }

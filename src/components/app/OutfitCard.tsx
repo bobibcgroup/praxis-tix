@@ -122,6 +122,31 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
     }
   };
 
+  const handleShare = async () => {
+    try {
+      const shareData = {
+        title: `${outfit.title} - Praxis`,
+        text: `Check out this outfit recommendation: ${outfit.title}\n\n${outfit.items.top}\n${outfit.items.bottom}\n${outfit.items.shoes}\n\n${outfit.reason}`,
+        url: window.location.href,
+      };
+
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(
+          `${shareData.title}\n\n${shareData.text}\n\n${shareData.url}`
+        );
+        toast.success('Outfit details copied to clipboard');
+      }
+    } catch (err) {
+      // User cancelled or error
+      if (err instanceof Error && err.name !== 'AbortError') {
+        toast.error('Failed to share');
+      }
+    }
+  };
+
   // Build carousel images: user pieces first, then outfit image
   const carouselImages = useMemo<CarouselImage[]>(() => {
     const images: CarouselImage[] = [];
@@ -391,9 +416,9 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
           {/* Share button */}
           <div className="mt-4 pt-3 border-t border-border">
             <Button
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.stopPropagation();
-                await handleShare();
+                handleShare();
               }}
               variant="outline"
               size="sm"
@@ -407,31 +432,6 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
       </div>
     </div>
   );
-
-  const handleShare = async () => {
-    try {
-      const shareData = {
-        title: `${outfit.title} - Praxis`,
-        text: `Check out this outfit recommendation: ${outfit.title}\n\n${outfit.items.top}\n${outfit.items.bottom}\n${outfit.items.shoes}\n\n${outfit.reason}`,
-        url: window.location.href,
-      };
-
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(
-          `${shareData.title}\n\n${shareData.text}\n\n${shareData.url}`
-        );
-        toast.success('Outfit details copied to clipboard');
-      }
-    } catch (err) {
-      // User cancelled or error
-      if (err instanceof Error && err.name !== 'AbortError') {
-        toast.error('Failed to share');
-      }
-    }
-  };
 };
 
 export default OutfitCard;

@@ -6,6 +6,7 @@ import StepContext from '@/components/app/StepContext';
 import StepPreferences from '@/components/app/StepPreferences';
 import StepResults from '@/components/app/StepResults';
 import StepComplete from '@/components/app/StepComplete';
+import StepPurchase from '@/components/app/StepPurchase';
 import StepPhoto from '@/components/app/StepPhoto';
 import StepFitCalibration from '@/components/app/StepFitCalibration';
 import StepLifestyle from '@/components/app/StepLifestyle';
@@ -227,11 +228,17 @@ const Flow = () => {
 
   // Progress indicator logic
   const getProgressInfo = () => {
-    if (mode === 'quick' && step >= 1 && step <= 3) {
-      return { current: step, total: 3, show: true };
+    if (mode === 'quick') {
+      // Quick flow: 1=Occasion, 2=Context, 3=Preferences, 4=Results, 5=Purchase
+      if (step >= 1 && step <= 5) {
+        return { current: step, total: 5, show: true };
+      }
     }
-    if (mode === 'personal' && step >= 10 && step <= 14) {
-      return { current: step - 9, total: 5, show: true };
+    if (mode === 'personal') {
+      // Personal flow: 10=Photo, 11=Fit, 12=Lifestyle, 13=Inspiration, 14=Wardrobe, 15=Loading, 16=Results, 17=TryOn, 18=StyleDNA
+      if (step >= 10 && step <= 18) {
+        return { current: step - 9, total: 9, show: true };
+      }
     }
     return { current: 0, total: 0, show: false };
   };
@@ -337,9 +344,17 @@ const Flow = () => {
           />
         );
       case 5:
-        // Virtual Try-On only available if user has completed Personal Flow and has photo
-        // Quick Flow users skip directly to completion
-        // Note: Quick Flow doesn't collect photos, so try-on is only for Personal Flow users
+        // Purchase page for Quick Flow - show purchase links for selected outfit
+        if (selectedOutfit) {
+          return (
+            <StepPurchase
+              outfit={selectedOutfit}
+              onBack={() => setStep(4)}
+              onRestart={handleRestart}
+            />
+          );
+        }
+        // Fallback to complete if no outfit selected
         return (
           <StepComplete 
             onRestart={handleRestart}

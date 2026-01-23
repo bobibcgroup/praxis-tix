@@ -142,9 +142,9 @@ const StepResults = ({
         )}
       </div>
 
-      {/* Outfit Stack - Vertical with selection */}
-      <div className="space-y-4">
-        {displayOutfits.map((outfit) => (
+      {/* Outfit Stack - Masonry on desktop, stacked on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        {displayOutfits.map((outfit, index) => (
           <div 
             key={outfit.id}
             onClick={() => handleSelectOutfit(outfit.id)}

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useUser, UserButton, SignInButton } from "@clerk/clerk-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, History, Heart } from "lucide-react";
+import { User, History, Heart, Settings } from "lucide-react";
 
 const Header = () => {
   const { user, isLoaded } = useUser();
@@ -10,70 +10,73 @@ const Header = () => {
   const isFlowPage = location.pathname === '/';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
-      <div className="container flex items-center justify-between h-16 px-4">
-        <a 
-          href="/" 
-          className="font-serif text-xl tracking-tight hover:opacity-80 transition-opacity"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate('/');
-          }}
-        >
-          Praxis
-        </a>
-        
-        <div className="flex items-center gap-3">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
+      <div className="container mx-auto px-6 h-14 flex items-center justify-center">
+        <div className="flex items-center justify-between w-full max-w-6xl">
+          {/* Logo */}
+          <button
+            onClick={() => navigate('/')}
+            className="font-serif text-xl tracking-tight text-foreground hover:opacity-80 transition-opacity"
+          >
+            Praxis
+          </button>
+          
+          {/* Navigation - Center aligned */}
           {isLoaded && user && (
-            <>
+            <nav className="hidden md:flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/history')}
-                className="hidden sm:flex items-center gap-2"
+                className="px-4"
               >
-                <History className="w-4 h-4" />
+                <History className="w-4 h-4 mr-2" />
                 History
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/favorites')}
-                className="hidden sm:flex items-center gap-2"
+                className="px-4"
               >
-                <Heart className="w-4 h-4" />
+                <Heart className="w-4 h-4 mr-2" />
                 Favorites
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/profile')}
-                className="hidden sm:flex items-center gap-2"
+                className="px-4"
               >
-                <User className="w-4 h-4" />
+                <User className="w-4 h-4 mr-2" />
                 My Style
               </Button>
-              <UserButton afterSignOutUrl="/" />
-            </>
-          )}
-          
-          {isLoaded && !user && !isFlowPage && (
-            <SignInButton mode="modal">
-              <Button variant="cta" size="sm">
-                Sign In
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/settings')}
+                className="px-4"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
               </Button>
-            </SignInButton>
+            </nav>
           )}
           
-          {!isFlowPage && (
-            <Button 
-              variant="cta" 
-              size="sm"
-              onClick={() => document.getElementById('early-access')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Request Access
-            </Button>
-          )}
+          {/* Right side - User actions */}
+          <div className="flex items-center gap-2">
+            {isLoaded && user && (
+              <UserButton afterSignOutUrl="/" />
+            )}
+            
+            {isLoaded && !user && !isFlowPage && (
+              <SignInButton mode="modal">
+                <Button variant="cta" size="sm">
+                  Sign In
+                </Button>
+              </SignInButton>
+            )}
+          </div>
         </div>
       </div>
     </header>

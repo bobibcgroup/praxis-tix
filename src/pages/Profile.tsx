@@ -2,11 +2,22 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart, Edit2 } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart, RotateCcw } from 'lucide-react';
 import { getUserProfile } from '@/lib/userService';
 import type { PersonalData } from '@/types/praxis';
 import Header from '@/components/Header';
 import { getRecommendedSwatches, getMetalRecommendations } from '@/lib/personalOutfitGenerator';
+
+// Default color swatches when no photo analysis
+const DEFAULT_SWATCHES = [
+  { name: 'Navy', hex: '#1e3a5f' },
+  { name: 'Slate Grey', hex: '#6b7280' },
+  { name: 'Burgundy', hex: '#722f37' },
+  { name: 'Forest Green', hex: '#228b22' },
+];
+
+// Default metal recommendation
+const DEFAULT_METALS = 'Silver, Gold, Rose Gold';
 
 const Profile = () => {
   const { user, isLoaded } = useUser();
@@ -52,13 +63,16 @@ const Profile = () => {
     );
   }
 
-  const colorSwatches = profile?.skinTone?.bucket
-    ? getRecommendedSwatches(profile.skinTone.bucket).slice(0, 4)
-    : [];
-
-  const metalRecommendation = profile?.skinTone?.bucket
-    ? getMetalRecommendations(profile.skinTone.bucket)
-    : 'Silver, Gold, Rose Gold';
+  // Get color swatches - use detected or defaults
+  const skinToneBucket = profile?.skinTone?.bucket;
+  const detectedSwatches = skinToneBucket ? getRecommendedSwatches(skinToneBucket) : null;
+  const colorSwatches = detectedSwatches && detectedSwatches.length > 0 
+    ? detectedSwatches.slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
+    : DEFAULT_SWATCHES;
+  
+  const metalRecommendation = skinToneBucket 
+    ? getMetalRecommendations(skinToneBucket) 
+    : DEFAULT_METALS;
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,8 +104,8 @@ const Profile = () => {
                 variant="outline"
                 size="sm"
               >
-                <Edit2 className="w-4 h-4 mr-2" />
-                Edit Profile
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Reset Style
               </Button>
             )}
           </div>
@@ -109,10 +123,94 @@ const Profile = () => {
             </Button>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Style DNA */}
+          <div className="space-y-8 max-w-2xl mx-auto">
+            {/* Header - matching Style DNA report */}
+            <div className="text-center mb-8">
+              <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2">
+                Your Style DNA
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                This is the framework that consistently works for you.
+              </p>
+            </div>
+
+            {/* Identity Anchor */}
             {profile.styleDNA && (
-              <div className="bg-card rounded-xl border border-border p-6">
+              <div className="mb-8 text-center">
+                <p className="text-xl md:text-2xl text-foreground font-serif italic">
+                  "Understated. Refined. Effortless."
+                </p>
+              </div>
+            )}
+
+            {/* Your optimal palette */}
+            <div className="bg-card rounded-xl border border-border p-6 mb-6">
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Your optimal palette
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Balanced tones that enhance your natural contrast and complexion.
+              </p>
+              <div className="flex justify-start gap-4 mb-6">
+                {colorSwatches.map((swatch, index) => (
+                  <div key={index} className="flex flex-col items-center gap-1.5">
+                    <div 
+                      className="w-12 h-12 rounded-full border border-border shadow-sm"
+                      style={{ backgroundColor: swatch.hex }}
+                      title={swatch.name}
+                    />
+                    <span className="text-xs text-muted-foreground">{swatch.name}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Best metals: <span className="text-foreground">{metalRecommendation}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Lean into */}
+            <div className="bg-card rounded-xl border border-border p-6 mb-6">
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                Lean into
+              </h2>
+              <ul className="space-y-2">
+                <li className="flex items-start gap-3 text-foreground">
+                  <span className="text-primary mt-0.5">•</span>
+                  <span>Balanced warm and cool tones</span>
+                </li>
+                <li className="flex items-start gap-3 text-foreground">
+                  <span className="text-primary mt-0.5">•</span>
+                  <span>Medium-contrast outfits that feel grounded</span>
+                </li>
+                <li className="flex items-start gap-3 text-foreground">
+                  <span className="text-primary mt-0.5">•</span>
+                  <span>Jewel tones for structure and emphasis</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Avoid */}
+            <div className="bg-card rounded-xl border border-border p-6 mb-6">
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                Avoid
+              </h2>
+              <ul className="space-y-2">
+                <li className="flex items-start gap-3 text-foreground">
+                  <span className="text-muted-foreground mt-0.5">•</span>
+                  <span>Overly bright neons that overpower</span>
+                </li>
+                <li className="flex items-start gap-3 text-foreground">
+                  <span className="text-muted-foreground mt-0.5">•</span>
+                  <span>Very pale shades that flatten contrast</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Style DNA Details */}
+            {profile.styleDNA && (
+              <div className="bg-card rounded-xl border border-border p-6 mb-6">
                 <h2 className="text-xl font-medium text-foreground mb-4 flex items-center gap-2">
                   <Palette className="w-5 h-5" />
                   Style DNA
@@ -132,31 +230,6 @@ const Profile = () => {
                       </p>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            {/* Color Palette */}
-            {colorSwatches.length > 0 && (
-              <div className="bg-card rounded-xl border border-border p-6">
-                <h2 className="text-xl font-medium text-foreground mb-4 flex items-center gap-2">
-                  <Palette className="w-5 h-5" />
-                  Optimal Palette
-                </h2>
-                <div className="grid grid-cols-4 gap-3 mb-4">
-                  {colorSwatches.map((swatch, index) => (
-                    <div key={index} className="text-center">
-                      <div
-                        className="w-full aspect-square rounded-lg mb-2 border border-border"
-                        style={{ backgroundColor: swatch.hex }}
-                      />
-                      <p className="text-xs text-muted-foreground">{swatch.name}</p>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Best Metals</p>
-                  <p className="text-foreground">{metalRecommendation}</p>
                 </div>
               </div>
             )}
@@ -200,9 +273,19 @@ const Profile = () => {
               </div>
             )}
 
-            <div className="pt-4">
+            {/* Closing line */}
+            <div className="text-center mb-6">
+              <p className="text-sm text-muted-foreground">
+                Style is clarity. You now have yours.
+              </p>
+            </div>
+
+            <div className="pt-4 space-y-2">
               <Button onClick={() => navigate('/history')} variant="outline" className="w-full">
                 View Outfit History
+              </Button>
+              <Button onClick={() => navigate('/settings')} variant="outline" className="w-full">
+                Settings
               </Button>
             </div>
           </div>

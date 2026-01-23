@@ -76,15 +76,31 @@ const StepVirtualTryOn = ({
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!tryOnImage) return;
 
-    const link = document.createElement('a');
-    link.href = tryOnImage;
-    link.download = `praxis-outfit-${outfit.id}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Fetch the image as a blob to handle CORS
+      const response = await fetch(tryOnImage);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Create download link
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `praxis-outfit-${outfit.id}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up blob URL
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      
+      toast.success('Image downloaded');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download image');
+    }
   };
 
   const handleShare = async () => {
