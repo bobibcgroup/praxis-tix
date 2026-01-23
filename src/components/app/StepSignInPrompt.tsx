@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUser, SignInButton } from '@clerk/clerk-react';
 import { User } from 'lucide-react';
@@ -13,11 +14,18 @@ const StepSignInPrompt = ({ onSignInComplete, onBack, onSkip }: StepSignInPrompt
   const { user, isLoaded } = useUser();
 
   // If user signs in, automatically continue
+  useEffect(() => {
+    if (isLoaded && user) {
+      // Small delay to ensure state is fully updated
+      const timer = setTimeout(() => {
+        onSignInComplete();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoaded, user, onSignInComplete]);
+
+  // Don't render if user is already signed in
   if (isLoaded && user) {
-    // Small delay to ensure state is updated
-    setTimeout(() => {
-      onSignInComplete();
-    }, 100);
     return null;
   }
 

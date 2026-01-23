@@ -233,6 +233,7 @@ const Flow = () => {
       // Personal flow: 10=Photo, 11=Fit, 12=Lifestyle, 13=Inspiration, 13.5=SignIn, 14=Wardrobe, 15=Loading, 16=Results, 17=TryOn, 18=StyleDNA
       // Don't show progress for sign-in step (13.5)
       if (step >= 10 && step <= 18 && step !== 13.5) {
+        // Map steps to progress: 10->1, 11->2, 12->3, 13->4, 14->5, 15->6, 16->7, 17->8, 18->9
         const adjustedStep = step > 13.5 ? step - 9 : step - 9;
         return { current: adjustedStep, total: 9, show: true };
       }
