@@ -21,6 +21,7 @@ export default function Agent() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [stage, setStage] = useState<AgentStage>('intake');
+  const [announcement, setAnnouncement] = useState('');
 
   // Initialize fresh conversation on mount
   useEffect(() => {
@@ -43,6 +44,8 @@ export default function Agent() {
       // Set assistant response
       setCurrentResponse(response.assistantMessage);
       setStage(response.nextStage);
+      // Announce for screen readers
+      setAnnouncement(response.assistantMessage);
 
       // Handle actions with auto-navigation
       if (response.actions) {
@@ -104,6 +107,16 @@ export default function Agent() {
           </Button>
         </div>
       </header>
+
+      {/* Screen reader announcement */}
+      <div 
+        role="status" 
+        aria-live="polite" 
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
 
       {/* Response Display - Under the head */}
       <MinimalResponseDisplay

@@ -62,17 +62,22 @@ export function MinimalInput({
             }`}
           >
             <div className="flex items-center px-6 py-4 gap-3">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                placeholder={placeholder}
-                disabled={disabled}
-                className="flex-1 bg-transparent text-cyan-100 placeholder:text-cyan-500/50 focus:outline-none text-sm md:text-base"
-              />
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder={placeholder}
+              disabled={disabled}
+              className="flex-1 bg-transparent text-cyan-100 placeholder:text-cyan-500/50 focus:outline-none text-sm md:text-base"
+              aria-label="Message input"
+              aria-describedby="input-help"
+            />
+            <div id="input-help" className="sr-only">
+              Type your message and press Enter to send
+            </div>
               
               {input.trim() ? (
                 <motion.button

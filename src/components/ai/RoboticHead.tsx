@@ -17,6 +17,10 @@ export function RoboticHead({
   const leftEyeRef = useRef<THREE.Mesh>(null);
   const rightEyeRef = useRef<THREE.Mesh>(null);
   const jawRef = useRef<THREE.Mesh>(null);
+  
+  // Eye scale for blinking
+  const [eyeScale, setEyeScale] = useState({ left: 1, right: 1 });
+  const [isBlinking, setIsBlinking] = useState(false);
 
   // Smooth head rotation following mouse
   const [headRotation, setHeadRotation] = useState({ x: 0, y: 0 });
@@ -32,6 +36,38 @@ export function RoboticHead({
       }));
     }
   }, [mousePosition]);
+
+  // Blink animation
+  useEffect(() => {
+    const blink = () => {
+      setIsBlinking(true);
+      // Scale eyes down on Y axis
+      setEyeScale({ left: 0.1, right: 0.1 });
+      
+      setTimeout(() => {
+        setEyeScale({ left: 1, right: 1 });
+        setTimeout(() => {
+          setIsBlinking(false);
+        }, 100);
+      }, 100);
+    };
+
+    // Random blink interval (3-6 seconds)
+    const scheduleNextBlink = () => {
+      const delay = 3000 + Math.random() * 3000;
+      const timeoutId = setTimeout(() => {
+        if (!isSpeaking && !isThinking) {
+          blink();
+        }
+        scheduleNextBlink();
+      }, delay);
+      
+      return () => clearTimeout(timeoutId);
+    };
+
+    const cleanup = scheduleNextBlink();
+    return cleanup;
+  }, [isSpeaking, isThinking]);
 
   useFrame((state) => {
     const time = state.clock.elapsedTime;
@@ -102,13 +138,13 @@ export function RoboticHead({
       </mesh>
 
       {/* Left eye */}
-      <mesh ref={leftEyeRef} position={[-0.3, 0.2, 0.55]}>
+      <mesh ref={leftEyeRef} position={[-0.3, 0.2, 0.55]} scale={[1, eyeScale.left, 1]}>
         <sphereGeometry args={[0.15, 16, 16]} />
         <primitive object={eyeMaterial} />
       </mesh>
 
       {/* Right eye */}
-      <mesh ref={rightEyeRef} position={[0.3, 0.2, 0.55]}>
+      <mesh ref={rightEyeRef} position={[0.3, 0.2, 0.55]} scale={[1, eyeScale.right, 1]}>
         <sphereGeometry args={[0.15, 16, 16]} />
         <primitive object={eyeMaterial} />
       </mesh>
