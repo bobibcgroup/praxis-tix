@@ -72,6 +72,30 @@ const StepVirtualTryOn = ({
     setIsGenerating(true);
     setError(null);
 
+    // Get historyEntryId from localStorage BEFORE starting generation
+    // This ensures we have it even if user navigates away
+    const historyEntryId = localStorage.getItem('praxis_current_history_entry_id');
+    
+    // Store generation state immediately when generation starts
+    // This ensures historyEntryId is preserved even if localStorage is cleared elsewhere
+    if (user) {
+      const generationState = {
+        outfitId: outfit.id,
+        outfitTitle: outfit.title,
+        startedAt: new Date().toISOString(),
+        status: 'generating',
+        userId: user.id,
+        historyEntryId: historyEntryId || null, // Store it in generationState as backup
+        styleName: name || null,
+        personalData: personalData ? {
+          styleDNA: personalData.styleDNA || null,
+          skinTone: personalData.skinTone || null,
+        } : null,
+      };
+      localStorage.setItem('praxis_active_generation', JSON.stringify(generationState));
+      console.log('📤 Stored generation state at start:', generationState);
+    }
+
     // Store generation in background - allow navigation to dashboard
     const generationPromise = (async () => {
       try {
@@ -89,16 +113,23 @@ const StepVirtualTryOn = ({
         triggerConfettiBurst();
         
         // Get generation state and history entry ID from localStorage
+        // Try multiple sources to ensure we have the historyEntryId
         const generationStateStr = localStorage.getItem('praxis_active_generation');
-        const historyEntryId = localStorage.getItem('praxis_current_history_entry_id');
+        const historyEntryIdFromStorage = localStorage.getItem('praxis_current_history_entry_id');
         
         // Get styleName from generation state if user navigated away, otherwise use component state
         let finalStyleName = styleName || null;
+        let finalHistoryEntryId = historyEntryIdFromStorage || historyEntryId;
+        
         if (generationStateStr) {
           try {
             const generationState = JSON.parse(generationStateStr);
             if (generationState.styleName && !finalStyleName) {
               finalStyleName = generationState.styleName;
+            }
+            // Use historyEntryId from generationState as backup
+            if (!finalHistoryEntryId && generationState.historyEntryId) {
+              finalHistoryEntryId = generationState.historyEntryId;
             }
           } catch (e) {
             console.warn('Error parsing generation state:', e);
@@ -106,10 +137,11 @@ const StepVirtualTryOn = ({
         }
         
         // Dispatch custom event with all necessary data for history update
+        // Always include outfitId as fallback in case historyEntryId is missing
         const completionData = {
           outfitId: outfit.id,
           imageUrl: result.imageUrl,
-          historyEntryId: historyEntryId || (generationStateStr ? JSON.parse(generationStateStr).historyEntryId : null),
+          historyEntryId: finalHistoryEntryId,
           userId: user?.id,
           styleName: finalStyleName,
           personalData: personalData ? {
@@ -120,13 +152,14 @@ const StepVirtualTryOn = ({
         
         console.log('✅ Generation complete, dispatching event with data:', completionData);
         console.log('📝 Style name:', { componentState: styleName, final: finalStyleName });
+        console.log('📝 History Entry ID:', { fromStorage: historyEntryIdFromStorage, fromState: historyEntryId, final: finalHistoryEntryId });
         
         // Dispatch custom event for dashboard/history to update
         window.dispatchEvent(new CustomEvent('generation-complete', { 
           detail: completionData
         }));
         
-        // Clear generation state from localStorage
+        // Clear generation state from localStorage (but keep historyEntryId for now)
         localStorage.removeItem('praxis_active_generation');
         
         // If user navigated away, show notification when done

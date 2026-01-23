@@ -15,10 +15,11 @@ if (typeof window !== 'undefined') {
   window.addEventListener('generation-complete', async (event: Event) => {
     const customEvent = event as CustomEvent;
     const detail = customEvent.detail || {};
-    const { imageUrl, historyEntryId, userId, styleName, personalData } = detail;
+    const { imageUrl, historyEntryId, userId, styleName, personalData, outfitId } = detail;
     
     // Only process if we have the necessary data
-    if (imageUrl && historyEntryId && userId) {
+    // We can update even if historyEntryId is missing by using outfitId as fallback
+    if (imageUrl && userId && (historyEntryId || outfitId)) {
       try {
         // Dynamic import to avoid circular dependencies
         const { updateOutfitHistoryTryOn } = await import('./lib/userService');
@@ -31,14 +32,15 @@ if (typeof window !== 'undefined') {
         
         await updateOutfitHistoryTryOn(
           userId,
-          historyEntryId,
+          historyEntryId || null,
           imageUrl,
           styleName || undefined,
           personalData?.styleDNA || undefined,
-          colorPalette
+          colorPalette,
+          outfitId // Pass outfitId as fallback
         );
         
-        console.log('✅ [Global] History updated with try-on image:', historyEntryId);
+        console.log('✅ [Global] History updated with try-on image:', { historyEntryId, outfitId });
         
         // Clear localStorage
         localStorage.removeItem('praxis_active_generation');
@@ -46,6 +48,8 @@ if (typeof window !== 'undefined') {
       } catch (err) {
         console.error('❌ [Global] Error updating history with try-on URL:', err);
       }
+    } else {
+      console.warn('⚠️ [Global] Missing data for history update:', { imageUrl: !!imageUrl, historyEntryId: !!historyEntryId, outfitId: !!outfitId, userId: !!userId });
     }
   });
 }

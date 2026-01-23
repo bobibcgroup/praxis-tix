@@ -674,7 +674,8 @@ const Flow = () => {
                       tryOnUrl,
                       styleName,
                       personal.styleDNA || undefined,
-                      colorPalette || undefined
+                      colorPalette || undefined,
+                      selectedOutfit.id // Pass outfitId as fallback
                     );
                     
                     console.log('✅ History updated successfully from onComplete');

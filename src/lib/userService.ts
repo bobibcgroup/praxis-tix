@@ -239,22 +239,48 @@ export async function updateOutfitHistoryStyleName(
 
 /**
  * Update existing outfit history entry with try-on image URL and style data
+ * If historyId is not provided, will try to find the most recent entry for the outfitId
  */
 export async function updateOutfitHistoryTryOn(
   userId: string,
-  historyId: string,
+  historyId: string | null | undefined,
   tryOnImageUrl: string,
   styleName?: string,
   styleDNA?: StyleDNA,
-  colorPalette?: Array<{ name: string; hex: string }>
+  colorPalette?: Array<{ name: string; hex: string }>,
+  outfitId?: number // Optional: used as fallback if historyId is missing
 ): Promise<void> {
+  if (!historyId && !outfitId) {
+    console.error('❌ Cannot update history: both historyId and outfitId are missing');
+    return;
+  }
+
   if (!supabase) {
     // Fallback to localStorage
     const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
-    const entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
+    let entry: OutfitHistoryEntry | undefined;
+    
+    if (historyId) {
+      entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
+    } else if (outfitId) {
+      // Find most recent entry for this outfitId and userId
+      const matchingEntries = history.filter((e: OutfitHistoryEntry) => 
+        e.outfitId === outfitId && (!e.userId || e.userId === userId)
+      );
+      entry = matchingEntries.sort((a, b) => 
+        new Date(b.selectedAt).getTime() - new Date(a.selectedAt).getTime()
+      )[0];
+    }
+    
     if (entry) {
       entry.tryOnImageUrl = tryOnImageUrl;
+      if (styleName) entry.styleName = styleName;
+      if (styleDNA) entry.styleDNA = styleDNA;
+      if (colorPalette) entry.colorPalette = colorPalette;
       localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
+      console.log('✅ Updated history entry in localStorage:', entry.id);
+    } else {
+      console.warn('⚠️ History entry not found in localStorage for update');
     }
     return;
   }
@@ -267,12 +293,44 @@ export async function updateOutfitHistoryTryOn(
       // Note: style_dna and color_palette columns don't exist in database schema
     };
     
-    console.log('🔄 Updating history entry:', { historyId, userId, styleName, hasTryOnUrl: !!tryOnImageUrl });
+    console.log('🔄 Updating history entry:', { historyId, outfitId, userId, styleName, hasTryOnUrl: !!tryOnImageUrl });
     
+    let finalHistoryId = historyId;
+    
+    // If historyId is missing but outfitId is provided, find the most recent entry for this outfitId
+    if (!finalHistoryId && outfitId) {
+      const { data: entries, error: findError } = await supabase
+        .from('outfit_history')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('outfit_id', outfitId)
+        .order('selected_at', { ascending: false })
+        .limit(1);
+      
+      if (findError) {
+        console.error('❌ Error finding history entry by outfitId:', findError);
+        throw findError;
+      }
+      
+      if (!entries || entries.length === 0) {
+        console.warn('⚠️ No history entry found for outfitId:', outfitId);
+        return;
+      }
+      
+      finalHistoryId = entries[0].id;
+      console.log('📝 Found history entry by outfitId:', finalHistoryId);
+    }
+    
+    if (!finalHistoryId) {
+      console.error('❌ Cannot update: no historyId found');
+      return;
+    }
+    
+    // Update the history entry
     const { error } = await supabase
       .from('outfit_history')
       .update(updateData)
-      .eq('id', historyId)
+      .eq('id', finalHistoryId)
       .eq('user_id', userId);
 
     if (error) {
@@ -285,7 +343,19 @@ export async function updateOutfitHistoryTryOn(
     console.error('Error updating outfit history:', error);
     // Fallback to localStorage
     const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
-    const entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
+    let entry: OutfitHistoryEntry | undefined;
+    
+    if (historyId) {
+      entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
+    } else if (outfitId) {
+      const matchingEntries = history.filter((e: OutfitHistoryEntry) => 
+        e.outfitId === outfitId && (!e.userId || e.userId === userId)
+      );
+      entry = matchingEntries.sort((a, b) => 
+        new Date(b.selectedAt).getTime() - new Date(a.selectedAt).getTime()
+      )[0];
+    }
+    
     if (entry) {
       entry.tryOnImageUrl = tryOnImageUrl;
       if (styleName) entry.styleName = styleName;

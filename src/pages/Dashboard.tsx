@@ -90,12 +90,13 @@ const Dashboard = () => {
     // Listen for generation completion events
     const handleGenerationComplete = async (event: CustomEvent) => {
       const detail = event.detail || {};
-      const { imageUrl, historyEntryId, userId, styleName, personalData } = detail;
+      const { imageUrl, historyEntryId, userId, styleName, personalData, outfitId } = detail;
       
       console.log('🎉 Generation complete event received:', detail);
       
       // Update history entry with try-on URL if we have the necessary data
-      if (imageUrl && historyEntryId && userId) {
+      // We can update even if historyEntryId is missing by using outfitId as fallback
+      if (imageUrl && userId && (historyEntryId || outfitId)) {
         try {
           // Get color palette if skinTone is available
           const colorPalette = personalData?.skinTone?.bucket
@@ -104,20 +105,21 @@ const Dashboard = () => {
           
           await updateOutfitHistoryTryOn(
             userId,
-            historyEntryId,
+            historyEntryId || null,
             imageUrl,
             styleName || undefined,
             personalData?.styleDNA || undefined,
-            colorPalette
+            colorPalette,
+            outfitId // Pass outfitId as fallback
           );
           
-          console.log('✅ History updated with try-on image:', historyEntryId);
+          console.log('✅ History updated with try-on image:', { historyEntryId, outfitId });
         } catch (err) {
           console.error('❌ Error updating history with try-on URL:', err);
           // Don't show error toast - generation succeeded, just history update failed
         }
       } else {
-        console.warn('⚠️ Missing data for history update:', { imageUrl: !!imageUrl, historyEntryId: !!historyEntryId, userId: !!userId });
+        console.warn('⚠️ Missing data for history update:', { imageUrl: !!imageUrl, historyEntryId: !!historyEntryId, outfitId: !!outfitId, userId: !!userId });
       }
       
       // Clear generation state
