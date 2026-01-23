@@ -21,13 +21,13 @@ import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } fr
 import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory, updateOutfitHistoryTryOn, updateOutfitHistoryStyleName } from '@/lib/userService';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Menu, LayoutDashboard, History, Heart, User, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { MobileNavMenu } from '@/components/app/MobileNavMenu';
+import { useNavigate } from 'react-router-dom';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import type { 
   OccasionData, 
   ContextData, 
@@ -80,6 +80,7 @@ const initialPersonal: PersonalData = {
 
 const Flow = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<FlowMode | null>(null);
   
@@ -766,7 +767,7 @@ const Flow = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.location.href = '/dashboard'}
+                  onClick={() => navigate('/dashboard')}
                   className="px-4"
                 >
                   Dashboard
@@ -774,7 +775,7 @@ const Flow = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.location.href = '/history'}
+                  onClick={() => navigate('/history')}
                   className="px-4"
                 >
                   History
@@ -782,7 +783,7 @@ const Flow = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.location.href = '/favorites'}
+                  onClick={() => navigate('/favorites')}
                   className="px-4"
                 >
                   Favorites
@@ -790,7 +791,7 @@ const Flow = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.location.href = '/profile'}
+                  onClick={() => navigate('/profile')}
                   className="px-4"
                 >
                   My Style
@@ -798,7 +799,7 @@ const Flow = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.location.href = '/settings'}
+                  onClick={() => navigate('/settings')}
                   className="px-4"
                 >
                   Settings
@@ -808,78 +809,15 @@ const Flow = () => {
 
             {/* Mobile Menu */}
             {isLoaded && user && isMobile && (
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="px-2">
-                    <Menu className="w-5 h-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[300px]">
-                  <nav className="flex flex-col gap-2 mt-6">
-                    <Button
-                      variant="ghost"
-                      size="lg"
-                      onClick={() => {
-                        window.location.href = '/dashboard';
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <LayoutDashboard className="w-4 h-4 mr-2" />
-                      Dashboard
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="lg"
-                      onClick={() => {
-                        window.location.href = '/history';
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <History className="w-4 h-4 mr-2" />
-                      History
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="lg"
-                      onClick={() => {
-                        window.location.href = '/favorites';
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <Heart className="w-4 h-4 mr-2" />
-                      Favorites
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="lg"
-                      onClick={() => {
-                        window.location.href = '/profile';
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <User className="w-4 h-4 mr-2" />
-                      My Style
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="lg"
-                      onClick={() => {
-                        window.location.href = '/settings';
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full justify-start"
-                    >
-                      <Settings className="w-4 h-4 mr-2" />
-                      Settings
-                    </Button>
-                  </nav>
-                </SheetContent>
-              </Sheet>
+              <MobileNavMenu 
+                navigate={navigate} 
+                open={mobileMenuOpen} 
+                onOpenChange={setMobileMenuOpen}
+              />
             )}
+            
+            {/* Theme Toggle */}
+            <ThemeToggle />
             
             {/* User actions */}
             {isLoaded && user && (

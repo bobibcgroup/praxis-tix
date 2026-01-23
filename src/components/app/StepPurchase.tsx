@@ -2,6 +2,8 @@ import { Button } from '@/components/ui/button';
 import { ShoppingBag, ArrowLeft } from 'lucide-react';
 import FlowStep from './FlowStep';
 import type { Outfit } from '@/types/praxis';
+import { useEffect } from 'react';
+import { triggerConfettiBurst } from '@/lib/confetti';
 
 interface StepPurchaseProps {
   outfit: Outfit;
@@ -36,6 +38,11 @@ const getPurchaseLinks = (outfit: Outfit) => {
 
 const StepPurchase = ({ outfit, onBack, onRestart }: StepPurchaseProps) => {
   const purchaseLinks = getPurchaseLinks(outfit);
+
+  // Trigger confetti when component mounts (user reaches pricelist page)
+  useEffect(() => {
+    triggerConfettiBurst();
+  }, []);
 
   return (
     <FlowStep title="Complete Your Look">

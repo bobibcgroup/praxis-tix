@@ -1,79 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { useUser, UserButton, SignInButton } from "@clerk/clerk-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, History, Heart, Settings, LayoutDashboard, Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useState } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-
-const MobileNavMenu = ({ navigate }: { navigate: (path: string) => void }) => {
-  const [open, setOpen] = useState(false);
-
-  const handleNavigate = (path: string) => {
-    navigate(path);
-    setOpen(false);
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="px-2">
-          <Menu className="w-5 h-5" />
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="right" className="w-[300px]">
-        <nav className="flex flex-col gap-2 mt-6">
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => handleNavigate('/dashboard')}
-            className="w-full justify-start"
-          >
-            <LayoutDashboard className="w-4 h-4 mr-2" />
-            Dashboard
-          </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => handleNavigate('/history')}
-            className="w-full justify-start"
-          >
-            <History className="w-4 h-4 mr-2" />
-            History
-          </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => handleNavigate('/favorites')}
-            className="w-full justify-start"
-          >
-            <Heart className="w-4 h-4 mr-2" />
-            Favorites
-          </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => handleNavigate('/profile')}
-            className="w-full justify-start"
-          >
-            <User className="w-4 h-4 mr-2" />
-            My Style
-          </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => handleNavigate('/settings')}
-            className="w-full justify-start"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Settings
-          </Button>
-        </nav>
-      </SheetContent>
-    </Sheet>
-  );
-};
+import { MobileNavMenu } from "@/components/app/MobileNavMenu";
 
 const Header = () => {
   const { user, isLoaded } = useUser();

@@ -9,6 +9,7 @@ import { useUser } from '@clerk/clerk-react';
 import type { Outfit, PersonalData, StyleDNA } from '@/types/praxis';
 import { toast } from 'sonner';
 import { getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
+import { triggerConfettiBurst } from '@/lib/confetti';
 
 interface StepVirtualTryOnProps {
   outfit: Outfit;
@@ -35,6 +36,11 @@ const StepVirtualTryOn = ({
   const [showNameModal, setShowNameModal] = useState(false);
   const [styleName, setStyleName] = useState<string | null>(null);
   const [generationStarted, setGenerationStarted] = useState(false);
+
+  // Trigger confetti when component mounts (user reaches image generation page)
+  useEffect(() => {
+    triggerConfettiBurst();
+  }, []);
 
   // Show name modal first before starting generation
   useEffect(() => {
@@ -78,6 +84,9 @@ const StepVirtualTryOn = ({
 
         setTryOnImage(result.imageUrl);
         setIsGenerating(false);
+        
+        // Trigger confetti when image is successfully generated
+        triggerConfettiBurst();
         
         // Get generation state and history entry ID from localStorage
         const generationStateStr = localStorage.getItem('praxis_active_generation');
