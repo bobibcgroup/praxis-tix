@@ -45,6 +45,7 @@ export async function migrateLocalStorageToSupabase(
       // Note: We can't easily check by ID since localStorage IDs are different format
       // So we'll try to insert and handle conflicts
 
+      // Build insert data with all available fields
       const insertData: any = {
         user_id: userId,
         outfit_id: entry.outfitId,
@@ -53,8 +54,13 @@ export async function migrateLocalStorageToSupabase(
         try_on_image_url: entry.tryOnImageUrl || null,
         animated_video_url: entry.animatedVideoUrl || null,
         selected_at: entry.selectedAt || new Date().toISOString(),
-        style_name: entry.styleName || null,
       };
+      
+      // Add style_name if it exists (column may or may not exist in database)
+      // We'll try to include it and handle errors gracefully
+      if (entry.styleName) {
+        insertData.style_name = entry.styleName;
+      }
       
       // Add email if provided or available from mapping
       if (email) {
@@ -100,6 +106,37 @@ export async function migrateLocalStorageToSupabase(
         if (error.code === '23505') {
           console.log(`   ⏭️  Entry already exists in Supabase, skipping: ${entry.id}`);
           result.migrated++;
+        } else if (error.code === 'PGRST204' && error.message?.includes('column')) {
+          // Column doesn't exist - try without problematic columns
+          console.warn(`   ⚠️ Column error for entry ${entry.id}, retrying without optional fields...`);
+          const minimalData: any = {
+            user_id: userId,
+            outfit_id: entry.outfitId,
+            occasion: entry.occasion,
+            outfit_data: entry.outfitData,
+            try_on_image_url: entry.tryOnImageUrl || null,
+            animated_video_url: entry.animatedVideoUrl || null,
+            selected_at: entry.selectedAt || new Date().toISOString(),
+          };
+          
+          if (email) {
+            minimalData.email = email;
+          }
+          
+          const { data: retryData, error: retryError } = await supabase
+            .from('outfit_history')
+            .insert(minimalData)
+            .select('id')
+            .single();
+            
+          if (retryError) {
+            console.error(`   ❌ Retry also failed for entry ${entry.id}:`, retryError);
+            result.failed++;
+            result.errors.push({ entry, error: retryError });
+          } else {
+            console.log(`   ✅ Migrated entry ${entry.id} -> ${retryData?.id} (without optional fields)`);
+            result.migrated++;
+          }
         } else {
           console.error(`   ❌ Failed to migrate entry ${entry.id}:`, error);
           result.failed++;

@@ -13,12 +13,17 @@ ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE favorites 
 ADD COLUMN IF NOT EXISTS email TEXT;
 
--- Step 4: Create indexes for faster email queries
+-- Step 4: Add style_name column to outfit_history (if it doesn't exist)
+-- This column stores the style name for each outfit entry
+ALTER TABLE outfit_history 
+ADD COLUMN IF NOT EXISTS style_name TEXT;
+
+-- Step 5: Create indexes for faster email queries
 CREATE INDEX IF NOT EXISTS idx_outfit_history_email ON outfit_history(email);
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
 CREATE INDEX IF NOT EXISTS idx_favorites_email ON favorites(email);
 
--- Step 5: Update RLS policies to work with Clerk authentication
+-- Step 6: Update RLS policies to work with Clerk authentication
 -- Since we're using Clerk (not Supabase Auth), we need to allow access based on user_id
 -- These policies allow users to access their own data by user_id matching
 
