@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertCircle, Download, Share2, ArrowRight } from 'lucide-react';
+import { Loader2, AlertCircle, Download, Share2, ArrowRight, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import FlowStep from './FlowStep';
 import StyleNameModal from './StyleNameModal';
@@ -19,6 +19,31 @@ interface StepVirtualTryOnProps {
   onComplete: (tryOnImageUrl: string, styleName?: string) => void;
   onSkip?: () => void;
 }
+
+// Dummy purchase data - replace with real data later
+const getPurchaseLinks = (outfit: Outfit) => {
+  // Generate dummy purchase links based on outfit items
+  return [
+    {
+      item: outfit.items.top,
+      price: '$89',
+      url: 'https://example.com/buy-top',
+      store: 'Example Store',
+    },
+    {
+      item: outfit.items.bottom,
+      price: '$129',
+      url: 'https://example.com/buy-bottom',
+      store: 'Example Store',
+    },
+    {
+      item: outfit.items.shoes,
+      price: '$159',
+      url: 'https://example.com/buy-shoes',
+      store: 'Example Store',
+    },
+  ];
+};
 
 const StepVirtualTryOn = ({
   outfit,
@@ -42,15 +67,22 @@ const StepVirtualTryOn = ({
     triggerConfettiBurst();
   }, []);
 
-  // Show name modal first before starting generation
+  // Show name modal first before starting generation - only if user is signed in
   useEffect(() => {
     if (userPhoto && outfit.imageUrl && !generationStarted) {
-      setShowNameModal(true);
+      // Only show name modal if user is signed in
+      if (user) {
+        setShowNameModal(true);
+      } else {
+        // Skip naming and start generation directly if not signed in
+        setGenerationStarted(true);
+        generateTryOnImage();
+      }
     } else if (!userPhoto || !outfit.imageUrl) {
       setError('Photo or outfit image not available');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   const handleNameConfirm = (name: string) => {
     setStyleName(name);
@@ -60,10 +92,9 @@ const StepVirtualTryOn = ({
   };
 
   const handleNameCancel = () => {
+    // If user is signed in, they can't skip - this shouldn't be called
+    // But if it is, just close the modal (required field prevents submission)
     setShowNameModal(false);
-    if (onSkip) {
-      onSkip();
-    }
   };
 
   const generateTryOnImage = async (name?: string) => {
@@ -359,6 +390,7 @@ const StepVirtualTryOn = ({
         open={showNameModal}
         onConfirm={handleNameConfirm}
         onCancel={handleNameCancel}
+        required={!!user}
       />
       <FlowStep title="Your personalized look">
         <div className="space-y-6">
@@ -409,6 +441,38 @@ const StepVirtualTryOn = ({
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
               </Button>
+            </div>
+
+            {/* Purchase Links with Prices */}
+            <div className="space-y-3">
+              <div className="text-center mb-2">
+                <p className="text-sm text-muted-foreground">
+                  You can shop pieces individually.
+                </p>
+              </div>
+              {getPurchaseLinks(outfit).map((link, index) => (
+                <div
+                  key={index}
+                  className="bg-card rounded-xl border border-border p-6 space-y-2"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="text-foreground font-medium mb-1">{link.item}</p>
+                      <p className="text-sm text-muted-foreground">{link.store}</p>
+                    </div>
+                    <span className="text-lg font-medium text-foreground ml-4">{link.price}</span>
+                  </div>
+                  <Button
+                    onClick={() => window.open(link.url, '_blank')}
+                    variant="cta"
+                    size="lg"
+                    className="w-full md:w-auto"
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Buy this
+                  </Button>
+                </div>
+              ))}
             </div>
 
             {/* Continue Button */}

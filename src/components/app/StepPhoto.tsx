@@ -137,9 +137,8 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
 
   // Process photo with smart auto-confirm
   const processPhotoWithAutoConfirm = useCallback(async (imageUrl: string, photoSource: 'camera' | 'upload') => {
-    const isIdeal = await checkIdealFraming(imageUrl);
-    
-    if (isIdeal && photoSource === 'camera') {
+    // Camera photos always skip crop (like desktop) - no framing check needed
+    if (photoSource === 'camera') {
       // Auto-confirm: skip crop, go directly to confirmation message
       setShowConfirmation(true);
       
@@ -171,12 +170,12 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
         }
       }, 1000);
     } else {
-      // Show crop modal as normal
+      // Uploads always show crop modal (user likely needs to adjust)
       setRawPhoto(imageUrl);
       setSource(photoSource);
       setShowCropModal(true);
     }
-  }, [checkIdealFraming, onPhotoConfirmed]);
+  }, [onPhotoConfirmed]);
 
   // Capture photo from video stream
   const captureFromStream = useCallback(() => {

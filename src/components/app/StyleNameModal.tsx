@@ -15,9 +15,10 @@ interface StyleNameModalProps {
   open: boolean;
   onConfirm: (styleName: string) => void;
   onCancel: () => void;
+  required?: boolean; // If true, user cannot skip/cancel
 }
 
-const StyleNameModal = ({ open, onConfirm, onCancel }: StyleNameModalProps) => {
+const StyleNameModal = ({ open, onConfirm, onCancel, required = false }: StyleNameModalProps) => {
   const [styleName, setStyleName] = useState('');
 
   const handleConfirm = () => {
@@ -28,12 +29,15 @@ const StyleNameModal = ({ open, onConfirm, onCancel }: StyleNameModalProps) => {
   };
 
   const handleCancel = () => {
-    setStyleName('');
-    onCancel();
+    if (!required) {
+      setStyleName('');
+      onCancel();
+    }
+    // If required, do nothing - user must provide a name
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleCancel}>
+    <Dialog open={open} onOpenChange={required ? undefined : handleCancel}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Name Your Style</DialogTitle>
@@ -59,9 +63,11 @@ const StyleNameModal = ({ open, onConfirm, onCancel }: StyleNameModalProps) => {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>
-            Cancel
-          </Button>
+          {!required && (
+            <Button variant="outline" onClick={handleCancel}>
+              Cancel
+            </Button>
+          )}
           <Button onClick={handleConfirm} disabled={!styleName.trim()}>
             Continue
           </Button>
