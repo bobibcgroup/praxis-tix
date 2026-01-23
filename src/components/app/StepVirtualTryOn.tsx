@@ -143,6 +143,7 @@ const StepVirtualTryOn = ({
           imageUrl: result.imageUrl,
           historyEntryId: finalHistoryEntryId,
           userId: user?.id,
+          email: user?.primaryEmailAddress?.emailAddress, // Email for cross-device sync
           styleName: finalStyleName,
           personalData: personalData ? {
             styleDNA: personalData.styleDNA || null,

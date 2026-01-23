@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2, Palette, RefreshCw, Loader2 } from 'lucide-react';
 import { getOutfitHistory, deleteOutfitFromHistory, addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
+import { syncUserDataOnSignIn } from '@/lib/userSync';
 import Header from '@/components/Header';
 import HistoryDetailModal from '@/components/app/HistoryDetailModal';
 import {
@@ -52,7 +53,33 @@ const History = () => {
       }
 
       console.log('History page: User loaded, loading history for:', user.id);
-      loadHistory();
+      
+      // Sync user data on sign-in (migrate from other user IDs with same email)
+      const email = user.primaryEmailAddress?.emailAddress;
+      if (email) {
+        syncUserDataOnSignIn(user.id, email).then(syncResult => {
+          if (syncResult.migrated) {
+            console.log('✅ User data synced:', {
+              historyMigrated: syncResult.historyMigrated,
+              favoritesMigrated: syncResult.favoritesMigrated,
+              profileMigrated: syncResult.profileMigrated,
+            });
+            // Reload history after sync
+            setTimeout(() => {
+              loadHistory();
+            }, 500);
+          } else {
+            // No migration needed, just load history
+            loadHistory();
+          }
+        }).catch(err => {
+          console.error('❌ Error syncing user data:', err);
+          // Still load history even if sync fails
+          loadHistory();
+        });
+      } else {
+        loadHistory();
+      }
     } else {
       console.log('History page: User state not loaded yet');
     }
@@ -181,11 +208,12 @@ const History = () => {
     if (!user) return;
 
     try {
+      const userEmail = user.primaryEmailAddress?.emailAddress;
       if (favorites.includes(outfitId)) {
         await removeFromFavorites(user.id, outfitId);
         setFavorites(prev => prev.filter(id => id !== outfitId));
       } else {
-        await addToFavorites(user.id, outfitId);
+        await addToFavorites(user.id, outfitId, userEmail);
         setFavorites(prev => [...prev, outfitId]);
       }
     } catch (error) {

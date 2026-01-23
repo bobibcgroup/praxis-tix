@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { useEffect, useRef } from 'react';
 import type { PersonalData } from '@/types/praxis';
 import { 
   getRecommendedSwatches,
@@ -28,6 +29,7 @@ const DEFAULT_METALS = 'Silver, Gold, Rose Gold';
 
 const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps) => {
   const { user, isLoaded } = useUser();
+  const hasAutoSaved = useRef(false);
   
   // Get color swatches - use detected or defaults
   const skinToneBucket = personalData.skinTone?.bucket;
@@ -40,15 +42,25 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
     ? getMetalRecommendations(skinToneBucket) 
     : DEFAULT_METALS;
 
-  const handleSaveStyle = async () => {
+  const handleSaveStyle = async (isAutoSave = false) => {
     // If not authenticated, show sign-in modal
     if (!user) {
       // The button will trigger SignInButton modal
       return;
     }
 
-    // Save style DNA to localStorage
-    const styleDNA = {
+    // Validate that we have at least lifestyle or styleDNA to save
+    if (!personalData.lifestyle && !personalData.styleDNA) {
+      console.warn('⚠️ Cannot save profile: missing lifestyle and styleDNA');
+      if (!isAutoSave) {
+        toast.error('Please complete the style flow first');
+      }
+      return;
+    }
+
+    // Create styleDNA object for localStorage (even if personalData.styleDNA is missing)
+    // This ensures we save the color recommendations and other data
+    const styleDNAForStorage = {
       colorSwatches,
       metalRecommendation,
       skinTone: personalData.skinTone,
@@ -59,21 +71,63 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
     };
     
     try {
-      localStorage.setItem('praxis_style_dna', JSON.stringify(styleDNA));
+      localStorage.setItem('praxis_style_dna', JSON.stringify(styleDNAForStorage));
+      console.log('✅ Style DNA saved to localStorage');
+      
+      // Prepare profile data for database save
+      // Ensure we have at least lifestyle, even if styleDNA is missing
+      const profileDataToSave: typeof personalData = {
+        ...personalData,
+        lifestyle: personalData.lifestyle || '',
+        // If styleDNA is missing but we have lifestyle, create a minimal styleDNA
+        styleDNA: personalData.styleDNA || (personalData.lifestyle ? {
+          primaryStyle: 'CLASSIC_TAILORED' as any, // Default style
+          confidence: 'medium' as any
+        } : undefined),
+      };
       
       // Save to database
       try {
-        await saveUserProfile(user.id, personalData);
+        console.log('💾 Saving profile to database:', {
+          hasStyleDNA: !!profileDataToSave.styleDNA,
+          lifestyle: profileDataToSave.lifestyle,
+          hasFitCalibration: !!profileDataToSave.fitCalibration
+        });
+        const userEmail = user.primaryEmailAddress?.emailAddress;
+        await saveUserProfile(user.id, profileDataToSave, userEmail);
+        console.log('✅ Profile saved successfully to database');
+        if (!isAutoSave) {
+          toast.success('Style DNA saved');
+        }
       } catch (err) {
-        console.error('Error saving to database:', err);
-        // Don't show error, localStorage save succeeded
+        console.error('❌ Error saving to database:', err);
+        console.error('   Error details:', err);
+        if (!isAutoSave) {
+          toast.error(`Could not save your style: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+        // Don't throw - localStorage save succeeded
       }
-      
-      toast.success('Style DNA saved');
-    } catch {
-      toast.error('Could not save your style');
+    } catch (err) {
+      console.error('❌ Error saving style DNA to localStorage:', err);
+      if (!isAutoSave) {
+        toast.error('Could not save your style');
+      }
     }
   };
+
+  // Auto-save profile when component mounts and user is authenticated
+  // Save if we have styleDNA OR lifestyle (for cases where photo was skipped)
+  useEffect(() => {
+    if (isLoaded && user && (personalData.styleDNA || personalData.lifestyle) && !hasAutoSaved.current) {
+      hasAutoSaved.current = true;
+      console.log('💾 Auto-saving profile after Style DNA completion', {
+        hasStyleDNA: !!personalData.styleDNA,
+        hasLifestyle: !!personalData.lifestyle
+      });
+      handleSaveStyle(true); // Pass true to indicate auto-save (no toast)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, user, personalData.styleDNA, personalData.lifestyle]);
 
   return (
     <div className="max-w-md mx-auto px-4 py-12">

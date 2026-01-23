@@ -20,29 +20,56 @@ export interface OutfitHistoryEntry {
  */
 export async function saveUserProfile(
   userId: string,
-  personalData: PersonalData
+  personalData: PersonalData,
+  email?: string // Optional email for cross-device sync
 ): Promise<void> {
   if (!supabase) {
     console.warn('Supabase not configured. Profile not saved.');
     return;
   }
 
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({
-        user_id: userId,
-        style_dna: personalData.styleDNA,
-        fit_calibration: personalData.fitCalibration,
-        lifestyle: personalData.lifestyle,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id',
-      });
+  // Validate that we have at least something to save
+  if (!personalData.styleDNA && !personalData.lifestyle && !personalData.fitCalibration) {
+    console.warn('⚠️ Cannot save profile: no data to save (missing styleDNA, lifestyle, and fitCalibration)');
+    throw new Error('No profile data to save');
+  }
 
-    if (error) throw error;
+  try {
+    const profileData: any = {
+      user_id: userId,
+      style_dna: personalData.styleDNA || null,
+      fit_calibration: personalData.fitCalibration || null,
+      lifestyle: personalData.lifestyle || null,
+      updated_at: new Date().toISOString(),
+    };
+    
+    // Add email if provided (for cross-device sync)
+    if (email) {
+      profileData.email = email;
+    }
+
+    console.log('💾 Saving profile to database:', {
+      userId,
+      hasStyleDNA: !!profileData.style_dna,
+      hasFitCalibration: !!profileData.fit_calibration,
+      lifestyle: profileData.lifestyle
+    });
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert(profileData, {
+        onConflict: 'user_id',
+      })
+      .select();
+
+    if (error) {
+      console.error('❌ Supabase error saving profile:', error);
+      throw error;
+    }
+
+    console.log('✅ Profile saved successfully:', data?.[0]?.id);
   } catch (error) {
-    console.error('Error saving profile:', error);
+    console.error('❌ Error saving profile:', error);
     throw error;
   }
 }
@@ -91,7 +118,8 @@ export async function saveOutfitToHistory(
   animatedVideoUrl?: string,
   styleName?: string,
   styleDNA?: StyleDNA,
-  colorPalette?: Array<{ name: string; hex: string }>
+  colorPalette?: Array<{ name: string; hex: string }>,
+  email?: string // Optional email for cross-device sync
 ): Promise<string | null> {
   if (!supabase) {
     // Fallback to localStorage
@@ -128,7 +156,7 @@ export async function saveOutfitToHistory(
       throw new Error('Occasion is required');
     }
 
-    console.log('💾 Saving outfit to history:', { userId, outfitId: outfit.id, occasion });
+    console.log('💾 Saving outfit to history:', { userId, outfitId: outfit.id, occasion, email });
     
     // Build insert object - exclude color_palette and style_dna as columns don't exist in database
     const insertData: any = {
@@ -143,6 +171,11 @@ export async function saveOutfitToHistory(
       // Note: style_dna and color_palette columns don't exist in database schema
       // The data will be stored in localStorage fallback if needed
     };
+    
+    // Add email if provided (for cross-device sync)
+    if (email) {
+      insertData.email = email;
+    }
     
     const { data, error } = await supabase
       .from('outfit_history')
@@ -248,7 +281,8 @@ export async function updateOutfitHistoryTryOn(
   styleName?: string,
   styleDNA?: StyleDNA,
   colorPalette?: Array<{ name: string; hex: string }>,
-  outfitId?: number // Optional: used as fallback if historyId is missing
+  outfitId?: number, // Optional: used as fallback if historyId is missing
+  email?: string // Optional email for cross-device sync
 ): Promise<void> {
   if (!historyId && !outfitId) {
     console.error('❌ Cannot update history: both historyId and outfitId are missing');
@@ -292,6 +326,11 @@ export async function updateOutfitHistoryTryOn(
       style_name: styleName || null,
       // Note: style_dna and color_palette columns don't exist in database schema
     };
+    
+    // Update email if provided (for cross-device sync and backfilling)
+    if (email) {
+      updateData.email = email;
+    }
     
     console.log('🔄 Updating history entry:', { historyId, outfitId, userId, styleName, hasTryOnUrl: !!tryOnImageUrl });
     
@@ -554,7 +593,11 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
 /**
  * Add outfit to favorites
  */
-export async function addToFavorites(userId: string, outfitId: number): Promise<void> {
+export async function addToFavorites(
+  userId: string, 
+  outfitId: number,
+  email?: string // Optional email for cross-device sync
+): Promise<void> {
   if (!supabase) {
     const favorites = JSON.parse(localStorage.getItem('praxis_favorites') || '[]');
     if (!favorites.includes(outfitId)) {
@@ -565,12 +608,19 @@ export async function addToFavorites(userId: string, outfitId: number): Promise<
   }
 
   try {
+    const insertData: any = {
+      user_id: userId,
+      outfit_id: outfitId,
+    };
+    
+    // Add email if provided (for cross-device sync)
+    if (email) {
+      insertData.email = email;
+    }
+    
     const { error } = await supabase
       .from('favorites')
-      .insert({
-        user_id: userId,
-        outfit_id: outfitId,
-      });
+      .insert(insertData);
 
     if (error) throw error;
   } catch (error) {

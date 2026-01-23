@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart, RotateCcw } from 'lucide-react';
 import { getUserProfile } from '@/lib/userService';
+import { syncUserDataOnSignIn } from '@/lib/userSync';
 import type { PersonalData } from '@/types/praxis';
 import Header from '@/components/Header';
 import { getRecommendedSwatches, getMetalRecommendations } from '@/lib/personalOutfitGenerator';
@@ -22,8 +23,24 @@ const DEFAULT_METALS = 'Silver, Gold, Rose Gold';
 const Profile = () => {
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const [profile, setProfile] = useState<PersonalData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const loadProfile = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const data = await getUserProfile(user.id);
+      setProfile(data);
+      console.log('✅ Profile loaded:', data ? 'has styleDNA' : 'no profile');
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -32,23 +49,75 @@ const Profile = () => {
         return;
       }
 
-      loadProfile();
+      // Sync user data on sign-in (migrate from other user IDs with same email)
+      const email = user.primaryEmailAddress?.emailAddress;
+      if (email) {
+        syncUserDataOnSignIn(user.id, email).then(syncResult => {
+          if (syncResult.migrated) {
+            console.log('✅ User data synced on Profile:', {
+              historyMigrated: syncResult.historyMigrated,
+              favoritesMigrated: syncResult.favoritesMigrated,
+              profileMigrated: syncResult.profileMigrated,
+            });
+            // Reload profile after sync
+            setTimeout(() => {
+              loadProfile();
+            }, 500);
+          } else {
+            // No migration needed, just load profile
+            loadProfile();
+          }
+        }).catch(err => {
+          console.error('❌ Error syncing user data:', err);
+          // Still load profile even if sync fails
+          loadProfile();
+        });
+      } else {
+        loadProfile();
+      }
     }
-  }, [user, isLoaded]);
+  }, [user, isLoaded, location.pathname, loadProfile, navigate]); // Reload when route changes
 
-  const loadProfile = async () => {
+  // Also reload when page comes into focus (in case profile was updated in another tab/window)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isLoaded && user) {
+        console.log('🔄 Profile page focused, reloading profile...');
+        loadProfile();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isLoaded, user, loadProfile]);
+
+  // Reload profile when image generation completes or profile refresh is requested
+  useEffect(() => {
     if (!user) return;
 
-    try {
-      setLoading(true);
-      const data = await getUserProfile(user.id);
-      setProfile(data);
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleGenerationComplete = () => {
+      console.log('🔄 Profile page: Generation complete, reloading profile...');
+      // Small delay to ensure database update completes
+      setTimeout(() => {
+        loadProfile();
+      }, 500);
+    };
+
+    const handleProfileRefresh = () => {
+      console.log('🔄 Profile page: Refresh requested, reloading profile...');
+      // Small delay to ensure database update completes
+      setTimeout(() => {
+        loadProfile();
+      }, 500);
+    };
+
+    window.addEventListener('generation-complete', handleGenerationComplete as EventListener);
+    window.addEventListener('profile-should-refresh', handleProfileRefresh as EventListener);
+    return () => {
+      window.removeEventListener('generation-complete', handleGenerationComplete as EventListener);
+      window.removeEventListener('profile-should-refresh', handleProfileRefresh as EventListener);
+    };
+  }, [user, loadProfile]);
 
   if (!isLoaded || loading) {
     return (
@@ -109,7 +178,7 @@ const Profile = () => {
           </div>
         </div>
 
-        {!profile || !profile.styleDNA ? (
+        {!profile || (!profile.styleDNA && !profile.lifestyle && !profile.fitCalibration) ? (
           <div className="text-center py-12">
             <UserIcon className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
             <p className="text-muted-foreground mb-2">No style profile yet</p>

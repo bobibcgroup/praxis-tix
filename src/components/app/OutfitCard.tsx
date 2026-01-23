@@ -107,12 +107,13 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
     }
 
     try {
+      const userEmail = user.primaryEmailAddress?.emailAddress;
       if (isFavorited) {
         await removeFromFavorites(user.id, outfit.id);
         setIsFavorited(false);
         toast.success('Removed from favorites');
       } else {
-        await addToFavorites(user.id, outfit.id);
+        await addToFavorites(user.id, outfit.id, userEmail);
         setIsFavorited(true);
         toast.success('Added to favorites');
       }

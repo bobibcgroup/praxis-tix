@@ -6,6 +6,7 @@ import { useUser } from '@clerk/clerk-react';
 import { useEffect, useState, useCallback } from 'react';
 import { getOutfitHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
+import { syncUserDataOnSignIn } from '@/lib/userSync';
 import { toast } from 'sonner';
 import { getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 
@@ -75,9 +76,39 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (isLoaded && user) {
-      loadRecentStyles();
-      loadGeneratedOutfits();
-      checkActiveGeneration();
+      // Sync user data on sign-in (migrate from other user IDs with same email)
+      const email = user.primaryEmailAddress?.emailAddress;
+      if (email) {
+        syncUserDataOnSignIn(user.id, email).then(syncResult => {
+          if (syncResult.migrated) {
+            console.log('✅ User data synced on Dashboard:', {
+              historyMigrated: syncResult.historyMigrated,
+              favoritesMigrated: syncResult.favoritesMigrated,
+              profileMigrated: syncResult.profileMigrated,
+            });
+            // Reload data after sync
+            setTimeout(() => {
+              loadRecentStyles();
+              loadGeneratedOutfits();
+            }, 500);
+          } else {
+            // No migration needed, just load data
+            loadRecentStyles();
+            loadGeneratedOutfits();
+          }
+          checkActiveGeneration();
+        }).catch(err => {
+          console.error('❌ Error syncing user data:', err);
+          // Still load data even if sync fails
+          loadRecentStyles();
+          loadGeneratedOutfits();
+          checkActiveGeneration();
+        });
+      } else {
+        loadRecentStyles();
+        loadGeneratedOutfits();
+        checkActiveGeneration();
+      }
     } else {
       setLoading(false);
     }
@@ -90,7 +121,7 @@ const Dashboard = () => {
     // Listen for generation completion events
     const handleGenerationComplete = async (event: CustomEvent) => {
       const detail = event.detail || {};
-      const { imageUrl, historyEntryId, userId, styleName, personalData, outfitId } = detail;
+      const { imageUrl, historyEntryId, userId, styleName, personalData, outfitId, email } = detail;
       
       console.log('🎉 Generation complete event received:', detail);
       
@@ -103,6 +134,9 @@ const Dashboard = () => {
             ? getRecommendedSwatches(personalData.skinTone.bucket).slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
             : undefined;
           
+          // Use email from event, fallback to user email
+          const userEmail = email || user?.primaryEmailAddress?.emailAddress;
+          
           await updateOutfitHistoryTryOn(
             userId,
             historyEntryId || null,
@@ -110,10 +144,15 @@ const Dashboard = () => {
             styleName || undefined,
             personalData?.styleDNA || undefined,
             colorPalette,
-            outfitId // Pass outfitId as fallback
+            outfitId, // Pass outfitId as fallback
+            userEmail // Email for cross-device sync
           );
           
           console.log('✅ History updated with try-on image:', { historyEntryId, outfitId });
+          
+          // Dispatch a custom event to notify Profile page to refresh
+          // Profile will be saved by StepStyleDNA when it mounts, we just need to refresh
+          window.dispatchEvent(new CustomEvent('profile-should-refresh'));
         } catch (err) {
           console.error('❌ Error updating history with try-on URL:', err);
           // Don't show error toast - generation succeeded, just history update failed

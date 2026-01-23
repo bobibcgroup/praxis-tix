@@ -15,7 +15,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('generation-complete', async (event: Event) => {
     const customEvent = event as CustomEvent;
     const detail = customEvent.detail || {};
-    const { imageUrl, historyEntryId, userId, styleName, personalData, outfitId } = detail;
+    const { imageUrl, historyEntryId, userId, styleName, personalData, outfitId, email } = detail;
     
     // Only process if we have the necessary data
     // We can update even if historyEntryId is missing by using outfitId as fallback
@@ -37,10 +37,15 @@ if (typeof window !== 'undefined') {
           styleName || undefined,
           personalData?.styleDNA || undefined,
           colorPalette,
-          outfitId // Pass outfitId as fallback
+          outfitId, // Pass outfitId as fallback
+          email // Email from event detail
         );
         
         console.log('✅ [Global] History updated with try-on image:', { historyEntryId, outfitId });
+        
+        // Dispatch a custom event to notify Profile page to refresh
+        // Profile will be saved by StepStyleDNA when it mounts, we just need to refresh
+        window.dispatchEvent(new CustomEvent('profile-should-refresh'));
         
         // Clear localStorage
         localStorage.removeItem('praxis_active_generation');

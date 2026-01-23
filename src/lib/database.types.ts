@@ -8,6 +8,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          email: string | null; // User email for cross-device sync
           style_dna: any | null;
           fit_calibration: any | null;
           lifestyle: string | null;
@@ -17,6 +18,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
+          email?: string | null; // User email for cross-device sync
           style_dna?: any | null;
           fit_calibration?: any | null;
           lifestyle?: string | null;
@@ -26,6 +28,7 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
+          email?: string | null; // User email for cross-device sync
           style_dna?: any | null;
           fit_calibration?: any | null;
           lifestyle?: string | null;
@@ -37,6 +40,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          email: string | null; // User email for cross-device sync
           outfit_id: number;
           occasion: string;
           outfit_data: any;
@@ -48,6 +52,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
+          email?: string | null; // User email for cross-device sync
           outfit_id: number;
           occasion: string;
           outfit_data: any;
@@ -59,6 +64,7 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
+          email?: string | null; // User email for cross-device sync
           outfit_id?: number;
           occasion?: string;
           outfit_data?: any;
@@ -72,18 +78,21 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          email: string | null; // User email for cross-device sync
           outfit_id: number;
           created_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
+          email?: string | null; // User email for cross-device sync
           outfit_id: number;
           created_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
+          email?: string | null; // User email for cross-device sync
           outfit_id?: number;
           created_at?: string;
         };

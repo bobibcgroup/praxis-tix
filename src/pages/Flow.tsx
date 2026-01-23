@@ -374,7 +374,8 @@ const Flow = () => {
                       undefined,
                       undefined, // styleName - will be set when user names it
                       undefined,
-                      undefined
+                      undefined,
+                      user.primaryEmailAddress?.emailAddress // Email for cross-device sync
                     );
                     
                     setHistoryEntryId(entryId);
@@ -610,7 +611,8 @@ const Flow = () => {
                       undefined,
                       undefined, // styleName - will be set when try-on completes
                       personal.styleDNA || undefined,
-                      colorPalette || undefined
+                      colorPalette || undefined,
+                      user.primaryEmailAddress?.emailAddress // Email for cross-device sync
                     );
                     
                     setHistoryEntryId(entryId);
@@ -675,7 +677,8 @@ const Flow = () => {
                       styleName,
                       personal.styleDNA || undefined,
                       colorPalette || undefined,
-                      selectedOutfit.id // Pass outfitId as fallback
+                      selectedOutfit.id, // Pass outfitId as fallback
+                      user.primaryEmailAddress?.emailAddress // Email for cross-device sync
                     );
                     
                     console.log('✅ History updated successfully from onComplete');
