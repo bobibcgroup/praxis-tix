@@ -113,6 +113,7 @@ const Dashboard = () => {
       setActiveGeneration(null);
       localStorage.removeItem('praxis_active_generation');
       localStorage.removeItem('praxis_current_history_entry_id');
+      localStorage.removeItem('praxis_current_style_name');
       
       // Refresh data
       loadRecentStyles(); // Refresh to show new entry

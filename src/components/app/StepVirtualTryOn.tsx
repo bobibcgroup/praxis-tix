@@ -82,6 +82,9 @@ const StepVirtualTryOn = ({
         // Get generation state and history entry ID from localStorage
         const generationStateStr = localStorage.getItem('praxis_active_generation');
         const historyEntryId = localStorage.getItem('praxis_current_history_entry_id');
+        // Get styleName from localStorage (stored when user navigated away) or use current state
+        const storedStyleName = localStorage.getItem('praxis_current_style_name');
+        const finalStyleName = styleName || storedStyleName || null;
         
         // Dispatch custom event with all necessary data for history update
         const completionData = {
@@ -89,7 +92,7 @@ const StepVirtualTryOn = ({
           imageUrl: result.imageUrl,
           historyEntryId: historyEntryId || (generationStateStr ? JSON.parse(generationStateStr).historyEntryId : null),
           userId: user?.id,
-          styleName: styleName || null,
+          styleName: finalStyleName,
           personalData: personalData ? {
             styleDNA: personalData.styleDNA || null,
             skinTone: personalData.skinTone || null,
@@ -97,6 +100,11 @@ const StepVirtualTryOn = ({
         };
         
         console.log('✅ Generation complete, dispatching event with data:', completionData);
+        console.log('📝 Style name source:', { 
+          componentState: styleName, 
+          localStorage: storedStyleName, 
+          final: finalStyleName 
+        });
         
         // Dispatch custom event for dashboard/history to update
         window.dispatchEvent(new CustomEvent('generation-complete', { 
@@ -105,6 +113,8 @@ const StepVirtualTryOn = ({
         
         // Clear generation state from localStorage
         localStorage.removeItem('praxis_active_generation');
+        localStorage.removeItem('praxis_current_history_entry_id');
+        localStorage.removeItem('praxis_current_style_name');
         
         // If user navigated away, show notification when done
         if (document.hidden) {
@@ -209,6 +219,11 @@ const StepVirtualTryOn = ({
     if (user && isGenerating) {
       // Get historyEntryId from localStorage (stored when outfit was saved to history)
       const historyEntryId = localStorage.getItem('praxis_current_history_entry_id');
+      
+      // Store styleName separately so it's available when generation completes
+      if (styleName) {
+        localStorage.setItem('praxis_current_style_name', styleName);
+      }
       
       // Store generation state in localStorage for dashboard to track
       const generationState = {
