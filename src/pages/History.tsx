@@ -571,8 +571,7 @@ const History = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  );
+
       {/* History Detail Modal */}
       <HistoryDetailModal
         open={detailModalOpen}
