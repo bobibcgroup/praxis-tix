@@ -54,9 +54,16 @@ const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps
           <span className="block text-sm text-muted-foreground/80 mt-1">
             Smarter recommendations over time.
           </span>
-          <span className="inline-block mt-3 px-4 py-1.5 border border-border rounded-lg text-sm text-muted-foreground">
-            Sign in to personalize
-          </span>
+          {isLoaded && !user && (
+            <span className="inline-block mt-3 px-4 py-1.5 border border-border rounded-lg text-sm text-muted-foreground">
+              Sign in to personalize
+            </span>
+          )}
+          {isLoaded && user && (
+            <span className="inline-block mt-3 px-4 py-1.5 border border-primary/30 bg-primary/5 rounded-lg text-sm text-primary">
+              Personalized for you
+            </span>
+          )}
         </button>
       </div>
     </FlowStep>

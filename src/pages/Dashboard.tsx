@@ -1,25 +1,87 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Calendar, Heart, UtensilsCrossed, Briefcase, Sparkles } from 'lucide-react';
+import { Calendar, Heart, UtensilsCrossed, Briefcase, Sparkles, Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
 import { useUser } from '@clerk/clerk-react';
 import { useEffect, useState } from 'react';
 import { getOutfitHistory } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
+import { toast } from 'sonner';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isLoaded } = useUser();
   const [recentStyles, setRecentStyles] = useState<OutfitHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeGeneration, setActiveGeneration] = useState<{
+    outfitId: number;
+    outfitTitle: string;
+    startedAt: string;
+    status: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isLoaded && user) {
       loadRecentStyles();
+      checkActiveGeneration();
     } else {
       setLoading(false);
     }
   }, [user, isLoaded]);
+
+  // Check for active generation on mount and listen for completion
+  useEffect(() => {
+    const checkActiveGeneration = () => {
+      const stored = localStorage.getItem('praxis_active_generation');
+      if (stored) {
+        try {
+          const generation = JSON.parse(stored);
+          setActiveGeneration(generation);
+        } catch (e) {
+          console.error('Error parsing generation state:', e);
+          localStorage.removeItem('praxis_active_generation');
+        }
+      } else {
+        setActiveGeneration(null);
+      }
+    };
+
+    checkActiveGeneration();
+
+    // Listen for generation completion events
+    const handleGenerationComplete = (event: CustomEvent) => {
+      setActiveGeneration(null);
+      loadRecentStyles(); // Refresh to show new entry
+      toast.success('Your style image is ready!');
+    };
+
+    window.addEventListener('generation-complete', handleGenerationComplete as EventListener);
+    
+    // Check periodically for completion (in case user navigated away and back)
+    const interval = setInterval(() => {
+      checkActiveGeneration();
+    }, 2000);
+
+    return () => {
+      window.removeEventListener('generation-complete', handleGenerationComplete as EventListener);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const checkActiveGeneration = () => {
+    const stored = localStorage.getItem('praxis_active_generation');
+    if (stored) {
+      try {
+        const generation = JSON.parse(stored);
+        setActiveGeneration(generation);
+      } catch (e) {
+        localStorage.removeItem('praxis_active_generation');
+        setActiveGeneration(null);
+      }
+    } else {
+      setActiveGeneration(null);
+    }
+  };
 
   const loadRecentStyles = async () => {
     if (!user) return;
@@ -100,6 +162,31 @@ const Dashboard = () => {
             Other Occasion
           </Button>
         </div>
+
+        {/* Active Generation Alert */}
+        {isLoaded && user && activeGeneration && (
+          <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Loader2 className="w-5 h-5 text-primary animate-spin mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground mb-1">
+                  Generating your style image
+                </p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {activeGeneration.outfitTitle} is being processed. This may take a few moments.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/history')}
+                  className="text-xs"
+                >
+                  View History
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Recent Styles (if authenticated) */}
         {isLoaded && user && !loading && recentStyles.length > 0 && (

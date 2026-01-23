@@ -22,6 +22,10 @@ import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Menu, LayoutDashboard, History, Heart, User, Settings } from 'lucide-react';
+import { useState } from 'react';
 import type { 
   OccasionData, 
   ContextData, 
@@ -98,6 +102,8 @@ const Flow = () => {
   const [historyEntryId, setHistoryEntryId] = useState<string | null>(null);
   
   const { user, isLoaded } = useUser();
+  const isMobile = useIsMobile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Check if we're editing profile or using outfit again or coming from dashboard
   useEffect(() => {
@@ -631,9 +637,9 @@ const Flow = () => {
               </button>
             )}
             
-            {/* Navigation - Center aligned - show when signed in */}
-            {isLoaded && user && (
-              <nav className="hidden md:flex items-center gap-1">
+            {/* Navigation - Desktop */}
+            {isLoaded && user && !isMobile && (
+              <nav className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -675,6 +681,81 @@ const Flow = () => {
                   Settings
                 </Button>
               </nav>
+            )}
+
+            {/* Mobile Menu */}
+            {isLoaded && user && isMobile && (
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="px-2">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px]">
+                  <nav className="flex flex-col gap-2 mt-6">
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      onClick={() => {
+                        window.location.href = '/dashboard';
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Dashboard
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      onClick={() => {
+                        window.location.href = '/history';
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <History className="w-4 h-4 mr-2" />
+                      History
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      onClick={() => {
+                        window.location.href = '/favorites';
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Heart className="w-4 h-4 mr-2" />
+                      Favorites
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      onClick={() => {
+                        window.location.href = '/profile';
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      My Style
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      onClick={() => {
+                        window.location.href = '/settings';
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Settings
+                    </Button>
+                  </nav>
+                </SheetContent>
+              </Sheet>
             )}
             
             {/* User actions */}

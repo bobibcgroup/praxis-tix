@@ -79,10 +79,18 @@ const StepVirtualTryOn = ({
         setTryOnImage(result.imageUrl);
         setIsGenerating(false);
         
+        // Clear generation state from localStorage
+        localStorage.removeItem('praxis_active_generation');
+        
         // If user navigated away, show notification when done
         if (document.hidden) {
           toast.success('Your style image is ready!');
         }
+        
+        // Dispatch custom event for dashboard to update
+        window.dispatchEvent(new CustomEvent('generation-complete', { 
+          detail: { outfitId: outfit.id, imageUrl: result.imageUrl } 
+        }));
       } catch (err) {
         console.error('Try-on generation error:', err);
         const errorMessage = err instanceof Error ? err.message : 'Failed to generate try-on image';
@@ -100,6 +108,9 @@ const StepVirtualTryOn = ({
           setError(`Unable to generate preview: ${errorMessage}. Your outfit selection is still perfect—continue to see your Style DNA.`);
         }
         setIsGenerating(false);
+        
+        // Clear generation state on error
+        localStorage.removeItem('praxis_active_generation');
       }
     })();
 
@@ -170,6 +181,35 @@ const StepVirtualTryOn = ({
   };
 
   const handleGoToDashboard = () => {
+    if (user && isGenerating) {
+      // Store generation state in localStorage for dashboard to track
+      const generationState = {
+        outfitId: outfit.id,
+        outfitTitle: outfit.title,
+        startedAt: new Date().toISOString(),
+        status: 'generating',
+      };
+      localStorage.setItem('praxis_active_generation', JSON.stringify(generationState));
+      
+      // Set up listener for when generation completes
+      const checkGenerationComplete = () => {
+        if (tryOnImage) {
+          localStorage.removeItem('praxis_active_generation');
+          toast.success('Your style image is ready!');
+        }
+      };
+      
+      // Check periodically if generation completed
+      const interval = setInterval(() => {
+        if (tryOnImage) {
+          clearInterval(interval);
+          checkGenerationComplete();
+        }
+      }, 1000);
+      
+      // Clean up interval after 5 minutes (generation should be done by then)
+      setTimeout(() => clearInterval(interval), 5 * 60 * 1000);
+    }
     navigate('/dashboard');
   };
 
@@ -223,15 +263,17 @@ const StepVirtualTryOn = ({
         </p>
       </div>
       
-      <Button
-        onClick={handleGoToDashboard}
-        variant="outline"
-        size="lg"
-        className="mt-4"
-      >
-        <ArrowRight className="w-4 h-4 mr-2" />
-        Go to Dashboard
-      </Button>
+      {user && (
+        <Button
+          onClick={handleGoToDashboard}
+          variant="outline"
+          size="lg"
+          className="mt-4"
+        >
+          <ArrowRight className="w-4 h-4 mr-2" />
+          Go to Dashboard
+        </Button>
+      )}
     </div>
   );
 
