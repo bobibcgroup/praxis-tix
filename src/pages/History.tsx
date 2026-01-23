@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2, Palette, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2, Palette, RefreshCw, Loader2, CheckSquare, Square } from 'lucide-react';
 import { getOutfitHistory, deleteOutfitFromHistory, addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
 import { syncUserDataOnSignIn } from '@/lib/userSync';
@@ -43,6 +43,8 @@ const History = () => {
   const [generatingEntryIds, setGeneratingEntryIds] = useState<Set<string>>(new Set());
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<OutfitHistoryEntry | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (isLoaded) {
@@ -182,6 +184,47 @@ const History = () => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (!user || selectedIds.size === 0) return;
+
+    try {
+      // Delete all selected entries
+      const deletePromises = Array.from(selectedIds).map(id => 
+        deleteOutfitFromHistory(user.id, id)
+      );
+      await Promise.all(deletePromises);
+      
+      // Update history state
+      setHistory(prev => prev.filter(entry => !selectedIds.has(entry.id)));
+      setSelectedIds(new Set());
+      setBulkDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error bulk deleting outfits:', error);
+    }
+  };
+
+  const handleToggleSelect = (entryId: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(entryId)) {
+        newSet.delete(entryId);
+      } else {
+        newSet.add(entryId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredAndSortedHistory.length) {
+      // Deselect all
+      setSelectedIds(new Set());
+    } else {
+      // Select all visible entries
+      setSelectedIds(new Set(filteredAndSortedHistory.map(e => e.id)));
+    }
+  };
+
   const handleToggleFavorite = async (outfitId: number) => {
     if (!user) return;
 
@@ -298,6 +341,34 @@ const History = () => {
         {/* Filters and Search */}
         {history.length > 0 && (
           <div className="mb-6 space-y-4">
+            {/* Bulk Actions Bar */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">
+                    {selectedIds.size} {selectedIds.size === 1 ? 'item' : 'items'} selected
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Clear selection
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setBulkDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete {selectedIds.size}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
             {/* Full-width search on mobile */}
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -360,15 +431,60 @@ const History = () => {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Select All Checkbox */}
+            {filteredAndSortedHistory.length > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                <button
+                  onClick={handleSelectAll}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {selectedIds.size === filteredAndSortedHistory.length ? (
+                    <CheckSquare className="w-5 h-5 text-primary" />
+                  ) : (
+                    <Square className="w-5 h-5" />
+                  )}
+                  <span>
+                    {selectedIds.size === filteredAndSortedHistory.length 
+                      ? 'Deselect all' 
+                      : 'Select all'}
+                  </span>
+                </button>
+              </div>
+            )}
+            
             {filteredAndSortedHistory.map((entry) => (
               <div
                 key={entry.id}
-                onClick={() => {
-                  setSelectedEntry(entry);
-                  setDetailModalOpen(true);
-                }}
-                className="bg-card rounded-xl border border-border p-6 hover:border-primary/50 transition-colors duration-200 cursor-pointer"
+                className={`bg-card rounded-xl border p-6 transition-colors duration-200 ${
+                  selectedIds.has(entry.id) 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-border hover:border-primary/50'
+                }`}
               >
+                <div className="flex items-start gap-4 mb-4">
+                  {/* Checkbox */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleSelect(entry.id);
+                    }}
+                    className="mt-1 flex-shrink-0"
+                  >
+                    {selectedIds.has(entry.id) ? (
+                      <CheckSquare className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Square className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </button>
+                  
+                  {/* Entry Content */}
+                  <div
+                    onClick={() => {
+                      setSelectedEntry(entry);
+                      setDetailModalOpen(true);
+                    }}
+                    className="flex-1 cursor-pointer"
+                  >
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* Image - more compact on mobile */}
                   <div 
@@ -542,6 +658,8 @@ const History = () => {
                     </div>
                   </div>
                 </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -560,6 +678,24 @@ const History = () => {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedIds.size} Outfits</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete {selectedIds.size} {selectedIds.size === 1 ? 'outfit' : 'outfits'} from your history? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete {selectedIds.size}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
