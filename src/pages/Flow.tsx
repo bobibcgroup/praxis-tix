@@ -16,6 +16,7 @@ import StepPersonalResults from '@/components/app/StepPersonalResults';
 import StepStyleDNA from '@/components/app/StepStyleDNA';
 import StepPersonalLoading from '@/components/app/StepPersonalLoading';
 import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
+import StepSignInPrompt from '@/components/app/StepSignInPrompt';
 import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
 import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
@@ -69,7 +70,7 @@ const initialPersonal: PersonalData = {
 // Quick flow (mode = 'quick'):
 //   1: Occasion, 2: Context, 3: Preferences, 4: Results, 5: Virtual Try-On, 6: Complete (with upsell)
 // Personal flow (mode = 'personal'):
-//   10: Photo, 11: Fit Calibration, 12: Lifestyle, 13: Inspiration, 14: Wardrobe, 15: Loading, 16: Personal Results, 17: Virtual Try-On, 18: Style DNA (final)
+//   10: Photo, 11: Fit Calibration, 12: Lifestyle, 13: Inspiration, 13.5: Sign-In Prompt, 14: Wardrobe, 15: Loading, 16: Personal Results, 17: Virtual Try-On, 18: Style DNA (final)
 
 const Flow = () => {
   const location = useLocation();
@@ -229,9 +230,11 @@ const Flow = () => {
       }
     }
     if (mode === 'personal') {
-      // Personal flow: 10=Photo, 11=Fit, 12=Lifestyle, 13=Inspiration, 14=Wardrobe, 15=Loading, 16=Results, 17=TryOn, 18=StyleDNA
-      if (step >= 10 && step <= 18) {
-        return { current: step - 9, total: 9, show: true };
+      // Personal flow: 10=Photo, 11=Fit, 12=Lifestyle, 13=Inspiration, 13.5=SignIn, 14=Wardrobe, 15=Loading, 16=Results, 17=TryOn, 18=StyleDNA
+      // Don't show progress for sign-in step (13.5)
+      if (step >= 10 && step <= 18 && step !== 13.5) {
+        const adjustedStep = step > 13.5 ? step - 9 : step - 9;
+        return { current: adjustedStep, total: 9, show: true };
       }
     }
     return { current: 0, total: 0, show: false };
@@ -239,7 +242,7 @@ const Flow = () => {
 
   // Show "Start over" in header for intermediate steps
   const showStartOver = (mode === 'quick' && step >= 1 && step <= 5) || 
-                        (mode === 'personal' && step >= 10 && step <= 17);
+                        (mode === 'personal' && step >= 10 && step <= 17 && step !== 13.5);
 
   const progress = getProgressInfo();
 
@@ -454,17 +457,16 @@ const Flow = () => {
           />
         );
       case 13:
-        // Guard: Require authentication
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         return (
           <StepInspiration
             onInspirationPhoto={(photoData: string) => {
               setPersonal(p => ({ ...p, hasInspiration: true, inspirationData: photoData }));
-              setStep(14);
+              // Check if authenticated, if not show sign-in prompt
+              if (isLoaded && !user) {
+                setStep(13.5); // Sign-in prompt step
+              } else {
+                setStep(14);
+              }
             }}
             onInspirationPreset={(preset: InspirationPresetType, images: string[], styleDNA: StyleDNA) => {
               setPersonal(p => ({ 
@@ -474,10 +476,31 @@ const Flow = () => {
                 styleDirectionImages: images,
                 styleDNA 
               }));
-              setStep(14);
+              // Check if authenticated, if not show sign-in prompt
+              if (isLoaded && !user) {
+                setStep(13.5); // Sign-in prompt step
+              } else {
+                setStep(14);
+              }
             }}
-            onSkip={() => setStep(14)}
+            onSkip={() => {
+              // Check if authenticated, if not show sign-in prompt
+              if (isLoaded && !user) {
+                setStep(13.5); // Sign-in prompt step
+              } else {
+                setStep(14);
+              }
+            }}
             onBack={() => setStep(12)}
+          />
+        );
+      case 13.5:
+        // Sign-in prompt step - appears after inspiration selection
+        return (
+          <StepSignInPrompt
+            onSignInComplete={() => setStep(14)}
+            onBack={() => setStep(13)}
+            onSkip={() => setStep(14)} // Allow continuing without sign-in
           />
         );
       case 14:

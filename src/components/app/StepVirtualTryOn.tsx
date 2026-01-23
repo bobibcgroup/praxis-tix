@@ -173,39 +173,56 @@ const StepVirtualTryOn = ({
     navigate('/dashboard');
   };
 
-  // Funny loading animation component
+  // Funny loading animation component - person changing clothes
   const LoadingAnimation = () => (
     <div className="flex flex-col items-center justify-center py-12 space-y-6">
-      <div className="relative w-32 h-32">
-        {/* Person changing clothes animation */}
+      <div className="relative w-40 h-40">
+        {/* Person silhouette */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-20 h-20 bg-primary/20 rounded-full animate-pulse" />
+          {/* Head */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-12 bg-primary/30 rounded-full animate-pulse" />
+          {/* Body - changing animation */}
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 w-16 h-20 bg-primary/20 rounded-lg animate-pulse" 
+               style={{ animationDuration: '1.5s' }} />
+          {/* Legs */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="w-4 h-12 bg-primary/20 rounded animate-pulse" style={{ animationDelay: '0.2s' }} />
+            <div className="w-4 h-12 bg-primary/20 rounded animate-pulse" style={{ animationDelay: '0.4s' }} />
+          </div>
         </div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-16 h-16 bg-primary/30 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
+        
+        {/* Floating clothes pieces */}
+        <div className="absolute top-2 left-1/4 animate-bounce" style={{ animationDelay: '0s', animationDuration: '2s' }}>
+          <div className="w-10 h-10 bg-primary/30 rounded-lg rotate-12 shadow-lg" />
         </div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-12 h-12 bg-primary/40 rounded-full animate-ping" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-8 right-1/4 animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '2s' }}>
+          <div className="w-8 h-8 bg-primary/30 rounded-lg -rotate-12 shadow-lg" />
         </div>
-        {/* Clothes icons floating */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 animate-bounce" style={{ animationDelay: '0s' }}>
-          <div className="w-8 h-8 bg-primary/30 rounded rotate-12" />
+        <div className="absolute bottom-2 left-1/3 animate-bounce" style={{ animationDelay: '1s', animationDuration: '2s' }}>
+          <div className="w-9 h-9 bg-primary/30 rounded-lg rotate-45 shadow-lg" />
         </div>
-        <div className="absolute bottom-0 right-0 animate-bounce" style={{ animationDelay: '0.3s' }}>
-          <div className="w-6 h-6 bg-primary/30 rounded -rotate-12" />
+        <div className="absolute bottom-4 right-1/3 animate-bounce" style={{ animationDelay: '1.5s', animationDuration: '2s' }}>
+          <div className="w-7 h-7 bg-primary/30 rounded-lg -rotate-45 shadow-lg" />
         </div>
-        <div className="absolute bottom-0 left-0 animate-bounce" style={{ animationDelay: '0.6s' }}>
-          <div className="w-7 h-7 bg-primary/30 rounded rotate-45" />
-        </div>
+        
+        {/* Sparkle effects */}
+        <div className="absolute top-6 right-6 w-2 h-2 bg-primary rounded-full animate-ping" />
+        <div className="absolute bottom-8 left-8 w-2 h-2 bg-primary rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
+        <div className="absolute top-1/2 right-2 w-2 h-2 bg-primary rounded-full animate-ping" style={{ animationDelay: '1s' }} />
       </div>
-      <div className="text-center space-y-2">
-        <p className="text-lg font-medium text-foreground">
+      
+      <div className="text-center space-y-2 max-w-sm">
+        <p className="text-lg font-medium text-foreground animate-pulse">
           Getting you dressed...
         </p>
         <p className="text-sm text-muted-foreground">
-          This might take a moment. Feel free to explore while we work!
+          Our stylist is working their magic! This might take a moment.
+        </p>
+        <p className="text-xs text-muted-foreground/70 italic">
+          Feel free to explore while we work!
         </p>
       </div>
+      
       <Button
         onClick={handleGoToDashboard}
         variant="outline"

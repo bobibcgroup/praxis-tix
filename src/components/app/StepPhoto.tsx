@@ -499,37 +499,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
     );
   }
 
-  // Sign-in prompt if not authenticated
-  if (isLoaded && !user) {
-    return (
-      <FlowStep 
-        title="Build my personal style"
-        subtitle="Sign in to continue building your personalized style profile."
-        onBack={onBack}
-      >
-        <div className="space-y-6">
-          <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <div className="flex items-start gap-3">
-              <User className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-foreground mb-2">
-                  Sign in to save your style profile and access your outfit history across all devices.
-                </p>
-                <SignInButton mode="modal">
-                  <Button variant="cta" size="sm" className="w-full">
-                    Sign in to continue
-                  </Button>
-                </SignInButton>
-              </div>
-            </div>
-          </div>
-          <Button onClick={onSkip} variant="outline" size="lg" className="w-full">
-            Skip for now
-          </Button>
-        </div>
-      </FlowStep>
-    );
-  }
+  // Photo step - no sign-in prompt here, it will appear after inspiration selection
 
   // Selection mode
   return (
