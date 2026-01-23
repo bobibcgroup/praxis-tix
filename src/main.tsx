@@ -4,6 +4,8 @@ import "./index.css";
 // Import debug functions for debugging
 import "./lib/testHistory";
 import "./lib/debugHistory";
+// Register service worker for PWA
+import { registerServiceWorker } from "./utils/serviceWorker";
 
 // Set up global generation completion listener
 // This ensures history is updated even if user navigates away from the generation page
@@ -45,5 +47,8 @@ if (typeof window !== 'undefined') {
     }
   });
 }
+
+// Register service worker
+registerServiceWorker();
 
 createRoot(document.getElementById("root")!).render(<App />);

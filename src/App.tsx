@@ -6,6 +6,7 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { SEO } from "@/components/SEO";
+import { AddToHomeScreen } from "@/components/AddToHomeScreen";
 import Flow from "./pages/Flow";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
@@ -31,6 +32,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <SEO />
+            <AddToHomeScreen />
             <Routes>
               <Route path="/" element={<Flow />} />
               <Route path="/landing" element={<Landing />} />
