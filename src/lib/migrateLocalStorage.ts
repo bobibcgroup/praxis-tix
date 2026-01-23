@@ -50,6 +50,21 @@ export async function migrateLocalStorageToSupabase(userId: string): Promise<{
         selected_at: entry.selectedAt || new Date().toISOString(),
         style_name: entry.styleName || null,
       };
+      
+      // Add email if available (for cross-device sync)
+      // Try to get email from Clerk user or localStorage mapping
+      try {
+        const emailMapping = JSON.parse(localStorage.getItem('praxis_email_user_mapping') || '{}');
+        for (const [email, mapping] of Object.entries(emailMapping)) {
+          const map = mapping as any;
+          if (map.userIds && map.userIds.includes(userId)) {
+            insertData.email = email;
+            break;
+          }
+        }
+      } catch (e) {
+        // Ignore email mapping errors
+      }
 
       const { data, error } = await supabase
         .from('outfit_history')
@@ -91,4 +106,10 @@ export function hasLocalStorageData(userId: string): boolean {
     return entry.userId === userId;
   });
   return userEntries.length > 0;
+}
+
+// Make it available globally for debugging
+if (typeof window !== 'undefined') {
+  (window as any).migrateLocalStorageToSupabase = migrateLocalStorageToSupabase;
+  (window as any).hasLocalStorageData = hasLocalStorageData;
 }

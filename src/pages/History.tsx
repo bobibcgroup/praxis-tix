@@ -154,7 +154,7 @@ const History = () => {
         selectedAt: e.selectedAt
       })));
       
-      // If no entries found, run diagnosis
+      // If no entries found, run diagnosis and check for migration needs
       if (entries.length === 0) {
         console.warn('⚠️ No history entries found. Running diagnosis...');
         try {
@@ -164,6 +164,16 @@ const History = () => {
           
           if (diagnosis.rlsIssue) {
             console.error('❌ RLS policy issue detected. Check recommendations above.');
+          }
+          
+          // Check if we need to migrate localStorage
+          if (diagnosis.recommendations.some(r => r.includes('localStorage'))) {
+            console.log('💡 Tip: If you have history in localStorage, run: window.migrateLocalStorageToSupabase(userId)');
+          }
+          
+          // Check if we need to migrate from email
+          if (diagnosis.recommendations.some(r => r.includes('migrateHistoryFromEmail'))) {
+            console.log('💡 Tip: If entries exist with your email but different user_id, run: window.diagnoseHistory.migrateFromEmail(email, userId)');
           }
         } catch (diagErr) {
           console.warn('Could not run diagnosis:', diagErr);

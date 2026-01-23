@@ -42,10 +42,10 @@ export async function diagnoseHistoryIssue(
 
   // Test 1: Can we query the table at all?
   try {
+    // Query without limit to get ALL entries (to find entries under different user_ids)
     const { data: testData, error: testError } = await supabase
       .from('outfit_history')
-      .select('id, user_id')
-      .limit(5);
+      .select('id, user_id, email');
 
     if (testError) {
       result.rlsIssue = true;
@@ -59,15 +59,45 @@ export async function diagnoseHistoryIssue(
     } else {
       result.canQueryTable = true;
       result.entryCount = testData?.length || 0;
-      console.log(`   ✅ Can query table, found ${result.entryCount} total entries`);
+      console.log(`   ✅ Can query table, found ${result.entryCount} total entries in database`);
       
       if (testData && testData.length > 0) {
         const userIds = [...new Set(testData.map(r => r.user_id))];
-        console.log(`   Found user_ids in table:`, userIds);
+        console.log(`   Found ${userIds.length} unique user_ids in table:`, userIds);
         
-        if (!userIds.includes(userId)) {
-          result.rlsIssue = true;
-          result.recommendations.push(`Table has entries but none for user_id ${userId}. Possible RLS filtering issue.`);
+        // Check if any entries match current user_id
+        const entriesForCurrentUser = testData.filter(r => r.user_id === userId);
+        console.log(`   Entries for current user_id: ${entriesForCurrentUser.length}`);
+        
+        // Check if any entries match email
+        if (email) {
+          const entriesForEmail = testData.filter(r => r.email === email);
+          console.log(`   Entries for email ${email}: ${entriesForEmail.length}`);
+          
+          if (entriesForEmail.length > 0) {
+            const emailUserIds = [...new Set(entriesForEmail.map(r => r.user_id))];
+            console.log(`   ⚠️ Found ${entriesForEmail.length} entries with email but different user_ids:`, emailUserIds);
+            result.recommendations.push(`Found ${entriesForEmail.length} entries with your email but different user_ids. Run sync to migrate.`);
+            result.recommendations.push(`Run: window.migrateHistoryFromEmail('${email}', '${userId}')`);
+          }
+        }
+        
+        if (!userIds.includes(userId) && testData.length > 0) {
+          result.recommendations.push(`Table has ${testData.length} entries but none for user_id ${userId}. Data may be under different user_ids.`);
+        }
+      } else {
+        console.log('   ⚠️ Table is empty - checking localStorage...');
+        // Check localStorage
+        try {
+          const localStorageHistory = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+          if (localStorageHistory.length > 0) {
+            const userEntries = localStorageHistory.filter((e: any) => e.userId === userId);
+            console.log(`   📦 Found ${localStorageHistory.length} entries in localStorage (${userEntries.length} for current user)`);
+            result.recommendations.push(`Found ${localStorageHistory.length} entries in localStorage. Run migration to save to Supabase.`);
+            result.recommendations.push(`Run: window.migrateLocalStorageToSupabase('${userId}')`);
+          }
+        } catch (e) {
+          console.log('   Could not check localStorage:', e);
         }
       }
     }
@@ -153,12 +183,143 @@ export async function diagnoseHistoryIssue(
     console.log('   Auth check failed (expected if using Clerk)');
   }
 
+  // Test 5: Check localStorage for entries
+  try {
+    const localStorageHistory = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    if (localStorageHistory.length > 0) {
+      const userEntries = localStorageHistory.filter((e: any) => e.userId === userId);
+      const allEntries = localStorageHistory.length;
+      console.log(`   📦 Found ${allEntries} entries in localStorage (${userEntries.length} for current user)`);
+      
+      if (userEntries.length > 0) {
+        result.recommendations.push(`Found ${userEntries.length} entries in localStorage. Migrate to Supabase.`);
+        result.recommendations.push(`Run: window.migrateLocalStorageToSupabase('${userId}')`);
+      } else if (allEntries > 0) {
+        result.recommendations.push(`Found ${allEntries} entries in localStorage but none for current user_id.`);
+        result.recommendations.push(`Check localStorage: JSON.parse(localStorage.getItem('praxis_outfit_history'))`);
+      }
+    }
+  } catch (e) {
+    console.log('   Could not check localStorage:', e);
+  }
+
   // Final recommendation
   if (result.rlsIssue && !result.hasEntries) {
     result.recommendations.push('Try running: window.diagnoseHistory.check(userId, email) in browser console for detailed diagnosis');
   }
+  
+  // If no entries found anywhere, suggest checking if data exists elsewhere
+  if (!result.hasEntries && result.entryCount === 0) {
+    result.recommendations.push('No entries found in database. Check if history was saved to localStorage or if you need to generate new outfits.');
+    result.recommendations.push('If you had history before, it may have been saved under a different user_id. Check desktop browser.');
+  }
 
   console.log('✅ Diagnosis complete:', result);
+  return result;
+}
+
+/**
+ * Find and migrate all history entries for an email to a specific user_id
+ * This helps when entries exist but are under different user_ids
+ */
+export async function migrateHistoryFromEmail(
+  email: string,
+  targetUserId: string
+): Promise<{
+  found: number;
+  migrated: number;
+  errors: string[];
+}> {
+  const result = {
+    found: 0,
+    migrated: 0,
+    errors: [] as string[],
+  };
+
+  if (!supabase) {
+    result.errors.push('Supabase not configured');
+    return result;
+  }
+
+  console.log(`🔄 Migrating history for email ${email} to user_id ${targetUserId}`);
+
+  try {
+    // First, try to find entries by email
+    const { data: emailEntries, error: emailError } = await supabase
+      .from('outfit_history')
+      .select('*')
+      .eq('email', email);
+
+    if (!emailError && emailEntries) {
+      result.found = emailEntries.length;
+      console.log(`   Found ${emailEntries.length} entries with email ${email}`);
+
+      // Migrate each entry
+      for (const entry of emailEntries) {
+        if (entry.user_id === targetUserId) {
+          console.log(`   ⏭️  Entry already belongs to target user, skipping`);
+          continue;
+        }
+
+        try {
+          // Check if entry already exists for target user
+          const { data: existing } = await supabase
+            .from('outfit_history')
+            .select('id')
+            .eq('user_id', targetUserId)
+            .eq('outfit_id', entry.outfit_id)
+            .eq('selected_at', entry.selected_at)
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            console.log(`   ⏭️  Entry already exists for target user, skipping`);
+            continue;
+          }
+
+          // Insert entry with new user_id
+          const { error: insertError } = await supabase
+            .from('outfit_history')
+            .insert({
+              user_id: targetUserId,
+              outfit_id: entry.outfit_id,
+              occasion: entry.occasion,
+              outfit_data: entry.outfit_data,
+              try_on_image_url: entry.try_on_image_url,
+              animated_video_url: entry.animated_video_url,
+              selected_at: entry.selected_at,
+              style_name: entry.style_name,
+              email: email, // Ensure email is set
+            });
+
+          if (insertError) {
+            console.error(`   ❌ Failed to migrate entry ${entry.id}:`, insertError);
+            result.errors.push(`Entry ${entry.id}: ${insertError.message}`);
+          } else {
+            console.log(`   ✅ Migrated entry ${entry.id}`);
+            result.migrated++;
+          }
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+          console.error(`   ❌ Error migrating entry ${entry.id}:`, err);
+          result.errors.push(`Entry ${entry.id}: ${errorMsg}`);
+        }
+      }
+    } else if (emailError) {
+      if (emailError.message?.includes('column') || emailError.code === '42703') {
+        console.log('   ⚠️ Email column does not exist yet');
+        result.errors.push('Email column does not exist. Run SQL migration first.');
+      } else {
+        console.error('   ❌ Error querying by email:', emailError);
+        result.errors.push(`Query error: ${emailError.message}`);
+      }
+    }
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('❌ Error in migrateHistoryFromEmail:', err);
+    result.errors.push(errorMsg);
+  }
+
+  console.log(`✅ Migration complete: ${result.migrated} migrated, ${result.errors.length} errors`);
   return result;
 }
 
@@ -166,5 +327,12 @@ export async function diagnoseHistoryIssue(
 if (typeof window !== 'undefined') {
   (window as any).diagnoseHistory = {
     check: diagnoseHistoryIssue,
+    migrateFromEmail: migrateHistoryFromEmail,
+  };
+  
+  // Also expose localStorage migration
+  (window as any).migrateLocalStorageToSupabase = async (userId: string) => {
+    const { migrateLocalStorageToSupabase } = await import('./migrateLocalStorage');
+    return migrateLocalStorageToSupabase(userId);
   };
 }
