@@ -47,41 +47,29 @@ const History = () => {
   useEffect(() => {
     if (isLoaded) {
       if (!user) {
-        console.log('History page: No user, redirecting to home');
         navigate('/');
         return;
       }
 
-      console.log('History page: User loaded, loading history for:', user.id);
-      
       // Sync user data on sign-in (migrate from other user IDs with same email)
+      // Only sync if not already synced recently (sync has built-in 5min cooldown)
       const email = user.primaryEmailAddress?.emailAddress;
       if (email) {
+        // Run sync in background, don't wait for it
         syncUserDataOnSignIn(user.id, email).then(syncResult => {
           if (syncResult.migrated) {
-            console.log('✅ User data synced:', {
-              historyMigrated: syncResult.historyMigrated,
-              favoritesMigrated: syncResult.favoritesMigrated,
-              profileMigrated: syncResult.profileMigrated,
-            });
             // Reload history after sync
             setTimeout(() => {
               loadHistory();
             }, 500);
-          } else {
-            // No migration needed, just load history
-            loadHistory();
           }
-        }).catch(err => {
-          console.error('❌ Error syncing user data:', err);
-          // Still load history even if sync fails
-          loadHistory();
+        }).catch(() => {
+          // Silently fail - sync is optional
         });
-      } else {
-        loadHistory();
       }
-    } else {
-      console.log('History page: User state not loaded yet');
+      
+      // Load history immediately (don't wait for sync)
+      loadHistory();
     }
   }, [user, isLoaded, navigate]);
 
@@ -90,7 +78,6 @@ const History = () => {
     if (!user) return;
     
     const handleGenerationComplete = () => {
-      console.log('🔄 History page: Generation complete, refreshing history...');
       // Clear generating state
       setGeneratingEntryIds(new Set());
       // Small delay to ensure database update completes before refreshing
@@ -99,29 +86,31 @@ const History = () => {
       }, 500);
     };
 
-    // Check for active generations periodically
+    // Check for active generations periodically (less frequently)
     const checkInterval = setInterval(() => {
-      // Re-check active generations with current history
       const activeGenStr = localStorage.getItem('praxis_active_generation');
-      const generatingIds = new Set<string>();
-      
-      if (activeGenStr && history.length > 0) {
-        try {
-          const activeGen = JSON.parse(activeGenStr);
-          history.forEach(entry => {
-            if ((entry.id === activeGen.historyEntryId || 
-                 entry.outfitId === activeGen.outfitId) &&
-                !entry.tryOnImageUrl) {
-              generatingIds.add(entry.id);
-            }
-          });
-        } catch (e) {
-          // Ignore parse errors
-        }
+      if (!activeGenStr) {
+        setGeneratingEntryIds(new Set());
+        return;
       }
       
-      setGeneratingEntryIds(generatingIds);
-    }, 2000);
+      try {
+        const activeGen = JSON.parse(activeGenStr);
+        const generatingIds = new Set<string>();
+        
+        history.forEach(entry => {
+          if ((entry.id === activeGen.historyEntryId || 
+               entry.outfitId === activeGen.outfitId) &&
+              !entry.tryOnImageUrl) {
+            generatingIds.add(entry.id);
+          }
+        });
+        
+        setGeneratingEntryIds(generatingIds);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }, 5000); // Check every 5 seconds instead of 2
 
     window.addEventListener('generation-complete', handleGenerationComplete as EventListener);
     
@@ -137,71 +126,17 @@ const History = () => {
     try {
       setLoading(true);
       const userEmail = user.primaryEmailAddress?.emailAddress;
-      console.log('🔍 Loading history for user:', {
-        userId: user.id,
-        email: userEmail,
-        allEmails: user.emailAddresses?.map(e => e.emailAddress) || [],
-        createdAt: user.createdAt,
-      });
       const entries = await getOutfitHistory(user.id, userEmail);
-      console.log('✅ Loaded history entries:', entries.length);
-      console.log('📋 History entries details:', entries.map(e => ({
-        id: e.id,
-        outfitId: e.outfitId,
-        title: e.outfitData?.title,
-        occasion: e.occasion,
-        hasTryOnImage: !!e.tryOnImageUrl,
-        selectedAt: e.selectedAt
-      })));
-      
-      // If no entries found, run diagnosis and check for migration needs
-      if (entries.length === 0) {
-        console.warn('⚠️ No history entries found. Running diagnosis...');
-        try {
-          const { diagnoseHistoryIssue } = await import('@/lib/diagnoseHistory');
-          const diagnosis = await diagnoseHistoryIssue(user.id, userEmail);
-          console.log('📊 Diagnosis results:', diagnosis);
-          
-          if (diagnosis.rlsIssue) {
-            console.error('❌ RLS policy issue detected. Check recommendations above.');
-          }
-          
-          // Check if we need to migrate localStorage
-          if (diagnosis.recommendations.some(r => r.includes('localStorage'))) {
-            console.log('💡 Tip: If you have history in localStorage, run: window.migrateLocalStorageToSupabase(userId)');
-          }
-          
-          // Check if we need to migrate from email
-          if (diagnosis.recommendations.some(r => r.includes('migrateHistoryFromEmail'))) {
-            console.log('💡 Tip: If entries exist with your email but different user_id, run: window.diagnoseHistory.migrateFromEmail(email, userId)');
-          }
-        } catch (diagErr) {
-          console.warn('Could not run diagnosis:', diagErr);
-        }
-      }
-      
       setHistory(entries);
+      
+      // Load favorites in parallel
       const favs = await getFavorites(user.id);
       setFavorites(favs);
       
       // Check for active generations and mark entries as generating
       checkActiveGenerations(entries);
     } catch (error) {
-      console.error('❌ Error loading history:', error);
-      
-      // Log detailed error information
-      if (error instanceof Error) {
-        console.error('   Error message:', error.message);
-        console.error('   Error stack:', error.stack);
-      }
-      
-      // Check if it's a network error (common on mobile)
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('   🚨 Network error detected - check internet connection');
-        console.error('   This is common on mobile devices with poor connectivity');
-      }
-      
-      // Still set empty history so UI doesn't break
+      console.error('Error loading history:', error);
       setHistory([]);
     } finally {
       setLoading(false);
