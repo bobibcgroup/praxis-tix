@@ -737,7 +737,7 @@ const Flow = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
-        <div className="mx-auto px-4 md:px-6 h-14 flex items-center w-full">
+        <div className="px-4 md:px-6 h-14 flex items-center w-full">
           <div className="flex items-center justify-between w-full">
             <div className="flex flex-col items-start py-2">
               <button 
