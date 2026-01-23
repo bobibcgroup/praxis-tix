@@ -105,7 +105,6 @@ const Header = () => {
                 onClick={() => navigate('/dashboard')}
                 className="px-4"
               >
-                <LayoutDashboard className="w-4 h-4 mr-2" />
                 Dashboard
               </Button>
               <Button
@@ -114,7 +113,6 @@ const Header = () => {
                 onClick={() => navigate('/history')}
                 className="px-4"
               >
-                <History className="w-4 h-4 mr-2" />
                 History
               </Button>
               <Button
@@ -123,7 +121,6 @@ const Header = () => {
                 onClick={() => navigate('/favorites')}
                 className="px-4"
               >
-                <Heart className="w-4 h-4 mr-2" />
                 Favorites
               </Button>
               <Button
@@ -132,7 +129,6 @@ const Header = () => {
                 onClick={() => navigate('/profile')}
                 className="px-4"
               >
-                <User className="w-4 h-4 mr-2" />
                 My Style
               </Button>
               <Button
@@ -141,7 +137,6 @@ const Header = () => {
                 onClick={() => navigate('/settings')}
                 className="px-4"
               >
-                <Settings className="w-4 h-4 mr-2" />
                 Settings
               </Button>
             </nav>
