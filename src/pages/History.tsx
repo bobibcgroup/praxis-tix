@@ -109,9 +109,14 @@ const History = () => {
 
     try {
       setLoading(true);
-      console.log('Loading history for user:', user.id);
+      console.log('🔍 Loading history for user:', {
+        userId: user.id,
+        email: user.primaryEmailAddress?.emailAddress,
+        allEmails: user.emailAddresses?.map(e => e.emailAddress) || [],
+        createdAt: user.createdAt,
+      });
       const entries = await getOutfitHistory(user.id);
-      console.log('Loaded history entries:', entries.length, entries);
+      console.log('✅ Loaded history entries:', entries.length, entries);
       setHistory(entries);
       const favs = await getFavorites(user.id);
       setFavorites(favs);

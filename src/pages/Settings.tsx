@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Trash2, Mail, User as UserIcon, Moon, Sun, Monitor } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, Mail, User as UserIcon, Moon, Sun, Monitor, AlertCircle } from 'lucide-react';
 import { getOutfitHistory, getUserProfile, getFavorites } from '@/lib/userService';
+import { migrateLocalStorageToSupabase, hasLocalStorageData } from '@/lib/migrateLocalStorage';
 import Header from '@/components/Header';
 import {
   AlertDialog,
@@ -26,12 +27,18 @@ const Settings = () => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const [hasLocalData, setHasLocalData] = useState(false);
+  const [migrating, setMigrating] = useState(false);
 
   useEffect(() => {
     if (isLoaded) {
       if (!user) {
         navigate('/');
         return;
+      }
+      // Check for localStorage data
+      if (user) {
+        setHasLocalData(hasLocalStorageData(user.id));
       }
     }
   }, [user, isLoaded, navigate]);
@@ -80,6 +87,27 @@ const Settings = () => {
     // This is a placeholder for the functionality
     toast.info('Account deletion must be done through your account settings');
     setDeleteDialogOpen(false);
+  };
+
+  const handleMigrateLocalStorage = async () => {
+    if (!user) return;
+    
+    setMigrating(true);
+    try {
+      const result = await migrateLocalStorageToSupabase(user.id);
+      if (result.migrated > 0) {
+        toast.success(`Successfully migrated ${result.migrated} entries to Supabase`);
+        setHasLocalData(false);
+      }
+      if (result.failed > 0) {
+        toast.error(`Failed to migrate ${result.failed} entries. Check console for details.`);
+      }
+    } catch (error) {
+      console.error('Error migrating localStorage:', error);
+      toast.error('Failed to migrate data. Check console for details.');
+    } finally {
+      setMigrating(false);
+    }
   };
 
   if (!isLoaded) {
@@ -165,6 +193,10 @@ const Settings = () => {
                 <p className="text-sm text-muted-foreground mb-1">Email</p>
                 <p className="text-foreground">{user?.primaryEmailAddress?.emailAddress || 'Not available'}</p>
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">User ID</p>
+                <p className="text-foreground font-mono text-xs break-all">{user?.id || 'Not available'}</p>
+              </div>
               {user?.fullName && (
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Name</p>
@@ -192,6 +224,32 @@ const Settings = () => {
               <p className="text-xs text-muted-foreground">
                 Download all your profile data, outfit history, and favorites as a JSON file.
               </p>
+              
+              {hasLocalData && (
+                <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                        Local Storage Data Found
+                      </p>
+                      <p className="text-xs text-blue-800 dark:text-blue-200 mb-2">
+                        You have outfit history stored in your browser's local storage. 
+                        Migrate it to Supabase to access it across all devices.
+                      </p>
+                      <Button
+                        onClick={handleMigrateLocalStorage}
+                        variant="outline"
+                        size="sm"
+                        disabled={migrating}
+                        className="w-full"
+                      >
+                        {migrating ? 'Migrating...' : 'Migrate to Supabase'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

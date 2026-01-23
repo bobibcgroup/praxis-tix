@@ -4,6 +4,8 @@ import "./index.css";
 // Import debug functions for debugging
 import "./lib/testHistory";
 import "./lib/debugHistory";
+// Import cleanup utilities (exposes window.cleanupUserData and window.listUsersWithData)
+import "./lib/cleanupUserData";
 // Register service worker for PWA
 import { registerServiceWorker } from "./utils/serviceWorker";
 

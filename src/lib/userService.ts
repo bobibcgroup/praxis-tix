@@ -128,7 +128,7 @@ export async function saveOutfitToHistory(
       throw new Error('Occasion is required');
     }
 
-    console.log('Saving outfit to history:', { userId, outfitId: outfit.id, occasion });
+    console.log('💾 Saving outfit to history:', { userId, outfitId: outfit.id, occasion });
     
     // Build insert object - exclude color_palette and style_dna as columns don't exist in database
     const insertData: any = {
@@ -350,12 +350,36 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
   }
 
   try {
-    console.log('Fetching outfit history from Supabase for user:', userId);
+    console.log('🔍 Fetching outfit history from Supabase for user:', userId);
     const { data, error } = await supabase
       .from('outfit_history')
       .select('*')
       .eq('user_id', userId)
       .order('selected_at', { ascending: false });
+    
+    // Debug: Check if there are entries with different user_ids but same email
+    if (data && data.length === 0) {
+      console.log('⚠️ No entries found for user_id:', userId);
+      console.log('   This could mean:');
+      console.log('   1. User has no history yet (normal)');
+      console.log('   2. RLS policies are blocking access (check Supabase RLS)');
+      console.log('   3. Data was saved to localStorage (check browser console for save logs)');
+      
+      // Check if we can query the table at all (tests RLS)
+      const { data: testData, error: testError } = await supabase
+        .from('outfit_history')
+        .select('user_id')
+        .limit(1);
+      
+      if (testError) {
+        console.error('   ❌ Cannot query outfit_history table:', testError);
+        console.error('   This suggests an RLS policy issue. Check Supabase dashboard.');
+      } else if (testData && testData.length > 0) {
+        console.log('   ⚠️ Table has data, but not for this user_id. Possible RLS issue.');
+      } else {
+        console.log('   ✅ Table is accessible but empty (or RLS is working correctly)');
+      }
+    }
 
     if (error) {
       console.error('Supabase error fetching outfit history:', error);
@@ -377,31 +401,41 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
       colorPalette: null, // Column doesn't exist in database, always null
     }));
     
-    // IMPORTANT: If Supabase returned 0 entries, check localStorage as fallback
-    // This handles the case where saves failed due to schema issues and fell back to localStorage
-    if (mapped.length === 0) {
-      console.log('⚠️ Supabase returned 0 entries, checking localStorage fallback...');
-      const localHistory = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
-      const filtered = localHistory.filter((entry: OutfitHistoryEntry) => {
-        return !entry.userId || entry.userId === userId;
-      });
-      if (filtered.length > 0) {
-        console.log('✅ Found', filtered.length, 'entries in localStorage. Using localStorage data.');
-        return filtered;
-      }
-    }
+    // IMPORTANT: Only check localStorage if Supabase query succeeded but returned 0 entries
+    // AND we have reason to believe data might be in localStorage (e.g., previous saves failed)
+    // However, we should NOT fall back to localStorage if Supabase is working properly,
+    // as this causes device-specific data isolation issues.
+    // 
+    // If Supabase returns 0 entries, it could mean:
+    // 1. User genuinely has no history (correct behavior)
+    // 2. RLS policies are blocking access (needs fixing)
+    // 3. Data was saved to localStorage (should migrate to Supabase)
+    //
+    // For now, we'll only check localStorage if there was an error, not if we got 0 results.
+    // This prevents the device-specific data isolation issue.
     
     return mapped;
   } catch (error) {
-    console.error('Error fetching outfit history:', error);
-    // Fallback to localStorage
-    console.log('Falling back to localStorage due to error');
-    const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
-    const filtered = history.filter((entry: OutfitHistoryEntry) => {
-      return !entry.userId || entry.userId === userId;
-    });
-    console.log('Returning', filtered.length, 'entries from localStorage');
-    return filtered;
+    console.error('❌ Error fetching outfit history from Supabase:', error);
+    console.error('   This might indicate an RLS policy issue or authentication problem.');
+    console.error('   Check Supabase RLS policies for the outfit_history table.');
+    
+    // Only fall back to localStorage if Supabase is completely unavailable
+    // This prevents device-specific data isolation
+    if (!supabase) {
+      console.log('⚠️ Supabase not configured, using localStorage fallback');
+      const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+      const filtered = history.filter((entry: OutfitHistoryEntry) => {
+        return !entry.userId || entry.userId === userId;
+      });
+      console.log('Returning', filtered.length, 'entries from localStorage');
+      return filtered;
+    }
+    
+    // If Supabase is configured but query failed, return empty array
+    // This ensures we don't show device-specific localStorage data
+    console.warn('⚠️ Supabase query failed, returning empty array to prevent localStorage fallback');
+    return [];
   }
 }
 
