@@ -254,14 +254,9 @@ const Flow = () => {
               setStep(1);
             }}
             onSelectPersonal={() => {
-              // Require authentication for personal flow
-              if (isLoaded && user) {
-                setMode('personal');
-                setStep(10);
-              } else {
-                // Show sign-in prompt - user needs to sign in first
-                // The StepModeSelect component will handle this
-              }
+              // Allow starting personal flow without auth - sign-in prompt will appear at photo step
+              setMode('personal');
+              setStep(10);
             }}
           />
         );
