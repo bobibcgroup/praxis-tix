@@ -1,62 +1,10 @@
 import { prepareImageForReplicate } from './imageUploadService';
 
-// Use server-side proxy to avoid CORS issues
-const API_PROXY_URL = '/api/replicate-proxy';
-const API_STATUS_URL = '/api/replicate-status';
+// Use server-side generation endpoint that handles everything
+const API_GENERATE_URL = '/api/replicate-generate';
 
 // Cache for generated images
 const imageCache = new Map<string, string>();
-
-// Poll prediction status until completion
-async function pollPredictionStatus(
-  predictionId: string,
-  onStatusUpdate?: (status: string) => void
-): Promise<{ output: unknown; error?: string; logs?: string }> {
-  const startTime = Date.now();
-  const timeoutMs = 90000; // 90 seconds max
-  const pollInterval = 1200; // 1.2 seconds
-
-  while (Date.now() - startTime < timeoutMs) {
-    const response = await fetch(API_STATUS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: predictionId }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (onStatusUpdate) {
-      onStatusUpdate(data.status);
-    }
-
-    if (data.status === 'succeeded') {
-      return { output: data.output };
-    } else if (data.status === 'failed') {
-      return {
-        output: null,
-        error: data.error || 'Prediction failed',
-        logs: data.logs
-      };
-    } else if (data.status === 'canceled') {
-      return {
-        output: null,
-        error: 'Prediction was canceled'
-      };
-    }
-
-    // Wait before next poll
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
-  }
-
-  throw new Error('Prediction timeout - still generating after 90 seconds. Please try again.');
-}
 
 export interface TryOnRequest {
   userPhoto: string; // Base64 or URL
@@ -89,26 +37,39 @@ export async function generateVirtualTryOn(
   }
 
   try {
+    console.log(`[TRYON] Starting generation for outfit ${request.outfitId}, user ${request.userId || 'anonymous'}`);
+    
     // Prepare images for Replicate in parallel (upload to Supabase Storage if available)
+    console.log('[TRYON] Preparing images for Replicate...');
     const [userPhotoUrl, outfitImageUrl] = await Promise.all([
       prepareImageForReplicate(request.userPhoto, `user-${request.userId || 'anonymous'}.jpg`),
       prepareImageForReplicate(request.outfitImage, `outfit-${request.outfitId}.jpg`)
     ]);
 
+    console.log('[TRYON] Images prepared:', {
+      userPhotoUrl: userPhotoUrl ? `${userPhotoUrl.substring(0, 100)}...` : 'null',
+      outfitImageUrl: outfitImageUrl ? `${outfitImageUrl.substring(0, 100)}...` : 'null',
+      userPhotoIsDataUrl: userPhotoUrl?.startsWith('data:'),
+      outfitImageIsDataUrl: outfitImageUrl?.startsWith('data:')
+    });
+
     // Use face swap to put user's face onto outfit/model image
     // This preserves the outfit image's background/setting while applying the user's face
     
     if (!userPhotoUrl || !outfitImageUrl) {
+      console.error('[TRYON] Missing required images');
       throw new Error('Missing required images: both user photo and outfit image are required');
     }
     
     // Ensure source image is a URL (not data URL) for best results
     if (userPhotoUrl.startsWith('data:')) {
+      console.error('[TRYON] Source image is data URL, not supported');
       throw new Error('Source image must be a hosted URL, not a data URL. Please upload to Supabase Storage first.');
     }
     
-    // Step 1: Create prediction (returns immediately with ID)
-    const response = await fetch(API_PROXY_URL, {
+    // Call server-side generation endpoint that handles prediction creation and polling
+    console.log('[TRYON] Calling server-side generation endpoint...');
+    const response = await fetch(API_GENERATE_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -126,62 +87,45 @@ export async function generateVirtualTryOn(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMsg = errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
-      console.error(`API Error (${response.status}):`, errorMsg, errorData);
+      console.error(`[TRYON] API Error (${response.status}):`, errorMsg, errorData);
       throw new Error(`Server error: ${errorMsg}`);
     }
 
-    const predictionData = await response.json();
+    const result = await response.json();
     
-    if (!predictionData || !predictionData.id) {
-      console.error('Invalid response from server:', predictionData);
-      throw new Error('Invalid response from server - no prediction ID received');
-    }
-
-    const predictionId = predictionData.id;
-
-    // Step 2: Poll for completion
-    const result = await pollPredictionStatus(predictionId);
-
-    if (result.error) {
-      throw new Error(result.error + (result.logs ? `\n\nLogs: ${result.logs}` : ''));
-    }
-
-    if (!result.output) {
-      throw new Error('No output received from prediction');
-    }
-
-    const output = result.output;
-
-    // Handle different output formats
-    let imageUrl: string | null = null;
+    console.log('[TRYON] Generation complete:', {
+      success: result.success,
+      hasImageUrl: !!result.imageUrl,
+      predictionId: result.predictionId,
+      model: result.model
+    });
     
-    if (Array.isArray(output)) {
-      // If array, get first string URL
-      imageUrl = output.find((item: unknown) => typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:'))) || null;
-    } else if (typeof output === 'string') {
-      // Direct string URL
-      imageUrl = output;
-    } else if (output && typeof output === 'object') {
-      // Object with URL property
-      imageUrl = (output as { url?: string; image?: string; output?: string }).url || 
-                 (output as { url?: string; image?: string; output?: string }).image ||
-                 (output as { url?: string; image?: string; output?: string }).output ||
-                 null;
+    if (!result.success || !result.imageUrl) {
+      console.error('[TRYON] Invalid response from server:', result);
+      throw new Error(result.error || 'Invalid response from server - no image URL received');
     }
+
+    const imageUrl = result.imageUrl;
     
-    if (imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
+    if (typeof imageUrl === 'string' && imageUrl.length > 0 && (imageUrl.startsWith('http') || imageUrl.startsWith('data:'))) {
       // Cache the result
       imageCache.set(cacheKey, imageUrl);
+      console.log(`[TRYON] Success! Generated image URL: ${imageUrl.substring(0, 100)}...`);
       
       return {
         imageUrl,
         cached: false,
       };
     } else {
-      throw new Error('Invalid output format from model');
+      console.error('[TRYON] Invalid image URL format:', {
+        imageUrl,
+        imageUrlType: typeof imageUrl,
+        imageUrlLength: imageUrl?.length
+      });
+      throw new Error('Invalid image URL format received from server');
     }
   } catch (error) {
-    console.error('Virtual try-on error:', error);
+    console.error('[TRYON] Virtual try-on error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Failed to generate try-on image: ${errorMessage}`);
   }

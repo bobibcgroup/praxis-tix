@@ -92,6 +92,13 @@ async function createPrediction(
 
   const prediction = await predictionResponse.json();
   
+  console.log(`[${new Date().toISOString()}] Prediction created:`, {
+    id: prediction.id,
+    status: prediction.status,
+    model: model,
+    versionId: versionId
+  });
+  
   const warnings: string[] = [];
   // Add warnings for face swap if needed
   if (model === 'ddvinh1/inswapper') {
@@ -163,6 +170,15 @@ export default async function handler(
 
     console.log(`[${new Date().toISOString()}] Running model: ${model}${version ? ` (version: ${version})` : ''}${task ? ` [task: ${task}]` : ''}`);
     console.log('Input keys:', Object.keys(input));
+    console.log('Input values (truncated):', Object.keys(input).reduce((acc, key) => {
+      const value = input[key];
+      if (typeof value === 'string') {
+        acc[key] = value.substring(0, 100) + (value.length > 100 ? '...' : '');
+      } else {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, unknown>));
 
     // Check if this is an IDM-VTON model - route directly to try-on, bypassing all other detection
     const isIDMVTON = model === 'cuuupid/idm-vton' || model.endsWith('/idm-vton');

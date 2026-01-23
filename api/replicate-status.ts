@@ -32,11 +32,14 @@ export default async function handler(
     const { id } = req.body;
 
     if (!id || typeof id !== 'string') {
+      console.error('[STATUS] Missing or invalid prediction ID:', id);
       return res.status(400).json({ 
         error: 'Prediction ID is required',
         message: 'Please provide a valid prediction ID'
       });
     }
+
+    console.log(`[${new Date().toISOString()}] Checking status for prediction: ${id}`);
 
     const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
       headers: {
@@ -46,6 +49,10 @@ export default async function handler(
 
     if (!statusResponse.ok) {
       const errorData = await statusResponse.json().catch(() => ({}));
+      console.error(`[STATUS] Failed to fetch prediction ${id}:`, {
+        status: statusResponse.status,
+        error: errorData
+      });
       return res.status(statusResponse.status).json({
         error: 'Failed to fetch prediction status',
         message: errorData.detail || errorData.error || errorData.message || `HTTP ${statusResponse.status}`,
@@ -54,6 +61,16 @@ export default async function handler(
     }
 
     const prediction = await statusResponse.json();
+
+    console.log(`[${new Date().toISOString()}] Prediction ${id} status:`, {
+      status: prediction.status,
+      hasOutput: !!prediction.output,
+      hasError: !!prediction.error,
+      hasLogs: !!prediction.logs,
+      outputType: prediction.output ? typeof prediction.output : 'null',
+      outputIsArray: Array.isArray(prediction.output),
+      outputLength: Array.isArray(prediction.output) ? prediction.output.length : 'N/A'
+    });
 
     return res.status(200).json({
       id: prediction.id,

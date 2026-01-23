@@ -4,6 +4,11 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
+  "functions": {
+    "api/replicate-generate.ts": {
+      "maxDuration": 100
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
