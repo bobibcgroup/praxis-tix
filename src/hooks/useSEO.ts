@@ -45,6 +45,18 @@ const ROUTE_METADATA: Record<string, SEOData> = {
     title: 'Dashboard — Praxis',
     description: DEFAULT_DESCRIPTION,
   },
+  '/agent': {
+    title: 'Praxis Agent — Hands-free Styling',
+    description: 'Tell Praxis Agent what you need. Get styled outfits automatically with an intelligent assistant.',
+  },
+  '/agent/capture': {
+    title: 'Refine Fit & Color — Praxis Agent',
+    description: 'Optional: Share a photo or video to refine your fit and color preferences.',
+  },
+  '/agent/results': {
+    title: 'Your Looks — Praxis Agent',
+    description: 'Here are your looks. Refine with natural language to get exactly what you want.',
+  },
 };
 
 /**

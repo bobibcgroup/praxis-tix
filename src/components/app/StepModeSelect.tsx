@@ -1,7 +1,8 @@
 import FlowStep from './FlowStep';
 import { useUser, SignInButton } from '@clerk/clerk-react';
-import { User } from 'lucide-react';
+import { User, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface StepModeSelectProps {
   onSelectQuick: () => void;
@@ -10,10 +11,15 @@ interface StepModeSelectProps {
 
 const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps) => {
   const { user, isLoaded } = useUser();
+  const navigate = useNavigate();
 
   const handlePersonalClick = () => {
     // Allow starting personal flow without auth - sign-in prompt will appear at photo step
     onSelectPersonal();
+  };
+
+  const handleAgentClick = () => {
+    navigate('/agent');
   };
 
   return (
@@ -39,7 +45,27 @@ const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps
           </span>
         </button>
 
-        {/* Secondary Card - Quieter */}
+        {/* Secondary Card - Praxis Agent */}
+        <button
+          type="button"
+          onClick={handleAgentClick}
+          className="w-full py-5 px-6 rounded-lg border border-border/60 bg-background/50 hover:border-primary/50 hover:bg-muted/30 text-left transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Bot className="w-4 h-4 text-muted-foreground" />
+            <span className="block text-lg font-medium text-foreground/90 group-hover:text-foreground">
+              Praxis Agent
+            </span>
+          </div>
+          <span className="block text-sm text-muted-foreground/80 mt-1">
+            Hands-free styling with an intelligent assistant
+          </span>
+          <span className="inline-block mt-3 px-4 py-1.5 border border-primary/30 bg-primary/5 rounded-lg text-sm text-primary">
+            Start Praxis Agent
+          </span>
+        </button>
+
+        {/* Tertiary Card - Personal Style */}
         <button
           type="button"
           onClick={handlePersonalClick}

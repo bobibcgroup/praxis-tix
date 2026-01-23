@@ -183,3 +183,47 @@ export interface Outfit {
   reason: string;
   imageUrl: string;
 }
+
+// ============= PRAXIS AGENT TYPES =============
+
+export type AgentStage = 'intake' | 'clarify' | 'capture_optional' | 'generate' | 'refine' | 'done';
+
+export interface PraxisAgentMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: Date;
+  meta?: {
+    transcript?: string; // For voice messages
+    attachmentType?: 'photo' | 'video';
+    attachmentUrl?: string;
+  };
+}
+
+export interface PraxisAgentContext {
+  occasion?: OccasionType | string;
+  location?: LocationType | string;
+  timeOfDay?: TimeType | string;
+  weatherPreference?: string;
+  vibe?: 'safe' | 'sharp' | 'relaxed';
+  budget?: BudgetType | string | number;
+  ownedItems?: Array<{ type: 'top' | 'bottom' | 'shoes' | 'jacket'; description: string; imageUrl?: string }>;
+  fitInfo?: {
+    height?: number;
+    fitPreference?: FitPreference;
+  };
+  inspirationStyle?: InspirationPresetType | string;
+  notes?: string;
+}
+
+export interface AgentAction {
+  type: 'navigate' | 'request_capture' | 'generate_outfits' | 'refine_outfits';
+  payload?: any;
+}
+
+export interface AgentResponse {
+  assistantMessage: string;
+  nextStage: AgentStage;
+  contextPatch?: Partial<PraxisAgentContext>;
+  actions?: AgentAction[];
+}

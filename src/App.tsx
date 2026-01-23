@@ -15,6 +15,9 @@ import Profile from "./pages/Profile";
 import Favorites from "./pages/Favorites";
 import Settings from "./pages/Settings";
 import Dashboard from "./pages/Dashboard";
+import Agent from "./pages/Agent";
+import AgentCapture from "./pages/AgentCapture";
+import AgentResults from "./pages/AgentResults";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +44,9 @@ const App = () => (
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/agent" element={<Agent />} />
+              <Route path="/agent/capture" element={<AgentCapture />} />
+              <Route path="/agent/results" element={<AgentResults />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
