@@ -34,7 +34,7 @@ export function FuturisticInput({
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="flex items-end gap-2 p-4 futuristic-input-container">
+      <div className="flex items-end gap-2 p-3 md:p-4 futuristic-input-container rounded-2xl">
         {/* Attachment button */}
         <motion.div
           whileHover={{ scale: 1.1 }}
