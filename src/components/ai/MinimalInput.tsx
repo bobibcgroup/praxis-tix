@@ -30,8 +30,7 @@ export function MinimalInput({
   return (
     <motion.form
       onSubmit={handleSubmit}
-      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-xl px-4 z-40"
-      style={{ pointerEvents: 'auto' }}
+      className="w-full"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
@@ -41,52 +40,43 @@ export function MinimalInput({
         <motion.div
           className="relative"
           animate={{
-            scale: isFocused ? 1.02 : 1,
+            scale: isFocused ? 1.01 : 1,
           }}
           transition={{ duration: 0.2 }}
         >
-          {/* Glowing border on focus */}
-          {isFocused && (
-            <motion.div
-              className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-green-500 blur-sm opacity-50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-            />
-          )}
-          
-          {/* Glass input */}
+          {/* Input container */}
           <div
-            className={`relative rounded-full bg-black/30 backdrop-blur-xl border transition-all duration-300 ${
+            className={`relative rounded-full bg-white dark:bg-gray-900 border-2 transition-all duration-300 ${
               isFocused
-                ? 'border-cyan-500/60 shadow-[0_0_30px_rgba(0,240,255,0.3)]'
-                : 'border-cyan-500/20'
+                ? 'border-blue-500 dark:border-blue-400 shadow-lg'
+                : 'border-gray-200 dark:border-gray-700'
             }`}
           >
             <div className="flex items-center px-6 py-4 gap-3">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              placeholder={placeholder}
-              disabled={disabled}
-              className="flex-1 bg-transparent text-cyan-100 placeholder:text-cyan-500/50 focus:outline-none text-sm md:text-base"
-              aria-label="Message input"
-              aria-describedby="input-help"
-            />
-            <div id="input-help" className="sr-only">
-              Type your message and press Enter to send
-            </div>
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder={placeholder}
+                disabled={disabled}
+                className="flex-1 bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none text-sm md:text-base"
+                aria-label="Message input"
+                aria-describedby="input-help"
+              />
+              <div id="input-help" className="sr-only">
+                Type your message and press Enter to send
+              </div>
               
               {input.trim() ? (
                 <motion.button
                   type="submit"
                   disabled={disabled}
-                  className="shrink-0 w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 flex items-center justify-center hover:scale-110 transition-transform"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  className="shrink-0 w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 flex items-center justify-center transition-colors"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <Send className="w-5 h-5 text-white" />
                 </motion.button>
@@ -95,11 +85,11 @@ export function MinimalInput({
                   type="button"
                   onClick={onVoiceRecord}
                   disabled={disabled}
-                  className="shrink-0 w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center hover:border-cyan-500/60 transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  className="shrink-0 w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <Mic className="w-5 h-5 text-cyan-400" />
+                  <Mic className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </motion.button>
               )}
             </div>

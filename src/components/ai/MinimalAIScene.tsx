@@ -1,7 +1,7 @@
 import { Suspense, useState, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
-import { RoboticHead } from './RoboticHead';
+import { HumanoidHead } from './HumanoidHead';
 import { ParticleField } from './ParticleField';
 import { VoiceWave } from './VoiceWave';
 
@@ -91,7 +91,11 @@ export function MinimalAIScene({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-10" aria-label="AI Assistant 3D Avatar" style={{ pointerEvents: 'none' }}>
+    <div 
+      className="relative w-full h-[50vh] min-h-[400px] z-0" 
+      aria-label="AI Assistant 3D Avatar" 
+      style={{ pointerEvents: 'none' }}
+    >
       <Canvas
         gl={{
           alpha: true,
@@ -102,11 +106,12 @@ export function MinimalAIScene({
         style={{ background: 'transparent', width: '100%', height: '100%' }}
       >
         <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[0, 0, 6]} fov={50} />
-          <ambientLight intensity={0.4} />
-          <pointLight position={[5, 5, 5]} intensity={0.6} color="#00f0ff" />
-          <pointLight position={[-5, -5, -5]} intensity={0.3} color="#b026ff" />
-          <directionalLight position={[0, 5, 5]} intensity={0.5} />
+          <PerspectiveCamera makeDefault position={[0, 0, 6]} fov={35} />
+          
+          {/* Soft lighting for humanoid appearance */}
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[2, 3, 5]} intensity={0.5} />
+          <directionalLight position={[-2, 1, -3]} intensity={0.3} />
           
           {/* Subtle particle background */}
           <ParticleField 
@@ -115,8 +120,8 @@ export function MinimalAIScene({
             aiState={isThinking ? 'thinking' : isSpeaking ? 'speaking' : 'idle'}
           />
           
-          {/* Robotic Head */}
-          <RoboticHead 
+          {/* Humanoid Head */}
+          <HumanoidHead 
             mousePosition={mousePosition}
             isSpeaking={isSpeaking}
             isThinking={isThinking}
