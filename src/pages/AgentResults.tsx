@@ -5,10 +5,11 @@ import { AgentChatInput } from '@/components/app/AgentChatInput';
 import OutfitCard from '@/components/app/OutfitCard';
 import StyleNameModal from '@/components/app/StyleNameModal';
 import { praxisAgentOrchestrator } from '@/lib/praxisAgentOrchestrator';
-import { saveOutfitToHistory, updateOutfitHistoryStyleName } from '@/lib/userService';
+import { saveOutfitToHistory, updateOutfitHistoryStyleName, updateOutfitHistoryTryOn } from '@/lib/userService';
+import { generateVirtualTryOn } from '@/lib/virtualTryOnService';
 import { useUser } from '@clerk/clerk-react';
 import type { Outfit, OccasionType } from '@/types/praxis';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles, Sparkles as TryOnIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSEO } from '@/hooks/useSEO';
 import { triggerConfettiBurst } from '@/lib/confetti';
@@ -23,6 +24,9 @@ export default function AgentResults() {
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   const [historyEntryId, setHistoryEntryId] = useState<string | null>(null);
   const [showStyleNameModal, setShowStyleNameModal] = useState(false);
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
+  const [isGeneratingTryOn, setIsGeneratingTryOn] = useState<number | null>(null);
+  const [usedOutfitIds, setUsedOutfitIds] = useState<string[]>([]);
 
   useEffect(() => {
     // Generate outfits on mount
@@ -33,13 +37,24 @@ export default function AgentResults() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const context = praxisAgentOrchestrator.getContext();
-      const generated = praxisAgentOrchestrator.generateOutfits(context);
+      const generated = praxisAgentOrchestrator.generateOutfits(context, []);
       
       setOutfits(generated);
+      // Track used outfit IDs
+      setUsedOutfitIds(generated.map(o => o.id.toString()));
       setIsGenerating(false);
     };
 
     generate();
+
+    // Check if user has a photo from capture
+    const photoUrl = praxisAgentOrchestrator.getPhotoUrl();
+    const savedPhoto = localStorage.getItem('praxis_agent_photo');
+    if (photoUrl) {
+      setUserPhoto(photoUrl);
+    } else if (savedPhoto) {
+      setUserPhoto(savedPhoto);
+    }
   }, []);
 
   const handleChooseLook = async (outfitId: number) => {
@@ -74,15 +89,19 @@ export default function AgentResults() {
           occasion: occasionValue
         });
         
+        // Get Style DNA and color palette if available
+        const styleDNA = praxisAgentOrchestrator.generateStyleDNA();
+        const colorPalette = praxisAgentOrchestrator.getColorRecommendations();
+        
         const entryId = await saveOutfitToHistory(
           user.id,
           outfit,
           occasionValue,
-          undefined, // No try-on for Agent Flow (can add later)
+          undefined, // Try-on URL - will be added if user does try-on
           undefined,
           undefined, // styleName - will be set when user names it
-          undefined,
-          undefined,
+          styleDNA || undefined,
+          colorPalette || undefined,
           user.primaryEmailAddress?.emailAddress
         );
         
@@ -104,11 +123,19 @@ export default function AgentResults() {
     // Trigger confetti
     triggerConfettiBurst();
 
+    // Check if this is a personal flow - if so, show Style DNA after purchase
+    const context = praxisAgentOrchestrator.getContext();
+    const isPersonalFlow = context.flowType === 'personal' || context.hasPhoto || context.lifestyle;
+
     // If user is signed in, show name modal, otherwise go to purchase
     if (isLoaded && user) {
       setShowStyleNameModal(true);
+      // Store if personal flow for Style DNA page
+      if (isPersonalFlow) {
+        localStorage.setItem('praxis_agent_show_style_dna', 'true');
+      }
     } else {
-      navigate('/agent/purchase', { state: { outfit } });
+      navigate('/agent/purchase', { state: { outfit, showStyleDNA: isPersonalFlow } });
     }
   };
 
@@ -144,10 +171,24 @@ export default function AgentResults() {
     
     try {
       const context = praxisAgentOrchestrator.getContext();
-      const refined = await praxisAgentOrchestrator.refineOutfits(context, refinementText);
       
-      setOutfits(refined);
-      toast.success('Looks updated based on your preferences');
+      // Handle "Show alternatives" specially
+      if (refinementText.toLowerCase().includes('alternative') || refinementText.toLowerCase().includes('show more')) {
+        const alternativeOutfits = praxisAgentOrchestrator.generateOutfits(context, usedOutfitIds);
+        if (alternativeOutfits.length > 0) {
+          setOutfits(alternativeOutfits);
+          setUsedOutfitIds(prev => [...prev, ...alternativeOutfits.map(o => o.id.toString())]);
+          toast.success('Showing alternative looks');
+        } else {
+          toast.info('No more alternatives available');
+        }
+      } else {
+        // Regular refinement
+        const refined = await praxisAgentOrchestrator.refineOutfits(context, refinementText);
+        setOutfits(refined);
+        setUsedOutfitIds(refined.map(o => o.id.toString()));
+        toast.success('Looks updated based on your preferences');
+      }
     } catch (error) {
       console.error('Refinement error:', error);
       toast.error('Failed to refine looks. Please try again.');
@@ -163,6 +204,57 @@ export default function AgentResults() {
 
   const handleAttachment = () => {
     navigate('/agent/capture');
+  };
+
+  const handleTryOn = async (outfitId: number) => {
+    const outfit = outfits.find(o => o.id === outfitId);
+    if (!outfit || !userPhoto) return;
+
+    setIsGeneratingTryOn(outfitId);
+
+    try {
+      // Generate try-on image
+      const result = await generateVirtualTryOn({
+        userPhoto,
+        outfitImage: outfit.imageUrl,
+        outfitId: outfit.id,
+        userId: user?.id,
+      });
+
+      toast.success('Try-on generated!');
+
+      // Update history entry if we have one
+      if (user && historyEntryId) {
+        try {
+          await updateOutfitHistoryTryOn(
+            user.id,
+            historyEntryId,
+            result.imageUrl,
+            undefined, // styleName
+            undefined, // styleDNA
+            undefined, // colorPalette
+            outfit.id,
+            user.primaryEmailAddress?.emailAddress
+          );
+        } catch (err) {
+          console.error('Error updating history with try-on:', err);
+        }
+      }
+
+      // Navigate to try-on view or show in modal
+      navigate('/agent/tryon', { 
+        state: { 
+          outfit, 
+          tryOnImage: result.imageUrl,
+          userPhoto 
+        } 
+      });
+    } catch (error) {
+      console.error('Try-on error:', error);
+      toast.error('Failed to generate try-on. Please try again.');
+    } finally {
+      setIsGeneratingTryOn(null);
+    }
   };
 
   return (
@@ -204,27 +296,58 @@ export default function AgentResults() {
             </div>
           ) : (
             <>
-              {outfits.map((outfit) => (
-                <div key={outfit.id} className="space-y-3">
-                  <OutfitCard outfit={outfit} />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="default"
-                      onClick={() => handleChooseLook(outfit.id)}
-                      className="flex-1"
-                    >
-                      Choose this look
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleRefine('Show alternatives')}
-                      className="flex-1"
-                    >
-                      Refine
-                    </Button>
+              {outfits.map((outfit) => {
+                const context = praxisAgentOrchestrator.getContext();
+                return (
+                  <div key={outfit.id} className="space-y-3">
+                    <OutfitCard 
+                      outfit={outfit} 
+                      wardrobeItems={context.wardrobeItems}
+                      hasPhotoAnalysis={!!context.skinTone}
+                      hasProportionAnalysis={!!context.bodyProportions}
+                      hasFaceAnalysis={!!context.faceShape}
+                    />
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          onClick={() => handleChooseLook(outfit.id)}
+                          className="flex-1"
+                        >
+                          Choose this look
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleRefine('Show alternatives')}
+                          className="flex-1"
+                        >
+                          Refine
+                        </Button>
+                      </div>
+                      {userPhoto && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleTryOn(outfit.id)}
+                          disabled={isGeneratingTryOn === outfit.id}
+                          className="w-full"
+                        >
+                          {isGeneratingTryOn === outfit.id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                              Generating try-on...
+                            </>
+                          ) : (
+                            <>
+                              <TryOnIcon className="w-4 h-4 mr-2" />
+                              Try this on
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
 

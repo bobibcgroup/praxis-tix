@@ -201,19 +201,41 @@ export interface PraxisAgentMessage {
 }
 
 export interface PraxisAgentContext {
+  // Quick flow data
   occasion?: OccasionType | string;
   location?: LocationType | string;
   timeOfDay?: TimeType | string;
+  setting?: SettingType | string;
   weatherPreference?: string;
   vibe?: 'safe' | 'sharp' | 'relaxed';
+  priority?: PriorityType | string;
   budget?: BudgetType | string | number;
-  ownedItems?: Array<{ type: 'top' | 'bottom' | 'shoes' | 'jacket'; description: string; imageUrl?: string }>;
+  
+  // Personal flow data
+  hasPhoto?: boolean;
+  photoUrl?: string;
+  skinTone?: SkinToneData;
+  contrastLevel?: ContrastLevel;
+  bodyProportions?: BodyProportions;
+  faceShape?: FaceShapeData;
   fitInfo?: {
     height?: number;
+    heightUnit?: HeightUnit;
     fitPreference?: FitPreference;
   };
+  lifestyle?: LifestyleType | string;
   inspirationStyle?: InspirationPresetType | string;
+  inspirationPhotoUrl?: string;
+  wardrobeItems?: WardrobeItems;
+  styleDNA?: StyleDNA;
+  styleColorProfile?: StyleColorProfile;
+  
+  // General
+  ownedItems?: Array<{ type: 'top' | 'bottom' | 'shoes' | 'jacket'; description: string; imageUrl?: string }>;
   notes?: string;
+  
+  // Flow type detection
+  flowType?: 'quick' | 'personal' | 'mixed';
 }
 
 export interface AgentAction {

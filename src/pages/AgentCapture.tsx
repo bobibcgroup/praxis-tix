@@ -162,6 +162,11 @@ export default function AgentCapture() {
 
       toast.success(type === 'video' ? 'Video captured' : 'Photo captured');
       
+      // Save photo to localStorage for try-on
+      if (type === 'photo') {
+        localStorage.setItem('praxis_agent_photo', imageUrl);
+      }
+      
       // Navigate to results
       setTimeout(() => {
         navigate('/agent/results');

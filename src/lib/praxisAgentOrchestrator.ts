@@ -12,8 +12,16 @@ import type {
   ContrastLevel,
   BodyProportions,
   FaceShapeData,
+  PersonalData,
+  LifestyleType,
+  InspirationPresetType,
+  WardrobeItems,
+  StyleDNA,
+  FitPreference,
+  HeightUnit,
 } from '@/types/praxis';
 import { generateOutfits } from './outfitGenerator';
+import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from './personalOutfitGenerator';
 import { analyzePhoto } from './photoAnalysis';
 import { generateAgentResponse, extractContextFromMessage } from './agentOpenAIService';
 import type { FlowData } from '@/types/praxis';
@@ -34,6 +42,7 @@ class PraxisAgentOrchestrator {
     bodyProportions?: BodyProportions;
     faceShape?: FaceShapeData;
   };
+  private photoUrl?: string;
 
   /**
    * Process a user text message (async with OpenAI)
@@ -94,6 +103,13 @@ class PraxisAgentOrchestrator {
   ): Promise<AgentResponse> {
     this.context = { ...this.context, ...context };
     
+    // Store photo URL for try-on
+    if (metadata.type === 'photo') {
+      this.photoUrl = metadata.url;
+      this.context.photoUrl = metadata.url;
+      this.context.hasPhoto = true;
+    }
+    
     // Analyze photo if it's an image
     if (metadata.type === 'photo') {
       try {
@@ -106,11 +122,33 @@ class PraxisAgentOrchestrator {
             faceShape: analysis.faceShape,
           };
           
+          // Update context with analysis results
+          this.context.skinTone = analysis.skinTone;
+          this.context.contrastLevel = analysis.contrastLevel;
+          this.context.bodyProportions = analysis.bodyProportions;
+          this.context.faceShape = analysis.faceShape;
+          
+          // Derive style color profile
+          this.context.styleColorProfile = deriveStyleColorProfile({
+            hasPhoto: true,
+            lifestyle: this.context.lifestyle || '',
+            hasWardrobe: false,
+            hasInspiration: false,
+            skinTone: analysis.skinTone,
+            contrastLevel: analysis.contrastLevel,
+          });
+          
           // Update context with fit info
           if (analysis.bodyProportions) {
             this.context.fitInfo = {
+              ...this.context.fitInfo,
               fitPreference: this.context.fitInfo?.fitPreference || 'regular',
             };
+          }
+          
+          // Auto-detect personal flow if photo provided
+          if (!this.context.flowType) {
+            this.context.flowType = 'personal';
           }
         }
       } catch (error) {
@@ -147,30 +185,64 @@ class PraxisAgentOrchestrator {
   }
 
   /**
-   * Generate outfits based on current context (with photo analysis if available)
+   * Generate outfits based on current context (supports both quick and personal flows)
    */
-  generateOutfits(context: PraxisAgentContext): Outfit[] {
-    // Convert agent context to FlowData format
-    const flowData: FlowData = {
-      occasion: {
-        event: (context.occasion as OccasionType) || 'WORK',
-      },
-      context: {
-        location: (context.location as LocationType) || '',
-        when: (context.timeOfDay as TimeType) || '',
-        setting: '',
-      },
-      preferences: {
-        priority: context.vibe === 'sharp' ? 'SHARP' : context.vibe === 'relaxed' ? 'COMFORT' : 'IMPRESSION',
-        budget: (context.budget as BudgetType) || 'MID_RANGE',
-      },
-    };
+  generateOutfits(context: PraxisAgentContext, excludeIds: string[] = []): Outfit[] {
+    // Determine flow type
+    const flowType = context.flowType || (context.hasPhoto || context.lifestyle ? 'personal' : 'quick');
+    
+    if (flowType === 'personal' || context.hasPhoto || context.lifestyle) {
+      // Use personal outfit generation
+      const personalData: PersonalData = {
+        hasPhoto: context.hasPhoto || false,
+        photoCropped: context.photoUrl,
+        skinTone: context.skinTone,
+        contrastLevel: context.contrastLevel,
+        bodyProportions: context.bodyProportions,
+        faceShape: context.faceShape,
+        fitCalibration: context.fitInfo ? {
+          height: context.fitInfo.height,
+          heightUnit: context.fitInfo.heightUnit || 'cm',
+          fitPreference: context.fitInfo.fitPreference,
+        } : undefined,
+        lifestyle: (context.lifestyle as LifestyleType) || '',
+        hasInspiration: !!context.inspirationStyle || !!context.inspirationPhotoUrl,
+        inspirationPreset: context.inspirationStyle as InspirationPresetType,
+        inspirationData: context.inspirationPhotoUrl,
+        hasWardrobe: !!context.wardrobeItems,
+        wardrobeItems: context.wardrobeItems,
+        styleDNA: context.styleDNA,
+        styleColorProfile: context.styleColorProfile || (context.skinTone ? deriveStyleColorProfile({
+          hasPhoto: true,
+          lifestyle: '',
+          hasWardrobe: false,
+          hasInspiration: false,
+          skinTone: context.skinTone,
+          contrastLevel: context.contrastLevel,
+        }) : undefined),
+      };
+      
+      return generatePersonalOutfits(personalData);
+    } else {
+      // Use quick flow generation
+      const flowData: FlowData = {
+        occasion: {
+          event: (context.occasion as OccasionType) || 'WORK',
+        },
+        context: {
+          location: (context.location as LocationType) || '',
+          when: (context.timeOfDay as TimeType) || '',
+          setting: (context.setting as any) || '',
+        },
+        preferences: {
+          priority: (context.priority as any) || (context.vibe === 'sharp' ? 'SHARP' : context.vibe === 'relaxed' ? 'COMFORT' : 'IMPRESSION'),
+          budget: (context.budget as BudgetType) || 'MID_RANGE',
+        },
+      };
 
-    // Note: Photo analysis results are stored in this.photoAnalysis
-    // The generateOutfits function can use this data if we pass PersonalData
-    // For now, we'll use the basic flow - can enhance later with PersonalData integration
-    const { outfits } = generateOutfits(flowData, []);
-    return outfits;
+      const { outfits } = generateOutfits(flowData, excludeIds);
+      return outfits;
+    }
   }
 
   /**
@@ -178,6 +250,13 @@ class PraxisAgentOrchestrator {
    */
   getPhotoAnalysis() {
     return this.photoAnalysis;
+  }
+
+  /**
+   * Get photo URL for try-on
+   */
+  getPhotoUrl(): string | undefined {
+    return this.photoUrl;
   }
 
   /**
@@ -452,32 +531,118 @@ class PraxisAgentOrchestrator {
   }
 
   /**
+   * Generate Style DNA from current context
+   */
+  generateStyleDNA(): StyleDNA | undefined {
+    if (!this.context.inspirationStyle && !this.context.lifestyle) {
+      return undefined;
+    }
+    
+    // Derive Style DNA from inspiration or lifestyle
+    const primaryStyle = (this.context.inspirationStyle as InspirationPresetType) || 
+      (this.context.lifestyle === 'WORK' ? 'CLASSIC_TAILORED' : 
+       this.context.lifestyle === 'SOCIAL' ? 'SMART_CASUAL' :
+       this.context.lifestyle === 'CASUAL' ? 'RELAXED_WEEKEND' :
+       'MODERN_MINIMAL') as InspirationPresetType;
+    
+    return {
+      primaryStyle,
+      confidence: this.context.inspirationStyle ? 'high' : 'medium',
+    };
+  }
+
+  /**
+   * Get color recommendations based on skin tone
+   */
+  getColorRecommendations() {
+    if (!this.context.skinTone?.bucket) {
+      return null;
+    }
+    
+    return getRecommendedSwatches(this.context.skinTone.bucket).slice(0, 4).map(s => ({
+      name: s.name,
+      hex: s.hex,
+    }));
+  }
+
+  /**
+   * Add wardrobe item to context
+   */
+  addWardrobeItem(type: 'top' | 'bottom' | 'shoes' | 'jacket', imageUrl: string): void {
+    if (!this.context.wardrobeItems) {
+      this.context.wardrobeItems = {
+        top: null,
+        jacket: null,
+        bottom: null,
+        shoes: null,
+      };
+    }
+    
+    this.context.wardrobeItems[type] = imageUrl;
+    this.context.hasWardrobe = true;
+  }
+
+  /**
+   * Set lifestyle
+   */
+  setLifestyle(lifestyle: LifestyleType): void {
+    this.context.lifestyle = lifestyle;
+    this.context.flowType = 'personal';
+  }
+
+  /**
+   * Set inspiration style
+   */
+  setInspirationStyle(preset: InspirationPresetType): void {
+    this.context.inspirationStyle = preset;
+    this.context.hasInspiration = true;
+    
+    // Generate Style DNA from inspiration
+    this.context.styleDNA = {
+      primaryStyle: preset,
+      confidence: 'high',
+    };
+  }
+
+  /**
+   * Set fit calibration
+   */
+  setFitCalibration(height?: number, heightUnit?: HeightUnit, fitPreference?: FitPreference): void {
+    this.context.fitInfo = {
+      height,
+      heightUnit,
+      fitPreference,
+    };
+  }
+
+  /**
    * Reset orchestrator state
    */
   reset(): void {
     this.conversationHistory = [];
     this.context = {};
     this.currentStage = 'intake';
+    this.photoAnalysis = undefined;
+    this.photoUrl = undefined;
   }
 
   /**
-   * Load state from storage
+   * Load state from storage (deprecated - not used anymore, always start fresh)
    */
   loadState(state: { conversationHistory: PraxisAgentMessage[]; context: PraxisAgentContext; stage: AgentStage }): void {
-    this.conversationHistory = state.conversationHistory.map(msg => ({
-      ...msg,
-      createdAt: new Date(msg.createdAt),
-    }));
+    // Only load context, not conversation history
     this.context = state.context;
     this.currentStage = state.stage;
+    // Don't load conversation history - start fresh
+    this.conversationHistory = [];
   }
 
   /**
-   * Get state for storage
+   * Get state for storage (only context, not conversation history)
    */
   getState(): { conversationHistory: PraxisAgentMessage[]; context: PraxisAgentContext; stage: AgentStage } {
     return {
-      conversationHistory: this.conversationHistory,
+      conversationHistory: [], // Don't save conversation history
       context: this.context,
       stage: this.currentStage,
     };

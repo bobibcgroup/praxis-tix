@@ -19,6 +19,8 @@ import Agent from "./pages/Agent";
 import AgentCapture from "./pages/AgentCapture";
 import AgentResults from "./pages/AgentResults";
 import AgentPurchase from "./pages/AgentPurchase";
+import AgentTryOn from "./pages/AgentTryOn";
+import AgentStyleDNA from "./pages/AgentStyleDNA";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +51,8 @@ const App = () => (
               <Route path="/agent/capture" element={<AgentCapture />} />
               <Route path="/agent/results" element={<AgentResults />} />
               <Route path="/agent/purchase" element={<AgentPurchase />} />
+              <Route path="/agent/tryon" element={<AgentTryOn />} />
+              <Route path="/agent/style-dna" element={<AgentStyleDNA />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

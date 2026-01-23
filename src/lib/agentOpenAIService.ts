@@ -84,25 +84,38 @@ export async function generateAgentResponse(
  * Build system prompt for the agent
  */
 function buildSystemPrompt(context: PraxisAgentContext, stage: AgentStage): string {
+  const hasPhoto = !!context.hasPhoto || !!context.photoUrl;
+  const isPersonalFlow = context.flowType === 'personal' || hasPhoto || !!context.lifestyle;
+  
   let prompt = `You are Praxis Agent, a helpful fashion styling assistant. You help users find the perfect outfit through natural conversation.
 
-Your goal: Collect information about the user's occasion, location, time, preferences, and budget, then generate outfit recommendations.
+Your goal: Collect information and generate personalized outfit recommendations.
 
 Current stage: ${stage}
+Flow type: ${isPersonalFlow ? 'personal (building style profile)' : 'quick (occasion-based)'}
 Current context: ${JSON.stringify(context, null, 2)}
 
 Guidelines:
 - Be concise, friendly, and helpful (1-2 sentences max)
 - Ask at most 3 clarifying questions total
-- Extract key information: occasion, location, time, vibe (safe/sharp/relaxed), budget
+- Detect flow type: "I need something for tonight" = quick, "Build my style" = personal
+- Extract ALL relevant information from natural language
 - When you have enough info, offer to generate outfits
 - Use natural, conversational language
 - Keep responses short and actionable`;
 
   if (stage === 'intake') {
-    prompt += '\n\nYou are in the intake stage. Ask about the occasion first (e.g., "What\'s the occasion?").';
+    if (isPersonalFlow) {
+      prompt += '\n\nYou are building a personal style profile. Ask about lifestyle (work/social/casual/mixed) or request a photo for analysis.';
+    } else {
+      prompt += '\n\nYou are in the intake stage. Ask about the occasion first (e.g., "What\'s the occasion?").';
+    }
   } else if (stage === 'clarify') {
-    prompt += '\n\nYou are clarifying details. Ask about location/time or preferences (e.g., "Where and when?" or "What\'s your priority - safe, sharp, or relaxed?").';
+    if (isPersonalFlow) {
+      prompt += '\n\nFor personal flow, ask about: lifestyle, fit preferences, inspiration style, or wardrobe items.';
+    } else {
+      prompt += '\n\nYou are clarifying details. Ask about location/time or preferences (e.g., "Where and when?" or "What\'s your priority - safe, sharp, or relaxed?").';
+    }
   } else if (stage === 'capture_optional') {
     prompt += '\n\nOffer to generate outfits or ask if they want to add a photo for better personalization.';
   } else if (stage === 'generate') {
@@ -235,7 +248,11 @@ export async function extractContextFromMessage(
       messages: [
         {
           role: 'system',
-          content: `Extract fashion styling context from user messages. Return JSON with: occasion, location, timeOfDay, vibe (safe/sharp/relaxed), budget, weatherPreference, notes. Use null for missing values.`,
+          content: `Extract fashion styling context from user messages. Return JSON with all relevant fields:
+- Quick flow: occasion (WEDDING/WORK/DINNER/DATE/PARTY), location, timeOfDay (DAY/NIGHT), setting, priority (SIMPLE/SHARP/COMFORT/IMPRESSION), budget (EVERYDAY/MID_RANGE/PREMIUM), vibe (safe/sharp/relaxed), weatherPreference
+- Personal flow: lifestyle (WORK/SOCIAL/CASUAL/MIXED), fitPreference (slim/regular/relaxed), height (number in cm), inspirationStyle (QUIET_LUXURY/SMART_CASUAL/MODERN_MINIMAL/ELEVATED_STREET/CLASSIC_TAILORED/RELAXED_WEEKEND)
+- General: notes, flowType (quick/personal/mixed)
+Use null for missing values.`,
         },
         {
           role: 'user',
@@ -276,25 +293,78 @@ function extractContextFallback(message: string): Partial<PraxisAgentContext> {
   if (lowerText.includes('riyadh')) context.location = 'RESTAURANT';
   else if (lowerText.includes('outdoor')) context.location = 'OUTDOOR_VENUE';
   else if (lowerText.includes('beach')) context.location = 'BEACH_RESORT';
+  else if (lowerText.includes('restaurant')) context.location = 'RESTAURANT';
+  else if (lowerText.includes('hotel')) context.location = 'HOTEL';
+  else if (lowerText.includes('home')) context.location = 'HOME';
+  else if (lowerText.includes('bar')) context.location = 'BAR';
 
   // Extract time
   if (lowerText.includes('evening') || lowerText.includes('night')) context.timeOfDay = 'NIGHT';
-  else if (lowerText.includes('day') || lowerText.includes('morning')) context.timeOfDay = 'DAY';
+  else if (lowerText.includes('day') || lowerText.includes('morning') || lowerText.includes('afternoon')) context.timeOfDay = 'DAY';
 
-  // Extract vibe
-  if (lowerText.includes('sharp') || lowerText.includes('polished')) context.vibe = 'sharp';
-  else if (lowerText.includes('relaxed') || lowerText.includes('casual')) context.vibe = 'relaxed';
-  else if (lowerText.includes('safe') || lowerText.includes('conservative')) context.vibe = 'safe';
+  // Extract priority/vibe
+  if (lowerText.includes('sharp') || lowerText.includes('polished') || lowerText.includes('intentional')) {
+    context.vibe = 'sharp';
+    context.priority = 'SHARP';
+  } else if (lowerText.includes('relaxed') || lowerText.includes('casual') || lowerText.includes('comfort')) {
+    context.vibe = 'relaxed';
+    context.priority = 'COMFORT';
+  } else if (lowerText.includes('safe') || lowerText.includes('conservative') || lowerText.includes('simple')) {
+    context.vibe = 'safe';
+    context.priority = 'SIMPLE';
+  }
 
   // Extract budget
-  if (lowerText.includes('budget') || lowerText.includes('cheap') || lowerText.includes('under $200')) {
+  if (lowerText.includes('budget') || lowerText.includes('cheap') || lowerText.includes('under $200') || lowerText.includes('affordable')) {
     context.budget = 'EVERYDAY';
-  } else if (lowerText.includes('premium') || lowerText.includes('expensive')) {
+  } else if (lowerText.includes('premium') || lowerText.includes('expensive') || lowerText.includes('high-end') || lowerText.includes('unrestricted')) {
     context.budget = 'PREMIUM';
+  } else if (lowerText.includes('mid') || lowerText.includes('elevated')) {
+    context.budget = 'MID_RANGE';
+  }
+
+  // Extract lifestyle (personal flow)
+  if (lowerText.includes('work focused') || lowerText.includes('mostly work')) context.lifestyle = 'WORK';
+  else if (lowerText.includes('social') || lowerText.includes('nights out')) context.lifestyle = 'SOCIAL';
+  else if (lowerText.includes('casual') || lowerText.includes('relaxed lifestyle')) context.lifestyle = 'CASUAL';
+  else if (lowerText.includes('mixed')) context.lifestyle = 'MIXED';
+
+  // Extract fit preference
+  if (lowerText.includes('slim fit') || lowerText.includes('slimmer')) context.fitInfo = { ...context.fitInfo, fitPreference: 'slim' };
+  else if (lowerText.includes('regular fit') || lowerText.includes('standard')) context.fitInfo = { ...context.fitInfo, fitPreference: 'regular' };
+  else if (lowerText.includes('relaxed fit') || lowerText.includes('looser')) context.fitInfo = { ...context.fitInfo, fitPreference: 'relaxed' };
+
+  // Extract height (approximate)
+  const heightMatch = lowerText.match(/(\d+)\s*(cm|centimeters?|ft|feet|'|inches?|")/i);
+  if (heightMatch) {
+    const value = parseInt(heightMatch[1]);
+    const unit = heightMatch[2].toLowerCase();
+    if (unit.includes('cm') || unit.includes('centimeter')) {
+      context.fitInfo = { ...context.fitInfo, height: value, heightUnit: 'cm' };
+    } else if (unit.includes('ft') || unit.includes('feet') || unit.includes("'")) {
+      // Would need more parsing for ft-in, but basic support
+      context.fitInfo = { ...context.fitInfo, heightUnit: 'ft-in' };
+    }
+  }
+
+  // Extract inspiration style
+  if (lowerText.includes('quiet luxury')) context.inspirationStyle = 'QUIET_LUXURY';
+  else if (lowerText.includes('smart casual')) context.inspirationStyle = 'SMART_CASUAL';
+  else if (lowerText.includes('modern minimal') || lowerText.includes('minimalist')) context.inspirationStyle = 'MODERN_MINIMAL';
+  else if (lowerText.includes('elevated street') || lowerText.includes('streetwear')) context.inspirationStyle = 'ELEVATED_STREET';
+  else if (lowerText.includes('classic tailored') || lowerText.includes('tailored')) context.inspirationStyle = 'CLASSIC_TAILORED';
+  else if (lowerText.includes('relaxed weekend') || lowerText.includes('weekend')) context.inspirationStyle = 'RELAXED_WEEKEND';
+
+  // Detect flow type
+  if (lowerText.includes('build my style') || lowerText.includes('personal style') || lowerText.includes('style profile') || 
+      lowerText.includes('long term') || context.lifestyle) {
+    context.flowType = 'personal';
+  } else if (lowerText.includes('for tonight') || lowerText.includes('for tomorrow') || lowerText.includes('specific event')) {
+    context.flowType = 'quick';
   }
 
   // Extract weather
-  if (lowerText.includes('hot') || lowerText.includes('summer')) context.weatherPreference = 'hot';
+  if (lowerText.includes('hot') || lowerText.includes('summer') || lowerText.includes('warm')) context.weatherPreference = 'hot';
   else if (lowerText.includes('cold') || lowerText.includes('winter')) context.weatherPreference = 'cold';
 
   return context;

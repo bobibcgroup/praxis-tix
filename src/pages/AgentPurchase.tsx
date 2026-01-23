@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Sparkles } from 'lucide-react';
 import { triggerConfettiBurst } from '@/lib/confetti';
+import { praxisAgentOrchestrator } from '@/lib/praxisAgentOrchestrator';
 import type { Outfit } from '@/types/praxis';
 import { useSEO } from '@/hooks/useSEO';
 
@@ -35,7 +36,12 @@ export default function AgentPurchase() {
   const location = useLocation();
   useSEO();
   
-  const outfit = (location.state as { outfit?: Outfit })?.outfit;
+  const { outfit, showStyleDNA } = (location.state as { 
+    outfit?: Outfit;
+    showStyleDNA?: boolean;
+  }) || {};
+  
+  const shouldShowStyleDNA = showStyleDNA || localStorage.getItem('praxis_agent_show_style_dna') === 'true';
   
   useEffect(() => {
     if (!outfit) {
@@ -132,6 +138,20 @@ export default function AgentPurchase() {
         {/* Bottom actions */}
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 md:relative md:border-t-0 md:p-0 md:pt-4">
           <div className="space-y-3 max-w-md mx-auto">
+            {shouldShowStyleDNA && (
+              <Button 
+                onClick={() => {
+                  localStorage.removeItem('praxis_agent_show_style_dna');
+                  navigate('/agent/style-dna');
+                }} 
+                variant="default" 
+                size="lg" 
+                className="w-full"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                View Your Style DNA
+              </Button>
+            )}
             <Button onClick={handleRestart} variant="outline" size="lg" className="w-full text-muted-foreground">
               Style another moment
             </Button>

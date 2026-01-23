@@ -5,22 +5,25 @@ import { AgentChatInput } from '@/components/app/AgentChatInput';
 import { AgentSuggestedPrompts } from '@/components/app/AgentSuggestedPrompts';
 import { AgentVoiceRecorder } from '@/components/app/AgentVoiceRecorder';
 import { praxisAgentOrchestrator } from '@/lib/praxisAgentOrchestrator';
+import { useUser } from '@clerk/clerk-react';
 import type { PraxisAgentMessage, AgentStage } from '@/types/praxis';
-import { ArrowLeft, Bot } from 'lucide-react';
+import { ArrowLeft, Bot, History, RotateCcw, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSEO } from '@/hooks/useSEO';
 import { toast } from 'sonner';
 
-const STORAGE_KEY = 'praxis_agent_state';
 const SUGGESTED_PROMPTS = [
   'Work dinner in Riyadh',
   'First date',
   'Wedding guest',
   'Hot weather smart casual',
+  'Build my personal style',
+  'Help me find my style',
 ];
 
 export default function Agent() {
   const navigate = useNavigate();
+  const { user, isLoaded } = useUser();
   const isMobile = useIsMobile();
   useSEO(); // Set SEO metadata for this route
   const [messages, setMessages] = useState<PraxisAgentMessage[]>([]);
@@ -29,38 +32,40 @@ export default function Agent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<AgentStage>('intake');
 
-  // Load state from localStorage on mount
+  const handleStartOver = () => {
+    praxisAgentOrchestrator.reset();
+    const welcomeMessage: PraxisAgentMessage = {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Hi! I\'m Praxis Agent. Tell me what you need, and I\'ll handle the rest.',
+      createdAt: new Date(),
+    };
+    setMessages([welcomeMessage]);
+    setStage('intake');
+  };
+
+  const handleViewHistory = () => {
+    navigate('/history');
+  };
+
+  // Initialize fresh conversation on mount (no history loading)
   useEffect(() => {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        praxisAgentOrchestrator.loadState(parsed);
-        setMessages(praxisAgentOrchestrator.getConversationHistory());
-        setStage(praxisAgentOrchestrator.getCurrentStage());
-      } catch (error) {
-        console.error('Failed to load agent state:', error);
-      }
-    } else {
-      // Initialize with welcome message
-      const welcomeMessage: PraxisAgentMessage = {
-        id: 'welcome',
-        role: 'assistant',
-        content: 'Hi! I\'m Praxis Agent. Tell me what you need, and I\'ll handle the rest.',
-        createdAt: new Date(),
-      };
-      setMessages([welcomeMessage]);
-      praxisAgentOrchestrator.reset();
-    }
+    // Always start fresh - reset orchestrator
+    praxisAgentOrchestrator.reset();
+    
+    // Initialize with welcome message
+    const welcomeMessage: PraxisAgentMessage = {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Hi! I\'m Praxis Agent. Tell me what you need, and I\'ll handle the rest.',
+      createdAt: new Date(),
+    };
+    setMessages([welcomeMessage]);
+    setStage('intake');
   }, []);
 
-  // Save state to localStorage whenever it changes
-  useEffect(() => {
-    if (messages.length > 0) {
-      const state = praxisAgentOrchestrator.getState();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-  }, [messages, stage]);
+  // Don't save conversation history - start fresh each time
+  // Only save context for current session if needed for navigation
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -175,6 +180,32 @@ export default function Agent() {
           <p className="text-sm text-muted-foreground text-center">
             Tell me what you need. I'll handle the rest.
           </p>
+        </div>
+
+        {/* Quick action buttons */}
+        <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          {isLoaded && user && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleViewHistory}
+              className="shrink-0"
+            >
+              <History className="w-4 h-4 mr-2" />
+              View History
+            </Button>
+          )}
+          {messages.length > 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStartOver}
+              className="shrink-0"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Start Over
+            </Button>
+          )}
         </div>
 
         {/* Suggested prompts */}
