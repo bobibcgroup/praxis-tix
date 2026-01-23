@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter,
 import { getOutfitHistory, deleteOutfitFromHistory, addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
 import Header from '@/components/Header';
+import HistoryDetailModal from '@/components/app/HistoryDetailModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,8 @@ const History = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [generatingEntryIds, setGeneratingEntryIds] = useState<Set<string>>(new Set());
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<OutfitHistoryEntry | null>(null);
 
   useEffect(() => {
     if (isLoaded) {
@@ -341,11 +344,18 @@ const History = () => {
             {filteredAndSortedHistory.map((entry) => (
               <div
                 key={entry.id}
-                className="bg-card rounded-xl border border-border p-6 hover:border-primary/50 transition-colors duration-200"
+                onClick={() => {
+                  setSelectedEntry(entry);
+                  setDetailModalOpen(true);
+                }}
+                className="bg-card rounded-xl border border-border p-6 hover:border-primary/50 transition-colors duration-200 cursor-pointer"
               >
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* Image - more compact on mobile */}
-                  <div className="w-full md:w-40 aspect-[3/4] rounded-lg overflow-hidden bg-muted shrink-0 relative group cursor-pointer">
+                  <div 
+                    className="w-full md:w-40 aspect-[3/4] rounded-lg overflow-hidden bg-muted shrink-0 relative group cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {generatingEntryIds.has(entry.id) ? (
                       // Show generating state
                       <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 relative">
@@ -500,7 +510,8 @@ const History = () => {
                     {/* Delete button - icon only, secondary action */}
                     <div className="flex gap-2 mt-4">
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setOutfitToDelete(entry.id);
                           setDeleteDialogOpen(true);
                         }}
@@ -560,6 +571,17 @@ const History = () => {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
+  );
+      {/* History Detail Modal */}
+      <HistoryDetailModal
+        open={detailModalOpen}
+        entry={selectedEntry}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setSelectedEntry(null);
+        }}
+      />
     </div>
   );
 };

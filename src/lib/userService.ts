@@ -188,6 +188,56 @@ export async function saveOutfitToHistory(
 }
 
 /**
+ * Update style name for an existing outfit history entry (for quick flow)
+ */
+export async function updateOutfitHistoryStyleName(
+  userId: string,
+  historyId: string,
+  styleName: string
+): Promise<void> {
+  if (!supabase) {
+    // Fallback to localStorage
+    const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    const entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
+    if (entry) {
+      entry.styleName = styleName;
+      localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
+    }
+    return;
+  }
+
+  try {
+    const updateData: any = {
+      style_name: styleName,
+    };
+    
+    console.log('🔄 Updating history entry style name:', { historyId, userId, styleName });
+    
+    const { error } = await supabase
+      .from('outfit_history')
+      .update(updateData)
+      .eq('id', historyId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('❌ Supabase update error:', error);
+      throw error;
+    }
+    
+    console.log('✅ History entry style name updated successfully:', styleName);
+  } catch (error) {
+    console.error('Error updating outfit history style name:', error);
+    // Fallback to localStorage
+    const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+    const entry = history.find((e: OutfitHistoryEntry) => e.id === historyId);
+    if (entry) {
+      entry.styleName = styleName;
+      localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
+    }
+  }
+}
+
+/**
  * Update existing outfit history entry with try-on image URL and style data
  */
 export async function updateOutfitHistoryTryOn(

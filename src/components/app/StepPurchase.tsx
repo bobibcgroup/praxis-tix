@@ -40,6 +40,17 @@ const StepPurchase = ({ outfit, onBack, onRestart }: StepPurchaseProps) => {
   return (
     <FlowStep title="Complete Your Look">
       <div className="space-y-6 pb-20">
+        {/* Outfit Image */}
+        {outfit.imageUrl && (
+          <div className="rounded-xl overflow-hidden border border-border">
+            <img
+              src={outfit.imageUrl}
+              alt={outfit.title}
+              className="w-full h-auto"
+            />
+          </div>
+        )}
+
         <div className="text-center mb-4">
           <p className="text-sm text-muted-foreground">
             You can shop pieces individually.

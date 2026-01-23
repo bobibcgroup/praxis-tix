@@ -16,9 +16,10 @@ import StepPersonalResults from '@/components/app/StepPersonalResults';
 import StepStyleDNA from '@/components/app/StepStyleDNA';
 import StepPersonalLoading from '@/components/app/StepPersonalLoading';
 import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
+import StyleNameModal from '@/components/app/StyleNameModal';
 import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
 import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
-import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
+import { saveOutfitToHistory, updateOutfitHistoryTryOn, updateOutfitHistoryStyleName } from '@/lib/userService';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -101,6 +102,8 @@ const Flow = () => {
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
   const [tryOnImageUrl, setTryOnImageUrl] = useState<string | null>(null);
   const [historyEntryId, setHistoryEntryId] = useState<string | null>(null);
+  const [quickFlowStyleName, setQuickFlowStyleName] = useState<string | null>(null);
+  const [showQuickFlowNameModal, setShowQuickFlowNameModal] = useState(false);
   
   const { user, isLoaded } = useUser();
   
@@ -232,6 +235,8 @@ const Flow = () => {
     setSelectedOutfit(null);
     setTryOnImageUrl(null);
     setHistoryEntryId(null);
+    setQuickFlowStyleName(null);
+    setShowQuickFlowNameModal(false);
     // Clear generation tracking state
     localStorage.removeItem('praxis_active_generation');
     localStorage.removeItem('praxis_current_history_entry_id');
@@ -354,8 +359,13 @@ const Flow = () => {
                       outfit,
                       occasionValue,
                       undefined, // No try-on for Quick Flow
+                      undefined,
+                      undefined, // styleName - will be set when user names it
+                      undefined,
                       undefined
                     );
+                    
+                    setHistoryEntryId(entryId);
                     
                     if (entryId) {
                       console.log('✅ Quick Flow outfit saved to history successfully:', entryId);
@@ -374,8 +384,12 @@ const Flow = () => {
                 } else {
                   console.warn('User not authenticated, skipping history save');
                 }
-                // Check if user has photo for try-on (only in personal flow, so skip to complete)
-                setStep(5); // Go to virtual try-on if photo available, otherwise complete
+                // If user is signed in, show name modal, otherwise go to purchase
+                if (isLoaded && user) {
+                  setShowQuickFlowNameModal(true);
+                } else {
+                  setStep(5); // Go to purchase page
+                }
               }
             }}
             onBack={() => setStep(3)}
@@ -691,28 +705,52 @@ const Flow = () => {
     }
   };
 
-  // Show tagline only on mode select screen
-  const showTagline = step === 0;
+  // Handle quick flow style name confirmation
+  const handleQuickFlowNameConfirm = async (name: string) => {
+    setQuickFlowStyleName(name);
+    setShowQuickFlowNameModal(false);
+    
+    // Update history entry with style name if we have one
+    if (user && historyEntryId) {
+      try {
+        await updateOutfitHistoryStyleName(
+          user.id,
+          historyEntryId,
+          name
+        );
+        console.log('✅ Quick Flow style name saved:', name);
+      } catch (err) {
+        console.error('❌ Error updating Quick Flow style name:', err);
+      }
+    }
+    
+    setStep(5); // Go to purchase page
+  };
+
+  const handleQuickFlowNameCancel = () => {
+    setShowQuickFlowNameModal(false);
+    setStep(5); // Go to purchase page anyway
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
-        <div className="container mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
-          <div className="flex flex-col items-start py-2">
-            <button 
-              onClick={handleRestart}
-              className="text-2xl md:text-3xl font-medium text-foreground tracking-wide"
-            >
-              <span className="font-serif">Praxis</span>
-            </button>
-            {showTagline && (
-              <p className="text-sm text-muted-foreground mt-1.5">
+        <div className="container mx-auto px-4 md:px-6 h-14 flex items-center">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex flex-col items-start py-2">
+              <button 
+                onClick={handleRestart}
+                className="font-serif text-xl font-medium text-foreground tracking-wide hover:opacity-80 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+              >
+                Praxis
+              </button>
+              <p className="text-sm text-muted-foreground mt-0.5">
                 Get dressed right, in under a minute.
               </p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
+            </div>
+            <div className="flex items-center gap-3">
             {showStartOver && (
               <button
                 onClick={handleRestart}
@@ -855,6 +893,7 @@ const Flow = () => {
                 </Button>
               </SignInButton>
             )}
+            </div>
           </div>
         </div>
       </header>
@@ -868,6 +907,13 @@ const Flow = () => {
         )}
         {renderStep()}
       </main>
+
+      {/* Quick Flow Style Name Modal */}
+      <StyleNameModal
+        open={showQuickFlowNameModal}
+        onConfirm={handleQuickFlowNameConfirm}
+        onCancel={handleQuickFlowNameCancel}
+      />
     </div>
   );
 };
