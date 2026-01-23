@@ -331,16 +331,38 @@ const Flow = () => {
                 // Save to history if user is authenticated
                 if (isLoaded && user) {
                   try {
+                    // Validate occasion before saving
+                    const occasionValue = occasion.event as OccasionType;
+                    if (!occasionValue || occasionValue === '') {
+                      console.error('Invalid occasion value:', occasionValue);
+                      toast.error('Cannot save: Invalid occasion');
+                      return;
+                    }
+                    
+                    console.log('Saving Quick Flow outfit to history:', {
+                      userId: user.id,
+                      outfitId: outfit.id,
+                      outfitTitle: outfit.title,
+                      occasion: occasionValue
+                    });
+                    
                     const entryId = await saveOutfitToHistory(
                       user.id,
                       outfit,
-                      occasion.event as OccasionType,
+                      occasionValue,
                       undefined, // No try-on for Quick Flow
                       undefined
                     );
-                    console.log('Quick Flow outfit saved to history:', entryId);
+                    
+                    if (entryId) {
+                      console.log('✅ Quick Flow outfit saved to history successfully:', entryId);
+                      toast.success('Outfit saved to history');
+                    } else {
+                      console.warn('⚠️ saveOutfitToHistory returned null');
+                      toast.error('Failed to save outfit to history');
+                    }
                   } catch (err) {
-                    console.error('Error saving Quick Flow outfit to history:', err);
+                    console.error('❌ Error saving Quick Flow outfit to history:', err);
                     // Show user-friendly error
                     toast.error('Failed to save outfit to history');
                   }
@@ -535,6 +557,18 @@ const Flow = () => {
                 // Save to history immediately if user is authenticated
                 if (isLoaded && user) {
                   try {
+                    // Validate lifestyle/occasion before saving
+                    const occasionValue = (personal.lifestyle as OccasionType) || 'WORK';
+                    
+                    console.log('Saving Personal Flow outfit to history:', {
+                      userId: user.id,
+                      outfitId: outfit.id,
+                      outfitTitle: outfit.title,
+                      occasion: occasionValue,
+                      hasStyleDNA: !!personal.styleDNA,
+                      hasSkinTone: !!personal.skinTone
+                    });
+                    
                     const colorPalette = personal.skinTone?.bucket
                       ? getRecommendedSwatches(personal.skinTone.bucket).slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
                       : null;
@@ -542,17 +576,25 @@ const Flow = () => {
                     const entryId = await saveOutfitToHistory(
                       user.id,
                       outfit,
-                      personal.lifestyle as OccasionType || 'WORK',
+                      occasionValue,
                       undefined, // Try-on URL will be added later if available
                       undefined,
                       undefined, // styleName - will be set when try-on completes
                       personal.styleDNA || undefined,
                       colorPalette || undefined
                     );
+                    
                     setHistoryEntryId(entryId);
-                    console.log('Personal flow outfit saved to history:', entryId);
+                    
+                    if (entryId) {
+                      console.log('✅ Personal flow outfit saved to history successfully:', entryId);
+                      toast.success('Outfit saved to history');
+                    } else {
+                      console.warn('⚠️ saveOutfitToHistory returned null');
+                      toast.error('Failed to save outfit to history');
+                    }
                   } catch (err) {
-                    console.error('Error saving outfit to history:', err);
+                    console.error('❌ Error saving outfit to history:', err);
                     toast.error('Failed to save outfit to history');
                   }
                 } else if (!isLoaded) {

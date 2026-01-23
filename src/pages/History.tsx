@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2, Palette } from 'lucide-react';
+import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2, Palette, RefreshCw } from 'lucide-react';
 import { getOutfitHistory, deleteOutfitFromHistory, addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
 import Header from '@/components/Header';
@@ -42,13 +42,17 @@ const History = () => {
   useEffect(() => {
     if (isLoaded) {
       if (!user) {
+        console.log('History page: No user, redirecting to home');
         navigate('/');
         return;
       }
 
+      console.log('History page: User loaded, loading history for:', user.id);
       loadHistory();
+    } else {
+      console.log('History page: User state not loaded yet');
     }
-  }, [user, isLoaded]);
+  }, [user, isLoaded, navigate]);
 
   const loadHistory = async () => {
     if (!user) return;
@@ -172,10 +176,24 @@ const History = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to flow
           </Button>
-          <h1 className="text-3xl font-medium text-foreground mb-2">Your Outfit History</h1>
-          <p className="text-muted-foreground">
-            Previously selected outfits and personalized looks
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-3xl font-medium text-foreground mb-2">Your Outfit History</h1>
+              <p className="text-muted-foreground">
+                Previously selected outfits and personalized looks
+              </p>
+            </div>
+            <Button
+              onClick={loadHistory}
+              variant="ghost"
+              size="sm"
+              disabled={loading}
+              className="mb-2"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Filters and Search */}

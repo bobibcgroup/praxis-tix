@@ -12,6 +12,7 @@ export interface OutfitHistoryEntry {
   styleName?: string | null;
   styleDNA?: StyleDNA | null;
   colorPalette?: Array<{ name: string; hex: string }> | null;
+  userId?: string; // Optional for localStorage entries
 }
 
 /**
@@ -94,10 +95,12 @@ export async function saveOutfitToHistory(
 ): Promise<string | null> {
   if (!supabase) {
     // Fallback to localStorage
+    console.log('Supabase not configured, using localStorage fallback');
     const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
     const entryId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     history.push({
       id: entryId,
+      userId, // Store userId for filtering
       outfitId: outfit.id,
       occasion,
       outfitData: outfit,
@@ -109,6 +112,7 @@ export async function saveOutfitToHistory(
       colorPalette: colorPalette || null,
     });
     localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
+    console.log('Saved to localStorage:', entryId);
     return entryId;
   }
 
@@ -154,10 +158,12 @@ export async function saveOutfitToHistory(
     console.error('Error saving outfit history:', error);
     // Fallback to localStorage
     try {
+      console.log('Falling back to localStorage due to error');
       const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
       const entryId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       history.push({
         id: entryId,
+        userId, // Store userId for filtering
         outfitId: outfit.id,
         occasion,
         outfitData: outfit,
@@ -169,10 +175,10 @@ export async function saveOutfitToHistory(
         colorPalette: colorPalette || null,
       });
       localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
-      console.log('Saved to localStorage fallback:', entryId);
+      console.log('✅ Saved to localStorage fallback:', entryId);
       return entryId;
     } catch (localError) {
-      console.error('Error saving to localStorage fallback:', localError);
+      console.error('❌ Error saving to localStorage fallback:', localError);
       throw error; // Re-throw original error
     }
   }
