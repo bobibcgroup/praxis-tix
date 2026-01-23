@@ -198,11 +198,12 @@ const History = () => {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(entry => {
         const title = entry.outfitData.title?.toLowerCase() || '';
+        const styleName = entry.styleName?.toLowerCase() || '';
         const top = entry.outfitData.items.top?.toLowerCase() || '';
         const bottom = entry.outfitData.items.bottom?.toLowerCase() || '';
         const shoes = entry.outfitData.items.shoes?.toLowerCase() || '';
-        return title.includes(query) || top.includes(query) || 
-               bottom.includes(query) || shoes.includes(query);
+        return title.includes(query) || styleName.includes(query) || 
+               top.includes(query) || bottom.includes(query) || shoes.includes(query);
       });
     }
 
