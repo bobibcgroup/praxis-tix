@@ -12,10 +12,8 @@ const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps
   const { user, isLoaded } = useUser();
 
   const handlePersonalClick = () => {
-    if (isLoaded && user) {
-      onSelectPersonal();
-    }
-    // If not logged in, the SignInButton will handle it
+    // Allow starting personal flow without auth - sign-in prompt will appear at photo step
+    onSelectPersonal();
   };
 
   return (
