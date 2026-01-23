@@ -83,13 +83,26 @@ const StepVirtualTryOn = ({
         const generationStateStr = localStorage.getItem('praxis_active_generation');
         const historyEntryId = localStorage.getItem('praxis_current_history_entry_id');
         
+        // Get styleName from generation state if user navigated away, otherwise use component state
+        let finalStyleName = styleName || null;
+        if (generationStateStr) {
+          try {
+            const generationState = JSON.parse(generationStateStr);
+            if (generationState.styleName && !finalStyleName) {
+              finalStyleName = generationState.styleName;
+            }
+          } catch (e) {
+            console.warn('Error parsing generation state:', e);
+          }
+        }
+        
         // Dispatch custom event with all necessary data for history update
         const completionData = {
           outfitId: outfit.id,
           imageUrl: result.imageUrl,
           historyEntryId: historyEntryId || (generationStateStr ? JSON.parse(generationStateStr).historyEntryId : null),
           userId: user?.id,
-          styleName: styleName || null,
+          styleName: finalStyleName,
           personalData: personalData ? {
             styleDNA: personalData.styleDNA || null,
             skinTone: personalData.skinTone || null,
@@ -97,6 +110,7 @@ const StepVirtualTryOn = ({
         };
         
         console.log('✅ Generation complete, dispatching event with data:', completionData);
+        console.log('📝 Style name:', { componentState: styleName, final: finalStyleName });
         
         // Dispatch custom event for dashboard/history to update
         window.dispatchEvent(new CustomEvent('generation-complete', { 
