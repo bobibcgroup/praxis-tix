@@ -130,20 +130,24 @@ export async function saveOutfitToHistory(
 
     console.log('Saving outfit to history:', { userId, outfitId: outfit.id, occasion });
     
+    // Build insert object - exclude color_palette as column doesn't exist in database
+    const insertData: any = {
+      user_id: userId,
+      outfit_id: outfit.id,
+      occasion,
+      outfit_data: outfit,
+      try_on_image_url: tryOnImageUrl || null,
+      animated_video_url: animatedVideoUrl || null,
+      selected_at: new Date().toISOString(),
+      style_name: styleName || null,
+      style_dna: styleDNA || null,
+      // Note: color_palette column doesn't exist in database schema, so we don't include it
+      // The data will be stored in localStorage fallback if needed
+    };
+    
     const { data, error } = await supabase
       .from('outfit_history')
-      .insert({
-        user_id: userId,
-        outfit_id: outfit.id,
-        occasion,
-        outfit_data: outfit,
-        try_on_image_url: tryOnImageUrl || null,
-        animated_video_url: animatedVideoUrl || null,
-        selected_at: new Date().toISOString(),
-        style_name: styleName || null,
-        style_dna: styleDNA || null,
-        color_palette: colorPalette || null,
-      })
+      .insert(insertData)
       .select('id')
       .single();
 
@@ -207,14 +211,17 @@ export async function updateOutfitHistoryTryOn(
   }
 
   try {
+    // Build update object - exclude color_palette as column doesn't exist in database
+    const updateData: any = {
+      try_on_image_url: tryOnImageUrl,
+      style_name: styleName || null,
+      style_dna: styleDNA || null,
+      // Note: color_palette column doesn't exist in database schema
+    };
+    
     const { error } = await supabase
       .from('outfit_history')
-      .update({
-        try_on_image_url: tryOnImageUrl,
-        style_name: styleName || null,
-        style_dna: styleDNA || null,
-        color_palette: colorPalette || null,
-      })
+      .update(updateData)
       .eq('id', historyId)
       .eq('user_id', userId);
 
@@ -309,17 +316,33 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
       selectedAt: row.selected_at,
       styleName: row.style_name || null,
       styleDNA: row.style_dna || null,
-      colorPalette: row.color_palette || null,
+      colorPalette: null, // Column doesn't exist in database, always null
     }));
+    
+    // IMPORTANT: If Supabase returned 0 entries, check localStorage as fallback
+    // This handles the case where saves failed due to schema issues and fell back to localStorage
+    if (mapped.length === 0) {
+      console.log('⚠️ Supabase returned 0 entries, checking localStorage fallback...');
+      const localHistory = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+      const filtered = localHistory.filter((entry: OutfitHistoryEntry) => {
+        return !entry.userId || entry.userId === userId;
+      });
+      if (filtered.length > 0) {
+        console.log('✅ Found', filtered.length, 'entries in localStorage. Using localStorage data.');
+        return filtered;
+      }
+    }
     
     return mapped;
   } catch (error) {
     console.error('Error fetching outfit history:', error);
     // Fallback to localStorage
+    console.log('Falling back to localStorage due to error');
     const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
     const filtered = history.filter((entry: OutfitHistoryEntry) => {
       return !entry.userId || entry.userId === userId;
     });
+    console.log('Returning', filtered.length, 'entries from localStorage');
     return filtered;
   }
 }
