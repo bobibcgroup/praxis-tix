@@ -219,7 +219,7 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
   const currentImage = carouselImages[currentImageIndex];
 
   return (
-    <div className="bg-card rounded-2xl border border-border overflow-hidden">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="flex flex-col md:flex-row">
         {/* Image Carousel */}
         <div className="w-full md:w-56 aspect-[3/4] md:aspect-auto md:h-72 relative bg-muted shrink-0">
@@ -244,7 +244,7 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
               {user && (
                 <button
                   onClick={handleToggleFavorite}
-                  className="p-1.5 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors"
+                  className="p-1.5 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
                 >
                   <Heart 
@@ -270,14 +270,14 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
             <>
               <button
                 onClick={handlePrevImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-colors"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label="Previous image"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={handleNextImage}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-foreground hover:bg-background transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label="Next image"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -382,7 +382,7 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
               e.stopPropagation();
               setShowWhy(!showWhy);
             }}
-            className="text-left w-full group"
+              className="text-left w-full group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
           >
             <div className="flex items-start gap-2">
               <p className="text-muted-foreground text-sm flex-1 line-clamp-2">
@@ -423,7 +423,7 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
                 e.stopPropagation();
                 handleShare();
               }}
-              className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
               aria-label="Share this look"
             >
               <Share2 className="w-4 h-4" />

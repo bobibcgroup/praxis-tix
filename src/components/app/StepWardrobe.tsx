@@ -174,7 +174,7 @@ const StepWardrobe = ({ onWardrobeUpdate, onSkip, onBack, onContinue }: StepWard
           <button
             type="button"
             onClick={onSkip}
-            className="w-full py-3 text-center text-muted-foreground hover:text-foreground transition-colors text-sm"
+            className="w-full py-3 text-center text-muted-foreground hover:text-foreground transition-colors duration-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
           >
             Skip
           </button>
@@ -184,7 +184,7 @@ const StepWardrobe = ({ onWardrobeUpdate, onSkip, onBack, onContinue }: StepWard
       <div className="mt-4 flex justify-center">
         <button
           onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
         >
           Back
         </button>

@@ -26,7 +26,7 @@ const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps
         <button
           type="button"
           onClick={onSelectQuick}
-          className="w-full py-6 px-6 rounded-xl border-2 border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 text-left transition-all group"
+          className="w-full py-6 px-6 rounded-lg border-2 border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 text-left transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <span className="block text-lg font-medium text-foreground group-hover:text-foreground mb-1">
             Style a moment
@@ -43,7 +43,7 @@ const StepModeSelect = ({ onSelectQuick, onSelectPersonal }: StepModeSelectProps
         <button
           type="button"
           onClick={handlePersonalClick}
-          className="w-full py-5 px-6 rounded-xl border border-border/60 bg-background/50 hover:border-primary/30 hover:bg-muted/20 text-left transition-all group"
+          className="w-full py-5 px-6 rounded-lg border border-border/60 bg-background/50 hover:border-primary/50 hover:bg-muted/30 text-left transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <div className="flex items-center gap-2 mb-1">
             <User className="w-4 h-4 text-muted-foreground" />

@@ -51,7 +51,7 @@ const StepPurchase = ({ outfit, onBack, onRestart }: StepPurchaseProps) => {
           {purchaseLinks.map((link, index) => (
             <div
               key={index}
-              className="bg-card rounded-xl border border-border p-4 space-y-2"
+              className="bg-card rounded-xl border border-border p-6 space-y-2"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -82,7 +82,7 @@ const StepPurchase = ({ outfit, onBack, onRestart }: StepPurchaseProps) => {
           </Button>
           <button
             onClick={onBack}
-            className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
+            className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
           >
             Back to outfit selection
           </button>

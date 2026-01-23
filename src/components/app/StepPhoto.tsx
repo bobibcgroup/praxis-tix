@@ -541,7 +541,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
         <button
           type="button"
           onClick={handleTakePhoto}
-          className="w-full py-5 px-6 rounded-xl border-2 border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 text-left transition-all flex items-center gap-4"
+          className="w-full py-5 px-6 rounded-lg border-2 border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 text-left transition-all duration-200 flex items-center gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Camera className="w-6 h-6 text-primary" />
           <span className="text-lg font-medium text-foreground">Take photo</span>
@@ -551,7 +551,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
         <button
           type="button"
           onClick={handleUploadPhoto}
-          className="w-full py-4 px-6 rounded-xl border border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-left transition-all flex items-center gap-4"
+          className="w-full py-4 px-6 rounded-lg border border-border bg-background hover:border-primary/50 hover:bg-muted/30 text-left transition-all duration-200 flex items-center gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Upload className="w-5 h-5 text-muted-foreground" />
           <span className="text-lg text-foreground">Upload photo</span>
@@ -569,7 +569,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
         <button
           type="button"
           onClick={onSkip}
-          className="w-full py-4 text-center text-muted-foreground hover:text-foreground transition-colors text-base font-medium"
+          className="w-full py-4 text-center text-muted-foreground hover:text-foreground transition-colors duration-200 text-base font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
         >
           Skip this step
         </button>

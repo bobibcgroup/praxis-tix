@@ -135,10 +135,10 @@ const StepContext = ({ data, occasion, onUpdate, onNext, onBack }: StepContextPr
               <button
                 key={option.value}
                 onClick={() => handleLocationChange(option.value)}
-                className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all min-h-[48px] flex items-center justify-center
+                className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 min-h-[48px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                   ${data.location === option.value 
                     ? 'border-primary bg-primary/5 text-foreground' 
-                    : 'border-border bg-background hover:border-muted-foreground/30 text-foreground'
+                    : 'border-border bg-background hover:border-primary/50 hover:bg-muted/30 text-foreground'
                   }`}
               >
                 {option.label}
@@ -156,10 +156,10 @@ const StepContext = ({ data, occasion, onUpdate, onNext, onBack }: StepContextPr
                 <button
                   key={option.value}
                   onClick={() => handleTimeChange(option.value)}
-                  className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all min-h-[48px] flex items-center justify-center
+                  className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 min-h-[48px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                     ${data.when === option.value 
                       ? 'border-primary bg-primary/5 text-foreground' 
-                      : 'border-border bg-background hover:border-muted-foreground/30 text-foreground'
+                      : 'border-border bg-background hover:border-primary/50 hover:bg-muted/30 text-foreground'
                     }`}
                 >
                   {option.label}

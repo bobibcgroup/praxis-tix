@@ -21,6 +21,7 @@ import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatche
 import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import { useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import type { 
   OccasionData, 
   ContextData, 
@@ -606,7 +607,7 @@ const Flow = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
-        <div className="container mx-auto px-4 h-12 flex items-center justify-between">
+        <div className="container mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
           <div className="flex flex-col items-start py-2">
             <button 
               onClick={handleRestart}
@@ -624,7 +625,7 @@ const Flow = () => {
             {showStartOver && (
               <button
                 onClick={handleRestart}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
               >
                 Start over
               </button>
@@ -633,36 +634,46 @@ const Flow = () => {
             {/* Navigation - Center aligned - show when signed in */}
             {isLoaded && user && (
               <nav className="hidden md:flex items-center gap-1">
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => window.location.href = '/dashboard'}
-                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-4"
                 >
                   Dashboard
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => window.location.href = '/history'}
-                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-4"
                 >
                   History
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => window.location.href = '/favorites'}
-                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-4"
                 >
                   Favorites
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => window.location.href = '/profile'}
-                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-4"
                 >
                   My Style
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => window.location.href = '/settings'}
-                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-4"
                 >
                   Settings
-                </button>
+                </Button>
               </nav>
             )}
             
@@ -673,9 +684,9 @@ const Flow = () => {
             
             {isLoaded && !user && (
               <SignInButton mode="modal">
-                <button className="px-4 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                <Button variant="cta" size="sm">
                   Sign In
-                </button>
+                </Button>
               </SignInButton>
             )}
           </div>
@@ -683,7 +694,7 @@ const Flow = () => {
       </header>
 
       {/* Main content */}
-      <main className="pt-12">
+      <main className="pt-16">
         {progress.show && (
           <div className="pt-4">
             <ProgressIndicator currentStep={progress.current} totalSteps={progress.total} />

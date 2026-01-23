@@ -74,7 +74,7 @@ const Favorites = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 md:px-6 pt-16 pb-8 max-w-4xl">
         <div className="mb-6">
           <Button
             onClick={() => navigate('/')}
@@ -102,7 +102,7 @@ const Favorites = () => {
               <div
                 key={entry.id}
                 onClick={() => {/* Make entire card tappable - could navigate to detail view */}}
-                className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors cursor-pointer"
+                className="bg-card rounded-xl border border-border p-6 hover:border-primary/50 transition-colors duration-200 cursor-pointer"
               >
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* Image */}
@@ -126,7 +126,7 @@ const Favorites = () => {
                     )}
                     <button
                       onClick={() => handleRemoveFavorite(entry.outfitId)}
-                      className="absolute top-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors"
+                      className="absolute top-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       aria-label="Remove from favorites"
                     >
                       <Heart className="w-4 h-4 fill-primary text-primary" />

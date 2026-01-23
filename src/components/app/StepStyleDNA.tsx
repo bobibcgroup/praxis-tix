@@ -81,7 +81,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
       {onBack && (
         <button
           onClick={onBack}
-          className="text-sm text-muted-foreground hover:underline transition-colors mb-6"
+          className="text-sm text-muted-foreground hover:underline transition-colors duration-200 mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
         >
           Back to my outfits
         </button>

@@ -40,7 +40,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="container mx-auto px-4 pt-20 pb-8 max-w-4xl">
+      <div className="container mx-auto px-4 md:px-6 pt-16 pb-8 max-w-4xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-medium text-foreground mb-2">Dashboard</h1>
           <p className="text-muted-foreground">
@@ -110,7 +110,7 @@ const Dashboard = () => {
                 <div
                   key={entry.id}
                   onClick={() => navigate('/history')}
-                  className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors cursor-pointer"
+                  className="bg-card rounded-xl border border-border p-6 hover:border-primary/50 transition-colors cursor-pointer"
                 >
                   {entry.tryOnImageUrl && (
                     <img

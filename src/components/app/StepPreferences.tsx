@@ -40,10 +40,10 @@ const StepPreferences = ({ data, onUpdate, onSubmit, onBack }: StepPreferencesPr
               <button
                 key={option.value}
                 onClick={() => handleChange('priority', option.value)}
-                className={`px-4 py-4 rounded-lg border-2 text-left transition-all min-h-[56px] flex items-center
+                className={`px-4 py-4 rounded-lg border-2 text-left transition-all duration-200 min-h-[56px] flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                   ${data.priority === option.value 
                     ? 'border-primary bg-primary/5' 
-                    : 'border-border bg-background hover:border-muted-foreground/30'
+                    : 'border-border bg-background hover:border-primary/50 hover:bg-muted/30'
                   }`}
               >
                 <span className="text-sm font-medium text-foreground">{option.label}</span>
@@ -62,10 +62,10 @@ const StepPreferences = ({ data, onUpdate, onSubmit, onBack }: StepPreferencesPr
               <button
                 key={option.value}
                 onClick={() => handleChange('budget', option.value)}
-                className={`px-4 py-4 rounded-lg border-2 text-left transition-all min-h-[56px] flex items-center
+                className={`px-4 py-4 rounded-lg border-2 text-left transition-all duration-200 min-h-[56px] flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                   ${data.budget === option.value 
                     ? 'border-primary bg-primary/5' 
-                    : 'border-border bg-background hover:border-muted-foreground/30'
+                    : 'border-border bg-background hover:border-primary/50 hover:bg-muted/30'
                   }`}
               >
                 <span className="text-sm font-medium text-foreground">{option.label}</span>

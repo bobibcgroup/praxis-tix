@@ -77,7 +77,7 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="container mx-auto px-4 md:px-6 pt-16 pb-8 max-w-2xl">
         <div className="mb-6">
           <Button
             onClick={() => navigate('/')}
@@ -101,7 +101,7 @@ const Profile = () => {
                   navigate('/', { state: { editProfile: true } });
                   window.location.reload(); // Force reload to trigger useEffect
                 }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
               >
                 Reset Style
               </button>

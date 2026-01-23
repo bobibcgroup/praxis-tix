@@ -43,7 +43,7 @@ const StepLifestyle = ({ value, onSelect, onBack }: StepLifestyleProps) => {
       <div className="mt-8 flex justify-center">
         <button
           onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
         >
           Back
         </button>

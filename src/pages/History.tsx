@@ -159,7 +159,7 @@ const History = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 md:px-6 pt-16 pb-8 max-w-4xl">
         <div className="mb-6">
           <Button
             onClick={() => navigate('/')}
@@ -244,7 +244,7 @@ const History = () => {
             {filteredAndSortedHistory.map((entry) => (
               <div
                 key={entry.id}
-                className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors"
+                className="bg-card rounded-xl border border-border p-6 hover:border-primary/50 transition-colors duration-200"
               >
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* Image - more compact on mobile */}
@@ -262,7 +262,7 @@ const History = () => {
                             e.stopPropagation();
                             handleImageClick(entry.tryOnImageUrl!);
                           }}
-                          className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors"
+                          className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           aria-label="Enlarge image"
                         >
                           <Maximize2 className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -281,7 +281,7 @@ const History = () => {
                             e.stopPropagation();
                             handleImageClick(entry.outfitData.imageUrl!);
                           }}
-                          className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors"
+                          className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           aria-label="Enlarge image"
                         >
                           <Maximize2 className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -297,7 +297,7 @@ const History = () => {
                         e.stopPropagation();
                         handleToggleFavorite(entry.outfitId);
                       }}
-                      className="absolute top-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors z-10"
+                      className="absolute top-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors duration-200 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       aria-label={favorites.includes(entry.outfitId) ? 'Remove from favorites' : 'Add to favorites'}
                     >
                       <Heart 
@@ -390,7 +390,7 @@ const History = () => {
                           setOutfitToDelete(entry.id);
                           setDeleteDialogOpen(true);
                         }}
-                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                        className="p-2 text-muted-foreground hover:text-destructive transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
                         aria-label="Delete outfit"
                       >
                         <Trash2 className="w-4 h-4" />

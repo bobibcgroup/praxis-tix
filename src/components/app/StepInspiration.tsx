@@ -282,7 +282,7 @@ const StepInspiration = ({ onInspirationPhoto, onInspirationPreset, onSkip, onBa
         <button
           type="button"
           onClick={handleUploadClick}
-          className="w-full py-4 px-6 rounded-xl border border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-left transition-all flex items-center gap-4"
+          className="w-full py-4 px-6 rounded-lg border border-border bg-background hover:border-primary/50 hover:bg-muted/30 text-left transition-all duration-200 flex items-center gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Upload className="w-5 h-5 text-muted-foreground" />
           <span className="text-lg text-foreground">Upload inspiration photo</span>
@@ -292,7 +292,7 @@ const StepInspiration = ({ onInspirationPhoto, onInspirationPreset, onSkip, onBa
         <button
           type="button"
           onClick={() => setView('presets')}
-          className="w-full py-4 px-6 rounded-xl border border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-left transition-all"
+          className="w-full py-4 px-6 rounded-lg border border-border bg-background hover:border-primary/50 hover:bg-muted/30 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           {/* Mini preview of style options */}
           <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ const StepInspiration = ({ onInspirationPhoto, onInspirationPreset, onSkip, onBa
       <div className="mt-4 flex justify-center">
         <button
           onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
         >
           Back
         </button>

@@ -15,7 +15,7 @@ const FlowStep = ({ children, title, subtitle, onBack }: FlowStepProps) => {
         {onBack && (
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 mb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
           >
             <ArrowLeft className="w-4 h-4" />
             Back

@@ -83,14 +83,14 @@ const StepPersonalResults = ({
       {/* Back button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 mb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
 
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-medium text-foreground mb-2">
+        <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2">
           Choose your outfit
         </h1>
         <p className="text-sm text-muted-foreground mb-2">
@@ -109,7 +109,7 @@ const StepPersonalResults = ({
           <div 
             key={outfit.id}
             onClick={() => handleSelectOutfit(outfit.id)}
-            className={`relative cursor-pointer transition-all rounded-xl ${
+            className={`relative cursor-pointer transition-all duration-200 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
               selectedOutfitId === outfit.id 
                 ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' 
                 : 'hover:ring-1 hover:ring-border'

@@ -58,7 +58,7 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
 
       {/* Header */}
       <div className="text-center mb-10">
-        <h1 className="text-2xl font-medium text-foreground mb-2">
+        <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2">
           Quick fit check
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -107,7 +107,7 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
               min="100"
               max="250"
               autoFocus
-              className="w-full px-4 py-3 pr-12 text-lg bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+              className="w-full px-4 py-3 pr-12 text-lg bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
               cm
@@ -125,7 +125,7 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
                 min="3"
                 max="8"
                 autoFocus
-                className="w-full px-4 py-3 pr-10 text-lg bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                className="w-full px-4 py-3 pr-10 text-lg bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                 ft
@@ -140,7 +140,7 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
                 placeholder="10"
                 min="0"
                 max="11"
-                className="w-full px-4 py-3 pr-10 text-lg bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                className="w-full px-4 py-3 pr-10 text-lg bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                 in
@@ -160,7 +160,7 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
             <button
               key={option.value}
               onClick={() => setFitPreference(option.value)}
-              className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
+              className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 fitPreference === option.value
                   ? 'border-primary bg-primary/5 text-foreground'
                   : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
@@ -186,7 +186,7 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
             </Button>
             <button
               onClick={onSkip}
-              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
             >
               Skip
             </button>
