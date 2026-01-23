@@ -96,59 +96,59 @@ const Header = () => {
             </p>
           </button>
           
-          {/* Navigation - Desktop */}
-          {isLoaded && user && !isMobile && (
-            <nav className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/dashboard')}
-                className="px-4"
-              >
-                Dashboard
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/history')}
-                className="px-4"
-              >
-                History
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/favorites')}
-                className="px-4"
-              >
-                Favorites
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/profile')}
-                className="px-4"
-              >
-                My Style
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/settings')}
-                className="px-4"
-              >
-                Settings
-              </Button>
-            </nav>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Navigation - Desktop */}
+            {isLoaded && user && !isMobile && (
+              <nav className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                  className="px-4"
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/history')}
+                  className="px-4"
+                >
+                  History
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/favorites')}
+                  className="px-4"
+                >
+                  Favorites
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/profile')}
+                  className="px-4"
+                >
+                  My Style
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/settings')}
+                  className="px-4"
+                >
+                  Settings
+                </Button>
+              </nav>
+            )}
 
-          {/* Mobile Menu */}
-          {isLoaded && user && isMobile && (
-            <MobileNavMenu navigate={navigate} />
-          )}
-          
-          {/* Right side - User actions */}
-          <div className="flex items-center gap-2">
+            {/* Mobile Menu */}
+            {isLoaded && user && isMobile && (
+              <MobileNavMenu navigate={navigate} />
+            )}
+            
+            {/* User actions */}
             {isLoaded && user && (
               <UserButton afterSignOutUrl="/" />
             )}
