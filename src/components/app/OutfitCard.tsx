@@ -416,17 +416,18 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
             </p>
           )}
 
-          {/* Share button - secondary action, icon only */}
+          {/* Share button - Take your friend's opinion */}
           <div className="mt-3 pt-3 border-t border-border">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleShare();
               }}
-              className="p-2 text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
-              aria-label="Share this look"
+              className="w-full flex items-center justify-center gap-2 py-2 px-4 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg hover:bg-muted/30"
+              aria-label="Take your friend's opinion"
             >
               <Share2 className="w-4 h-4" />
+              <span>Take your friend's opinion</span>
             </button>
           </div>
         </div>
