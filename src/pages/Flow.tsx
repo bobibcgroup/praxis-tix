@@ -758,7 +758,7 @@ const Flow = () => {
               >
                 Praxis
               </button>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
                 Get dressed right, in under a minute.
               </p>
             </div>

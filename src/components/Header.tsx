@@ -22,7 +22,7 @@ const Header = () => {
             className="flex flex-col items-start py-2 hover:opacity-80 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
           >
             <span className="font-serif text-xl font-medium text-foreground tracking-wide">Praxis</span>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
               Get dressed right, in under a minute.
             </p>
           </button>
