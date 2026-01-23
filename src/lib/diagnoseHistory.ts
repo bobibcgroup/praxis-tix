@@ -330,9 +330,6 @@ if (typeof window !== 'undefined') {
     migrateFromEmail: migrateHistoryFromEmail,
   };
   
-  // Also expose localStorage migration
-  (window as any).migrateLocalStorageToSupabase = async (userId: string) => {
-    const { migrateLocalStorageToSupabase } = await import('./migrateLocalStorage');
-    return migrateLocalStorageToSupabase(userId);
-  };
+  // Note: migrateLocalStorageToSupabase is exposed by migrateLocalStorage.ts
+  // No need to expose it here to avoid conflicts
 }

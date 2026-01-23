@@ -9,8 +9,13 @@ import type { OutfitHistoryEntry } from './userService';
 /**
  * Migrate all localStorage history entries to Supabase for a given user
  * This helps recover data that was saved to localStorage instead of Supabase
+ * @param userId - The Clerk user ID
+ * @param email - Optional email address for cross-device sync
  */
-export async function migrateLocalStorageToSupabase(userId: string): Promise<{
+export async function migrateLocalStorageToSupabase(
+  userId: string,
+  email?: string
+): Promise<{
   migrated: number;
   failed: number;
   errors: Array<{ entry: OutfitHistoryEntry; error: any }>;
@@ -51,19 +56,37 @@ export async function migrateLocalStorageToSupabase(userId: string): Promise<{
         style_name: entry.styleName || null,
       };
       
-      // Add email if available (for cross-device sync)
-      // Try to get email from Clerk user or localStorage mapping
-      try {
-        const emailMapping = JSON.parse(localStorage.getItem('praxis_email_user_mapping') || '{}');
-        for (const [email, mapping] of Object.entries(emailMapping)) {
-          const map = mapping as any;
-          if (map.userIds && map.userIds.includes(userId)) {
-            insertData.email = email;
-            break;
+      // Add email if provided or available from mapping
+      if (email) {
+        insertData.email = email;
+        console.log(`   📧 Using provided email: ${email}`);
+      } else {
+        // Try to get email from localStorage mapping
+        try {
+          const emailMapping = JSON.parse(localStorage.getItem('praxis_email_user_mapping') || '{}');
+          for (const [mappedEmail, mapping] of Object.entries(emailMapping)) {
+            const map = mapping as any;
+            if (map.userIds && map.userIds.includes(userId)) {
+              insertData.email = mappedEmail;
+              console.log(`   📧 Using email from mapping: ${mappedEmail}`);
+              break;
+            }
           }
+          
+          // If no email found in mapping, try to get from entry itself (if it has one)
+          if (!insertData.email && (entry as any).email) {
+            insertData.email = (entry as any).email;
+          }
+        } catch (e) {
+          // Ignore email mapping errors
+          console.warn('   ⚠️ Could not get email from mapping:', e);
         }
-      } catch (e) {
-        // Ignore email mapping errors
+        
+        // If still no email, log a warning but continue
+        if (!insertData.email) {
+          console.warn(`   ⚠️ No email found for entry ${entry.id}. Entry will be saved without email.`);
+          console.warn('   💡 Tip: Pass email as second parameter: migrateLocalStorageToSupabase(userId, email)');
+        }
       }
 
       const { data, error } = await supabase
@@ -110,6 +133,25 @@ export function hasLocalStorageData(userId: string): boolean {
 
 // Make it available globally for debugging
 if (typeof window !== 'undefined') {
+  // Expose functions immediately
   (window as any).migrateLocalStorageToSupabase = migrateLocalStorageToSupabase;
   (window as any).hasLocalStorageData = hasLocalStorageData;
+  
+  // Also expose a helper that ensures the function is available
+  (window as any).__migrateHistory = async (userId: string, email?: string) => {
+    console.log('🔄 Starting migration...');
+    try {
+      const result = await migrateLocalStorageToSupabase(userId, email);
+      console.log('✅ Migration complete:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Migration failed:', error);
+      throw error;
+    }
+  };
+  
+  console.log('✅ Migration functions available:');
+  console.log('   - window.migrateLocalStorageToSupabase(userId, email?)');
+  console.log('   - window.__migrateHistory(userId, email?)');
+  console.log('   - window.hasLocalStorageData(userId)');
 }
