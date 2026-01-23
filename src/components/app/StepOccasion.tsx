@@ -18,7 +18,11 @@ const StepOccasion = ({ value, onNext, onBack }: StepOccasionProps) => {
   ];
 
   return (
-    <FlowStep title="What's the occasion?" onBack={onBack}>
+    <FlowStep 
+      title="What's the occasion?" 
+      subtitle="We'll tailor the look to the moment."
+      onBack={onBack}
+    >
       <div className="space-y-3">
         {occasionOptions.map((option) => (
           <OptionButton

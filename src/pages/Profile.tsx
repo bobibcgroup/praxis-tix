@@ -96,17 +96,15 @@ const Profile = () => {
               </p>
             </div>
             {profile && profile.styleDNA && (
-              <Button
+              <button
                 onClick={() => {
                   navigate('/', { state: { editProfile: true } });
                   window.location.reload(); // Force reload to trigger useEffect
                 }}
-                variant="outline"
-                size="sm"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                <RotateCcw className="w-4 h-4 mr-2" />
                 Reset Style
-              </Button>
+              </button>
             )}
           </div>
         </div>
@@ -208,69 +206,71 @@ const Profile = () => {
               </ul>
             </div>
 
-            {/* Style DNA Details */}
+            {/* Collapsible sections - collapsed by default */}
             {profile.styleDNA && (
-              <div className="bg-card rounded-xl border border-border p-6 mb-6">
-                <h2 className="text-xl font-medium text-foreground mb-4 flex items-center gap-2">
-                  <Palette className="w-5 h-5" />
-                  Style DNA
-                </h2>
-                <div className="space-y-4">
+              <details className="bg-card rounded-xl border border-border p-4 mb-4">
+                <summary className="text-sm font-medium text-foreground cursor-pointer list-none flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  Style DNA Details
+                </summary>
+                <div className="mt-4 space-y-3 pl-6">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-2">Primary Style</p>
-                    <p className="text-foreground capitalize">
+                    <p className="text-xs text-muted-foreground mb-1">Primary Style</p>
+                    <p className="text-sm text-foreground capitalize">
                       {profile.styleDNA.primaryStyle?.toLowerCase().replace('_', ' ')}
                     </p>
                   </div>
                   {profile.styleDNA.secondaryStyle && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Secondary Style</p>
-                      <p className="text-foreground capitalize">
+                      <p className="text-xs text-muted-foreground mb-1">Secondary Style</p>
+                      <p className="text-sm text-foreground capitalize">
                         {profile.styleDNA.secondaryStyle.toLowerCase().replace('_', ' ')}
                       </p>
                     </div>
                   )}
                 </div>
-              </div>
+              </details>
             )}
 
-            {/* Fit Calibration */}
+            {/* Fit Calibration - collapsed */}
             {profile.fitCalibration && (
-              <div className="bg-card rounded-xl border border-border p-6">
-                <h2 className="text-xl font-medium text-foreground mb-4 flex items-center gap-2">
-                  <Ruler className="w-5 h-5" />
+              <details className="bg-card rounded-xl border border-border p-4 mb-4">
+                <summary className="text-sm font-medium text-foreground cursor-pointer list-none flex items-center gap-2">
+                  <Ruler className="w-4 h-4" />
                   Fit Preferences
-                </h2>
-                <div className="space-y-2">
+                </summary>
+                <div className="mt-4 space-y-2 pl-6">
                   {profile.fitCalibration.height && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Height</p>
-                      <p className="text-foreground">
+                      <p className="text-xs text-muted-foreground">Height</p>
+                      <p className="text-sm text-foreground">
                         {profile.fitCalibration.height} cm
                       </p>
                     </div>
                   )}
                   {profile.fitCalibration.fitPreference && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Fit Preference</p>
-                      <p className="text-foreground capitalize">
+                      <p className="text-xs text-muted-foreground">Fit Preference</p>
+                      <p className="text-sm text-foreground capitalize">
                         {profile.fitCalibration.fitPreference}
                       </p>
                     </div>
                   )}
                 </div>
-              </div>
+              </details>
             )}
 
-            {/* Lifestyle */}
+            {/* Lifestyle - collapsed */}
             {profile.lifestyle && (
-              <div className="bg-card rounded-xl border border-border p-6">
-                <h2 className="text-xl font-medium text-foreground mb-4 flex items-center gap-2">
-                  <Heart className="w-5 h-5" />
+              <details className="bg-card rounded-xl border border-border p-4 mb-4">
+                <summary className="text-sm font-medium text-foreground cursor-pointer list-none flex items-center gap-2">
+                  <Heart className="w-4 h-4" />
                   Lifestyle
-                </h2>
-                <p className="text-foreground capitalize">{profile.lifestyle.toLowerCase()}</p>
-              </div>
+                </summary>
+                <div className="mt-4 pl-6">
+                  <p className="text-sm text-foreground capitalize">{profile.lifestyle.toLowerCase()}</p>
+                </div>
+              </details>
             )}
 
             {/* Closing line */}

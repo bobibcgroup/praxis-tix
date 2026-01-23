@@ -59,7 +59,7 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-2xl font-medium text-foreground mb-2">
-          Quick fit calibration
+          Quick fit check
         </h1>
         <p className="text-sm text-muted-foreground">
           This helps us get lengths and proportions right.
@@ -100,11 +100,13 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
           <div className="relative">
             <input
               type="number"
+              inputMode="numeric"
               value={heightCm}
               onChange={(e) => setHeightCm(e.target.value)}
               placeholder="175"
               min="100"
               max="250"
+              autoFocus
               className="w-full px-4 py-3 pr-12 text-lg bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -116,11 +118,13 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
             <div className="relative flex-1">
               <input
                 type="number"
+                inputMode="numeric"
                 value={heightFt}
                 onChange={(e) => setHeightFt(e.target.value)}
                 placeholder="5"
                 min="3"
                 max="8"
+                autoFocus
                 className="w-full px-4 py-3 pr-10 text-lg bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
@@ -130,6 +134,7 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
             <div className="relative flex-1">
               <input
                 type="number"
+                inputMode="numeric"
                 value={heightIn}
                 onChange={(e) => setHeightIn(e.target.value)}
                 placeholder="10"
@@ -170,14 +175,22 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
       {/* Buttons */}
       <div className="space-y-3">
         {hasAnyInput ? (
-          <Button
-            onClick={handleContinue}
-            variant="cta"
-            size="lg"
-            className="w-full"
-          >
-            Next
-          </Button>
+          <>
+            <Button
+              onClick={handleContinue}
+              variant="cta"
+              size="lg"
+              className="w-full"
+            >
+              Next
+            </Button>
+            <button
+              onClick={onSkip}
+              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+            >
+              Skip
+            </button>
+          </>
         ) : (
           <Button
             onClick={onSkip}
@@ -187,14 +200,6 @@ const StepFitCalibration = ({ onComplete, onSkip, onBack }: StepFitCalibrationPr
           >
             Skip
           </Button>
-        )}
-        {hasAnyInput && (
-          <button
-            onClick={onSkip}
-            className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-          >
-            Skip for now
-          </button>
         )}
       </div>
     </div>

@@ -40,7 +40,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 pt-20 pb-8 max-w-4xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-medium text-foreground mb-2">Dashboard</h1>
           <p className="text-muted-foreground">

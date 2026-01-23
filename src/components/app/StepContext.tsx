@@ -117,21 +117,25 @@ const StepContext = ({ data, occasion, onUpdate, onNext, onBack }: StepContextPr
   // For DINNER, time is auto-set so only location is needed from user
   const canContinue = data.location && data.when;
 
+  // Auto-select Day as default if not set
+  useEffect(() => {
+    if (!shouldAutoSetTime && !data.when) {
+      onUpdate({ ...data, when: 'DAY' });
+    }
+  }, [shouldAutoSetTime, data.when]);
+
   return (
-    <FlowStep title="Where and when?">
-      <div className="space-y-5">
+    <FlowStep title="Set the context">
+      <div className="space-y-6">
         {/* Location - filtered by occasion */}
         <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Location</label>
-          {occasion && (
-            <p className="text-xs text-muted-foreground/70 mb-2">Based on your occasion</p>
-          )}
+          <label className="text-sm font-medium text-foreground mb-3 block">Location</label>
           <div className="grid grid-cols-2 gap-2">
             {locationOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => handleLocationChange(option.value)}
-                className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all
+                className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all min-h-[48px] flex items-center justify-center
                   ${data.location === option.value 
                     ? 'border-primary bg-primary/5 text-foreground' 
                     : 'border-border bg-background hover:border-muted-foreground/30 text-foreground'
@@ -146,14 +150,13 @@ const StepContext = ({ data, occasion, onUpdate, onNext, onBack }: StepContextPr
         {/* Time - hidden for DINNER (auto-set to NIGHT) */}
         {!shouldAutoSetTime && (
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Time of day</label>
-            <p className="text-xs text-muted-foreground/70 mb-2">We adjust styles automatically</p>
+            <label className="text-sm font-medium text-foreground mb-3 block">Time of day</label>
             <div className="grid grid-cols-2 gap-2">
               {timeOptions.map((option) => (
                 <button
                   key={option.value}
                   onClick={() => handleTimeChange(option.value)}
-                  className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all
+                  className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all min-h-[48px] flex items-center justify-center
                     ${data.when === option.value 
                       ? 'border-primary bg-primary/5 text-foreground' 
                       : 'border-border bg-background hover:border-muted-foreground/30 text-foreground'
@@ -166,19 +169,12 @@ const StepContext = ({ data, occasion, onUpdate, onNext, onBack }: StepContextPr
           </div>
         )}
 
-        {/* Setting is inferred - show as info only */}
-        {data.location && (
-          <div className="text-xs text-muted-foreground pt-1">
-            Setting: {data.setting === 'OUTDOOR' ? 'Outdoor' : 'Indoor'} (based on location)
-          </div>
-        )}
-
         <div className="flex gap-3 pt-2">
           <Button 
             onClick={onBack} 
             variant="outline" 
             size="lg" 
-            className="flex-1"
+            className="flex-1 text-muted-foreground"
           >
             Back
           </Button>

@@ -16,7 +16,6 @@ import StepPersonalResults from '@/components/app/StepPersonalResults';
 import StepStyleDNA from '@/components/app/StepStyleDNA';
 import StepPersonalLoading from '@/components/app/StepPersonalLoading';
 import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
-import StepSignInPrompt from '@/components/app/StepSignInPrompt';
 import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
 import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
@@ -70,7 +69,7 @@ const initialPersonal: PersonalData = {
 // Quick flow (mode = 'quick'):
 //   1: Occasion, 2: Context, 3: Preferences, 4: Results, 5: Virtual Try-On, 6: Complete (with upsell)
 // Personal flow (mode = 'personal'):
-//   10: Photo, 11: Fit Calibration, 12: Lifestyle, 13: Inspiration, 13.5: Sign-In Prompt, 14: Wardrobe, 15: Loading, 16: Personal Results, 17: Virtual Try-On, 18: Style DNA (final)
+//   10: Photo, 11: Fit Calibration, 12: Lifestyle, 13: Inspiration, 14: Wardrobe, 15: Loading, 16: Personal Results, 17: Virtual Try-On, 18: Style DNA (final)
 
 const Flow = () => {
   const location = useLocation();
@@ -230,11 +229,10 @@ const Flow = () => {
       }
     }
     if (mode === 'personal') {
-      // Personal flow: 10=Photo, 11=Fit, 12=Lifestyle, 13=Inspiration, 13.5=SignIn, 14=Wardrobe, 15=Loading, 16=Results, 17=TryOn, 18=StyleDNA
-      // Don't show progress for sign-in step (13.5)
-      if (step >= 10 && step <= 18 && step !== 13.5) {
+      // Personal flow: 10=Photo, 11=Fit, 12=Lifestyle, 13=Inspiration, 14=Wardrobe, 15=Loading, 16=Results, 17=TryOn, 18=StyleDNA
+      if (step >= 10 && step <= 18) {
         // Map steps to progress: 10->1, 11->2, 12->3, 13->4, 14->5, 15->6, 16->7, 17->8, 18->9
-        const adjustedStep = step > 13.5 ? step - 9 : step - 9;
+        const adjustedStep = step - 9;
         return { current: adjustedStep, total: 9, show: true };
       }
     }
@@ -243,7 +241,7 @@ const Flow = () => {
 
   // Show "Start over" in header for intermediate steps
   const showStartOver = (mode === 'quick' && step >= 1 && step <= 5) || 
-                        (mode === 'personal' && step >= 10 && step <= 17 && step !== 13.5);
+                        (mode === 'personal' && step >= 10 && step <= 17);
 
   const progress = getProgressInfo();
 
@@ -417,12 +415,6 @@ const Flow = () => {
           />
         );
       case 11:
-        // Guard: Require authentication
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         return (
           <StepFitCalibration
             onComplete={(data: { height?: number; heightUnit: HeightUnit; fitPreference?: FitPreference }) => {
@@ -441,12 +433,6 @@ const Flow = () => {
           />
         );
       case 12:
-        // Guard: Require authentication
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         return (
           <StepLifestyle
             value={personal.lifestyle}
@@ -462,12 +448,7 @@ const Flow = () => {
           <StepInspiration
             onInspirationPhoto={(photoData: string) => {
               setPersonal(p => ({ ...p, hasInspiration: true, inspirationData: photoData }));
-              // Check if authenticated, if not show sign-in prompt
-              if (isLoaded && !user) {
-                setStep(13.5); // Sign-in prompt step
-              } else {
-                setStep(14);
-              }
+              setStep(14);
             }}
             onInspirationPreset={(preset: InspirationPresetType, images: string[], styleDNA: StyleDNA) => {
               setPersonal(p => ({ 
@@ -477,40 +458,15 @@ const Flow = () => {
                 styleDirectionImages: images,
                 styleDNA 
               }));
-              // Check if authenticated, if not show sign-in prompt
-              if (isLoaded && !user) {
-                setStep(13.5); // Sign-in prompt step
-              } else {
-                setStep(14);
-              }
+              setStep(14);
             }}
             onSkip={() => {
-              // Check if authenticated, if not show sign-in prompt
-              if (isLoaded && !user) {
-                setStep(13.5); // Sign-in prompt step
-              } else {
-                setStep(14);
-              }
+              setStep(14);
             }}
             onBack={() => setStep(12)}
           />
         );
-      case 13.5:
-        // Sign-in prompt step - appears after inspiration selection
-        return (
-          <StepSignInPrompt
-            onSignInComplete={() => setStep(14)}
-            onBack={() => setStep(13)}
-            onSkip={() => setStep(14)} // Allow continuing without sign-in
-          />
-        );
       case 14:
-        // Guard: Require authentication
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         return (
           <StepWardrobe
             onWardrobeUpdate={(items: WardrobeItems) => {
@@ -527,12 +483,6 @@ const Flow = () => {
           />
         );
       case 15:
-        // Guard: Require authentication
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         // Loading/generating step
         return (
           <StepPersonalLoading
@@ -543,12 +493,6 @@ const Flow = () => {
           />
         );
       case 16:
-        // Guard: Require authentication
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         // Personal results - only show if we have outfits
         return (
           <StepPersonalResults
@@ -596,12 +540,6 @@ const Flow = () => {
           />
         );
       case 17:
-        // Guard: Require authentication
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         // Virtual Try-On for personal flow
         if (selectedOutfit && personal.hasPhoto && personal.photoCropped) {
           return (
@@ -648,12 +586,6 @@ const Flow = () => {
           />
         );
       case 18:
-        // Guard: Require authentication
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         return (
           <StepStyleDNA
             personalData={personal}
@@ -698,38 +630,45 @@ const Flow = () => {
               </button>
             )}
             
-            {/* User actions */}
+            {/* Navigation - Center aligned - show when signed in */}
             {isLoaded && user && (
-              <>
+              <nav className="hidden md:flex items-center gap-1">
+                <button
+                  onClick={() => window.location.href = '/dashboard'}
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Dashboard
+                </button>
                 <button
                   onClick={() => window.location.href = '/history'}
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
                   History
                 </button>
                 <button
                   onClick={() => window.location.href = '/favorites'}
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
                   Favorites
                 </button>
                 <button
                   onClick={() => window.location.href = '/profile'}
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
                   My Style
                 </button>
-                <UserButton afterSignOutUrl="/" />
-              </>
+                <button
+                  onClick={() => window.location.href = '/settings'}
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Settings
+                </button>
+              </nav>
+            )}
+            
+            {/* User actions */}
+            {isLoaded && user && (
+              <UserButton afterSignOutUrl="/" />
             )}
             
             {isLoaded && !user && (

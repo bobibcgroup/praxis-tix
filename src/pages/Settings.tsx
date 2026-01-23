@@ -110,10 +110,10 @@ const Settings = () => {
           </p>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Account Information */}
           <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="text-xl font-medium text-foreground mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
               <UserIcon className="w-5 h-5" />
               Account Information
             </h2>
@@ -136,7 +136,7 @@ const Settings = () => {
 
           {/* Data Management */}
           <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="text-xl font-medium text-foreground mb-4">Data Management</h2>
+            <h2 className="text-lg font-medium text-foreground mb-4">Data Management</h2>
             <div className="space-y-3">
               <Button
                 onClick={handleExportData}
@@ -152,10 +152,10 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Danger Zone */}
-          <div className="bg-card rounded-xl border border-destructive/20 p-6">
-            <h2 className="text-xl font-medium text-foreground mb-4 text-destructive">Danger Zone</h2>
-            <div className="space-y-3">
+          {/* Danger Zone - Increased spacing and visual isolation */}
+          <div className="bg-card rounded-xl border border-destructive/30 p-6 mt-12">
+            <h2 className="text-lg font-medium text-foreground mb-6 text-destructive">Danger Zone</h2>
+            <div className="space-y-4">
               <Button
                 onClick={() => setDeleteDialogOpen(true)}
                 variant="destructive"

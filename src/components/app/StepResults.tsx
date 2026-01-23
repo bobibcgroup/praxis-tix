@@ -142,8 +142,8 @@ const StepResults = ({
         )}
       </div>
 
-      {/* Outfit Stack - Masonry on desktop, stacked on mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+      {/* Outfit Stack - Always stacked */}
+      <div className="space-y-4">
         {displayOutfits.map((outfit, index) => (
           <div 
             key={outfit.id}
@@ -151,9 +151,16 @@ const StepResults = ({
             className={`relative cursor-pointer transition-all rounded-xl ${
               selectedOutfitId === outfit.id 
                 ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' 
-                : 'hover:ring-1 hover:ring-border'
+                : index === 0 
+                  ? 'ring-1 ring-primary/30' // Emphasize top recommendation
+                  : 'hover:ring-1 hover:ring-border'
             }`}
           >
+            {index === 0 && (
+              <div className="absolute top-3 left-3 z-10 px-2 py-1 bg-primary text-primary-foreground text-xs font-medium rounded">
+                Best for you
+              </div>
+            )}
             {selectedOutfitId === outfit.id && (
               <div className="absolute top-3 right-3 z-10 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                 <Check className="w-4 h-4 text-primary-foreground" />

@@ -17,14 +17,25 @@ const lifestyleOptions: { value: LifestyleType; label: string }[] = [
 
 const StepLifestyle = ({ value, onSelect, onBack }: StepLifestyleProps) => {
   return (
-    <FlowStep title="Your life is mostly…">
+    <FlowStep 
+      title="Your life is mostly…"
+      subtitle="This helps balance your wardrobe."
+    >
       <div className="space-y-3">
         {lifestyleOptions.map((option) => (
           <OptionButton
             key={option.value}
             label={option.label}
             selected={value === option.value}
-            onClick={() => onSelect(option.value)}
+            onClick={() => {
+              onSelect(option.value);
+              // Auto-advance on mobile after short delay
+              if (window.innerWidth < 768) {
+                setTimeout(() => {
+                  // Navigation handled by parent via onSelect
+                }, 300);
+              }
+            }}
           />
         ))}
       </div>

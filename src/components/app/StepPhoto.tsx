@@ -504,39 +504,16 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
   // Selection mode
   return (
     <FlowStep 
-      title="Let us see you (optional)"
+      title="Optional: refine the fit"
       subtitle="This helps us choose the right colors and proportions for you."
       onBack={onBack}
     >
       <div className="space-y-4">
-        {/* Supporting explanation line */}
-        <p className="text-sm text-muted-foreground text-center -mt-2 mb-2">
-          Your photo helps with balance and color. Height helps with length.
-        </p>
-
-        {/* Visual guidance hint box */}
-        <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
-          <p className="text-sm font-medium text-foreground mb-3">For best results</p>
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center flex-shrink-0">
-                <Sun className="w-3.5 h-3.5 text-muted-foreground" />
-              </div>
-              <span className="text-sm text-muted-foreground">Stand in natural light</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center flex-shrink-0">
-                <User className="w-3.5 h-3.5 text-muted-foreground" />
-              </div>
-              <span className="text-sm text-muted-foreground">Show head to mid-torso</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center flex-shrink-0">
-                <Maximize className="w-3.5 h-3.5 text-muted-foreground" />
-              </div>
-              <span className="text-sm text-muted-foreground">Keep shoulders visible</span>
-            </div>
-          </div>
+        {/* Privacy reassurance - moved higher */}
+        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 mb-4">
+          <p className="text-xs text-muted-foreground text-center">
+            Your photo is private and never shared.
+          </p>
         </div>
 
         {/* Hidden file inputs */}
@@ -560,14 +537,14 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
           aria-label="Upload photo from device"
         />
 
-        {/* Take photo button */}
+        {/* Take photo button - dominant on mobile */}
         <button
           type="button"
           onClick={handleTakePhoto}
-          className="w-full py-4 px-6 rounded-xl border border-border bg-background hover:border-primary/40 hover:bg-muted/30 text-left transition-all flex items-center gap-4"
+          className="w-full py-5 px-6 rounded-xl border-2 border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 text-left transition-all flex items-center gap-4"
         >
-          <Camera className="w-5 h-5 text-muted-foreground" />
-          <span className="text-lg text-foreground">Take photo</span>
+          <Camera className="w-6 h-6 text-primary" />
+          <span className="text-lg font-medium text-foreground">Take photo</span>
         </button>
 
         {/* Upload photo button */}
@@ -580,16 +557,6 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
           <span className="text-lg text-foreground">Upload photo</span>
         </button>
 
-        {/* Transition hint */}
-        <p className="text-xs text-muted-foreground text-center pt-2">
-          Next, we fine-tune fit.
-        </p>
-
-        {/* Privacy reassurance */}
-        <p className="text-xs text-muted-foreground text-center">
-          We use this only to style you better. Your photo is not shared.
-        </p>
-
         {/* Error message */}
         {error && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -598,13 +565,13 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
           </div>
         )}
 
-        {/* Skip button */}
+        {/* Skip button - clear and guilt-free */}
         <button
           type="button"
           onClick={onSkip}
-          className="w-full py-3 text-center text-muted-foreground hover:text-foreground transition-colors text-sm"
+          className="w-full py-4 text-center text-muted-foreground hover:text-foreground transition-colors text-base font-medium"
         >
-          Skip
+          Skip this step
         </button>
       </div>
     </FlowStep>

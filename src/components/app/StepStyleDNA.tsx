@@ -41,6 +41,12 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
     : DEFAULT_METALS;
 
   const handleSaveStyle = async () => {
+    // If not authenticated, show sign-in modal
+    if (!user) {
+      // The button will trigger SignInButton modal
+      return;
+    }
+
     // Save style DNA to localStorage
     const styleDNA = {
       colorSwatches,
@@ -55,14 +61,12 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
     try {
       localStorage.setItem('praxis_style_dna', JSON.stringify(styleDNA));
       
-      // Also save to database if user is authenticated
-      if (user) {
-        try {
-          await saveUserProfile(user.id, personalData);
-        } catch (err) {
-          console.error('Error saving to database:', err);
-          // Don't show error, localStorage save succeeded
-        }
+      // Save to database
+      try {
+        await saveUserProfile(user.id, personalData);
+      } catch (err) {
+        console.error('Error saving to database:', err);
+        // Don't show error, localStorage save succeeded
       }
       
       toast.success('Style DNA saved');
@@ -95,9 +99,9 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
         This is the framework that consistently works for you.
       </p>
 
-      {/* Identity Anchor */}
+      {/* Style Name - Hero */}
       <div className="mb-12">
-        <p className="text-xl md:text-2xl text-foreground font-serif italic text-center">
+        <p className="text-3xl md:text-4xl text-foreground font-serif italic text-center font-medium">
           "Understated. Refined. Effortless."
         </p>
       </div>
@@ -131,7 +135,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
         </p>
       </div>
 
-      {/* Lean into */}
+      {/* Lean into - max 3 bullets */}
       <div className="mb-6">
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
           Lean into
@@ -152,7 +156,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
         </ul>
       </div>
 
-      {/* Avoid */}
+      {/* Avoid - max 3 bullets */}
       <div className="mb-10">
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
           Avoid
@@ -176,43 +180,12 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
         </p>
       </div>
 
-      {/* Sign-in prompt if not authenticated */}
-      {isLoaded && !user && (
-        <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-          <div className="flex items-start gap-3 mb-3">
-            <User className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-foreground mb-1">
-                Save your Style DNA
-              </h3>
-              <p className="text-xs text-muted-foreground mb-3">
-                Sign in to save your style profile and access your outfit history across all devices.
-              </p>
-              <SignInButton mode="modal">
-                <Button variant="cta" size="sm" className="w-full">
-                  Sign in to save
-                </Button>
-              </SignInButton>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Action Buttons */}
       <div className="space-y-3">
-        <Button 
-          onClick={onStyleAgain}
-          variant="cta"
-          size="lg"
-          className="w-full"
-        >
-          Style me again
-        </Button>
-        
         {isLoaded && user ? (
           <Button 
             onClick={handleSaveStyle}
-            variant="outline"
+            variant="cta"
             size="lg"
             className="w-full"
           >
@@ -222,17 +195,18 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
         ) : isLoaded ? (
           <SignInButton mode="modal">
             <Button 
-              variant="outline"
+              onClick={handleSaveStyle}
+              variant="cta"
               size="lg"
               className="w-full"
             >
-              <User className="w-4 h-4 mr-2" />
-              Sign in to save
+              <Save className="w-4 h-4 mr-2" />
+              Save my style
             </Button>
           </SignInButton>
         ) : (
           <Button 
-            variant="outline"
+            variant="cta"
             size="lg"
             className="w-full"
             disabled
@@ -240,6 +214,15 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
             Loading...
           </Button>
         )}
+        
+        <Button 
+          onClick={onStyleAgain}
+          variant="outline"
+          size="lg"
+          className="w-full text-muted-foreground"
+        >
+          Style me again
+        </Button>
       </div>
 
       {/* Helper text */}
@@ -247,7 +230,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
         {isLoaded && user 
           ? "This profile will guide every future recommendation."
           : isLoaded
-          ? "Sign in to save your style profile permanently."
+          ? "Sign in when you save to access your style profile across all devices."
           : ""
         }
       </p>

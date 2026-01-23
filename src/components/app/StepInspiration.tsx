@@ -205,8 +205,11 @@ const StepInspiration = ({ onInspirationPhoto, onInspirationPreset, onSkip, onBa
             <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2">
               Choose a style direction
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-1">
               Pick the vibe that feels most like you.
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              Trust your instinct.
             </p>
             {selectedPreset && (
               <p className="text-xs text-muted-foreground mt-3 animate-fade-in">
@@ -215,7 +218,7 @@ const StepInspiration = ({ onInspirationPhoto, onInspirationPreset, onSkip, onBa
             )}
           </div>
 
-          {/* Visual presets grid with carousels */}
+          {/* Visual presets grid with carousels - ensure 2-column on mobile */}
           <div className="grid grid-cols-2 gap-3">
             {STYLE_PRESETS.map((preset) => (
               <StyleCardCarousel
@@ -223,7 +226,13 @@ const StepInspiration = ({ onInspirationPhoto, onInspirationPreset, onSkip, onBa
                 images={preset.images}
                 label={preset.label}
                 isSelected={selectedPreset === preset.value}
-                onSelect={() => setSelectedPreset(preset.value)}
+                onSelect={() => {
+                  setSelectedPreset(preset.value);
+                  // Auto-advance on selection
+                  setTimeout(() => {
+                    handleConfirmPreset();
+                  }, 200);
+                }}
               />
             ))}
           </div>
@@ -314,11 +323,11 @@ const StepInspiration = ({ onInspirationPhoto, onInspirationPreset, onSkip, onBa
           </div>
         )}
 
-        {/* Skip button */}
+        {/* Skip button - prominent enough */}
         <button
           type="button"
           onClick={onSkip}
-          className="w-full py-3 text-center text-muted-foreground hover:text-foreground transition-colors text-sm"
+          className="w-full py-4 text-center text-muted-foreground hover:text-foreground transition-colors text-base font-medium"
         >
           Skip
         </button>

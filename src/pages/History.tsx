@@ -179,16 +179,17 @@ const History = () => {
         {/* Filters and Search */}
         {history.length > 0 && (
           <div className="mb-6 space-y-4">
+            {/* Full-width search on mobile */}
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search outfits..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 w-full"
+              />
+            </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search outfits..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
               <Select value={occasionFilter} onValueChange={setOccasionFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <Filter className="w-4 h-4 mr-2" />
@@ -246,8 +247,8 @@ const History = () => {
                 className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors"
               >
                 <div className="flex flex-col md:flex-row gap-4">
-                  {/* Image */}
-                  <div className="w-full md:w-48 aspect-[3/4] rounded-lg overflow-hidden bg-muted shrink-0 relative group cursor-pointer">
+                  {/* Image - more compact on mobile */}
+                  <div className="w-full md:w-40 aspect-[3/4] rounded-lg overflow-hidden bg-muted shrink-0 relative group cursor-pointer">
                     {entry.tryOnImageUrl ? (
                       <>
                         <img
@@ -382,19 +383,18 @@ const History = () => {
                       </div>
                     )}
 
+                    {/* Delete button - icon only, secondary action */}
                     <div className="flex gap-2 mt-4">
-                      <Button
+                      <button
                         onClick={() => {
                           setOutfitToDelete(entry.id);
                           setDeleteDialogOpen(true);
                         }}
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
+                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                        aria-label="Delete outfit"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </Button>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </div>

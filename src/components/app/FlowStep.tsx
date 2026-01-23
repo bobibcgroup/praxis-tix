@@ -10,7 +10,7 @@ interface FlowStepProps {
 
 const FlowStep = ({ children, title, subtitle, onBack }: FlowStepProps) => {
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex flex-col justify-center px-4">
+    <div className="min-h-[calc(100vh-8rem)] flex flex-col justify-center px-4 py-6">
       <div className="max-w-md mx-auto w-full">
         {onBack && (
           <button
@@ -21,12 +21,12 @@ const FlowStep = ({ children, title, subtitle, onBack }: FlowStepProps) => {
             Back
           </button>
         )}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-muted-foreground text-base">
+            <p className="text-muted-foreground text-sm">
               {subtitle}
             </p>
           )}

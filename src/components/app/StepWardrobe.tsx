@@ -78,72 +78,86 @@ const StepWardrobe = ({ onWardrobeUpdate, onSkip, onBack, onContinue }: StepWard
     onContinue(items);
   };
 
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+
   return (
     <FlowStep 
       title="Style what you already own"
-      subtitle="Upload one or more pieces. We'll build the look around them."
+      subtitle="One item is enough."
     >
       <div className="space-y-2.5">
-        {WARDROBE_CATEGORIES.map((category) => (
-          <div key={category.id}>
-            {/* Hidden file input */}
-            <input
-              ref={el => fileInputRefs.current[category.id] = el}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange(category.id as keyof WardrobeItems)}
-              className="hidden"
-              aria-label={`Upload ${category.label}`}
-            />
+        {WARDROBE_CATEGORIES.map((category) => {
+          const isExpanded = expandedCategory === category.id;
+          const hasItem = items[category.id as keyof WardrobeItems] !== null;
+          
+          return (
+            <div key={category.id}>
+              {/* Hidden file input */}
+              <input
+                ref={el => fileInputRefs.current[category.id] = el}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange(category.id as keyof WardrobeItems)}
+                className="hidden"
+                aria-label={`Upload ${category.label}`}
+              />
 
-            {items[category.id as keyof WardrobeItems] ? (
-              // Uploaded state
-              <div className="flex items-center gap-3 py-3 px-4 rounded-xl border border-primary/30 bg-primary/5">
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative">
-                  <img 
-                    src={items[category.id as keyof WardrobeItems]!} 
-                    alt={category.label}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-0 right-0 w-5 h-5 bg-primary rounded-tl-lg flex items-center justify-center">
-                    <Check className="w-3 h-3 text-primary-foreground" />
+              {hasItem ? (
+                // Uploaded state
+                <div className="flex items-center gap-3 py-3 px-4 rounded-xl border border-primary/30 bg-primary/5">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative">
+                    <img 
+                      src={items[category.id as keyof WardrobeItems]!} 
+                      alt={category.label}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-0 right-0 w-5 h-5 bg-primary rounded-tl-lg flex items-center justify-center">
+                      <Check className="w-3 h-3 text-primary-foreground" />
+                    </div>
                   </div>
+                  <div className="flex-1">
+                    <span className="text-foreground font-medium">{category.label}</span>
+                    <p className="text-xs text-primary">Uploaded</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(category.id as keyof WardrobeItems)}
+                    className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={`Remove ${category.label}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                <div className="flex-1">
-                  <span className="text-foreground font-medium">{category.label}</span>
-                  <p className="text-xs text-primary">Uploaded</p>
+              ) : (
+                // Accordion style on mobile - collapsed by default
+                <div className="border border-border rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isExpanded) {
+                        setExpandedCategory(null);
+                      } else {
+                        setExpandedCategory(category.id);
+                        handleUploadClick(category.id);
+                      }
+                    }}
+                    className="w-full flex items-center gap-3 py-3 px-4 bg-background hover:bg-muted/30 transition-all"
+                  >
+                    <div className="w-12 h-12 rounded-lg border border-dashed border-border flex items-center justify-center bg-muted/20 flex-shrink-0">
+                      <Upload className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <span className="text-foreground block">{category.label}</span>
+                      {!isExpanded && (
+                        <span className="text-xs text-muted-foreground">{category.helper}</span>
+                      )}
+                    </div>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveItem(category.id as keyof WardrobeItems)}
-                  className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={`Remove ${category.label}`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              // Empty state
-              <button
-                type="button"
-                onClick={() => handleUploadClick(category.id)}
-                className="w-full flex items-center gap-3 py-3 px-4 rounded-xl border border-border bg-background hover:border-primary/40 hover:bg-muted/30 transition-all"
-              >
-                <div className="w-12 h-12 rounded-lg border border-dashed border-border flex items-center justify-center bg-muted/20 flex-shrink-0">
-                  <Upload className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div className="text-left">
-                  <span className="text-foreground block">{category.label}</span>
-                  <span className="text-xs text-muted-foreground">{category.helper}</span>
-                </div>
-              </button>
-            )}
-          </div>
-        ))}
-
-        <p className="text-xs text-muted-foreground text-center pt-3">
-          You can upload just one piece or combine several.
-        </p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="mt-6 space-y-3">

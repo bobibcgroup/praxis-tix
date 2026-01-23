@@ -94,20 +94,15 @@ const Favorites = () => {
         {favorites.length === 0 ? (
           <div className="text-center py-12">
             <Heart className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-            <p className="text-muted-foreground mb-2">No favorites yet</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Start adding outfits to your favorites to see them here
-            </p>
-            <Button onClick={() => navigate('/history')} variant="outline">
-              View History
-            </Button>
+            <p className="text-muted-foreground mb-2">Looks you save will appear here.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {favorites.map((entry) => (
               <div
                 key={entry.id}
-                className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors"
+                onClick={() => {/* Make entire card tappable - could navigate to detail view */}}
+                className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors cursor-pointer"
               >
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* Image */}

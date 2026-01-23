@@ -378,14 +378,17 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
 
           {/* Tappable reason with expandable "Why this works" */}
           <button
-            onClick={() => setShowWhy(!showWhy)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowWhy(!showWhy);
+            }}
             className="text-left w-full group"
           >
             <div className="flex items-start gap-2">
-              <p className="text-muted-foreground text-sm flex-1">
+              <p className="text-muted-foreground text-sm flex-1 line-clamp-2">
                 {outfit.reason}
               </p>
-              <span className="text-muted-foreground/60 mt-0.5">
+              <span className="text-muted-foreground/60 mt-0.5 shrink-0">
                 {showWhy ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </span>
             </div>
@@ -413,20 +416,18 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
             </p>
           )}
 
-          {/* Share button */}
-          <div className="mt-4 pt-3 border-t border-border">
-            <Button
+          {/* Share button - secondary action, icon only */}
+          <div className="mt-3 pt-3 border-t border-border">
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleShare();
               }}
-              variant="outline"
-              size="sm"
-              className="w-full"
+              className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Share this look"
             >
-              <Share2 className="w-4 h-4 mr-2" />
-              Share this look
-            </Button>
+              <Share2 className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

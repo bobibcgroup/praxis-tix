@@ -30,16 +30,17 @@ const StepPreferences = ({ data, onUpdate, onSubmit, onBack }: StepPreferencesPr
 
   return (
     <FlowStep title="Your priorities">
-      <div className="space-y-5">
+      <div className="space-y-6 pb-20">
         {/* Priority / Vibe */}
         <div>
-          <label className="text-sm text-muted-foreground mb-2 block">What kind of vibe do you want today?</label>
+          <label className="text-sm font-medium text-foreground mb-1 block">What kind of vibe do you want today?</label>
+          <p className="text-xs text-muted-foreground mb-3">Pick what matters most.</p>
           <div className="grid grid-cols-1 gap-2">
             {priorityOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => handleChange('priority', option.value)}
-                className={`px-4 py-3 rounded-lg border-2 text-left transition-all
+                className={`px-4 py-4 rounded-lg border-2 text-left transition-all min-h-[56px] flex items-center
                   ${data.priority === option.value 
                     ? 'border-primary bg-primary/5' 
                     : 'border-border bg-background hover:border-muted-foreground/30'
@@ -54,13 +55,14 @@ const StepPreferences = ({ data, onUpdate, onSubmit, onBack }: StepPreferencesPr
 
         {/* Budget / Intentionality */}
         <div>
-          <label className="text-sm text-muted-foreground mb-2 block">How do you want to invest in this look?</label>
+          <label className="text-sm font-medium text-foreground mb-1 block">How do you want to invest in this look?</label>
+          <p className="text-xs text-muted-foreground mb-3">Pick what matters most.</p>
           <div className="grid grid-cols-1 gap-2">
             {budgetOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => handleChange('budget', option.value)}
-                className={`px-4 py-3 rounded-lg border-2 text-left transition-all
+                className={`px-4 py-4 rounded-lg border-2 text-left transition-all min-h-[56px] flex items-center
                   ${data.budget === option.value 
                     ? 'border-primary bg-primary/5' 
                     : 'border-border bg-background hover:border-muted-foreground/30'
@@ -72,13 +74,16 @@ const StepPreferences = ({ data, onUpdate, onSubmit, onBack }: StepPreferencesPr
             ))}
           </div>
         </div>
+      </div>
 
-        <div className="flex gap-3 pt-2">
+      {/* Sticky CTA on mobile */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 md:relative md:border-t-0 md:p-0 md:pt-2">
+        <div className="flex gap-3 max-w-md mx-auto">
           <Button 
             onClick={onBack} 
             variant="outline" 
             size="lg" 
-            className="flex-1"
+            className="flex-1 text-muted-foreground"
           >
             Back
           </Button>

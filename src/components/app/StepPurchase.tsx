@@ -39,68 +39,51 @@ const StepPurchase = ({ outfit, onBack, onRestart }: StepPurchaseProps) => {
 
   return (
     <FlowStep title="Complete Your Look">
-      <div className="space-y-6">
-        <div className="text-center mb-6">
-          <p className="text-muted-foreground mb-4">
-            Shop the pieces from your chosen outfit
+      <div className="space-y-6 pb-20">
+        <div className="text-center mb-4">
+          <p className="text-sm text-muted-foreground">
+            You can shop pieces individually.
           </p>
         </div>
 
-        {/* Outfit Summary */}
-        <div className="bg-card rounded-xl border border-border p-4 mb-6">
-          <h3 className="text-lg font-medium text-foreground mb-3">{outfit.title}</h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Top</span>
-              <span className="text-foreground">{outfit.items.top}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Bottom</span>
-              <span className="text-foreground">{outfit.items.bottom}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Shoes</span>
-              <span className="text-foreground">{outfit.items.shoes}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Purchase Links */}
+        {/* Purchase Links - Vertical list */}
         <div className="space-y-3">
           {purchaseLinks.map((link, index) => (
             <div
               key={index}
-              className="bg-card rounded-xl border border-border p-4 flex items-center justify-between"
+              className="bg-card rounded-xl border border-border p-4 space-y-2"
             >
-              <div className="flex-1">
-                <p className="text-foreground font-medium mb-1">{link.item}</p>
-                <p className="text-sm text-muted-foreground">{link.store}</p>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-foreground font-medium mb-1">{link.item}</p>
+                  <p className="text-sm text-muted-foreground">{link.store}</p>
+                </div>
+                <span className="text-lg font-medium text-foreground ml-4">{link.price}</span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-medium text-foreground">{link.price}</span>
-                <Button
-                  onClick={() => window.open(link.url, '_blank')}
-                  variant="cta"
-                  size="sm"
-                >
-                  <ShoppingBag className="w-4 h-4 mr-2" />
-                  Buy this
-                </Button>
-              </div>
+              <Button
+                onClick={() => window.open(link.url, '_blank')}
+                variant="cta"
+                size="lg"
+                className="w-full md:w-auto"
+              >
+                <ShoppingBag className="w-4 h-4 mr-2" />
+                Buy this
+              </Button>
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Actions */}
-        <div className="pt-4 space-y-3">
-          <Button onClick={onRestart} variant="outline" size="lg" className="w-full">
+      {/* Sticky bottom actions on mobile */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 md:relative md:border-t-0 md:p-0 md:pt-4">
+        <div className="space-y-3 max-w-md mx-auto">
+          <Button onClick={onRestart} variant="outline" size="lg" className="w-full text-muted-foreground">
             Style another moment
           </Button>
           <button
             onClick={onBack}
-            className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
           >
-            <ArrowLeft className="w-4 h-4 inline mr-2" />
             Back to outfit selection
           </button>
         </div>

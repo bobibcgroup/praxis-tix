@@ -21,7 +21,7 @@ const Header = () => {
             Praxis
           </button>
           
-          {/* Navigation - Center aligned */}
+          {/* Navigation - Center aligned - show on all pages when signed in */}
           {isLoaded && user && (
             <nav className="hidden md:flex items-center gap-1">
               <Button
