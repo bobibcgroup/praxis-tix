@@ -91,7 +91,7 @@ export function MinimalAIScene({
   }, []);
 
   return (
-    <div className="fixed inset-0 -z-10" aria-label="AI Assistant 3D Avatar">
+    <div className="fixed inset-0 z-0" aria-label="AI Assistant 3D Avatar">
       <Canvas
         gl={{
           alpha: true,
@@ -99,9 +99,10 @@ export function MinimalAIScene({
           powerPreference: canvasSettings.powerPreference,
         }}
         dpr={[1, canvasSettings.pixelRatio]}
+        style={{ background: 'transparent' }}
       >
         <Suspense fallback={null}>
-          <PerspectiveCamera makeDefault position={[0, 0, 4]} fov={50} />
+          <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={60} />
           <ambientLight intensity={0.4} />
           <pointLight position={[5, 5, 5]} intensity={0.6} color="#00f0ff" />
           <pointLight position={[-5, -5, -5]} intensity={0.3} color="#b026ff" />

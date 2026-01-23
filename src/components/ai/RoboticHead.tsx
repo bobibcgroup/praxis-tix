@@ -133,25 +133,25 @@ export function RoboticHead({
     <group ref={headRef} position={[0, 0, 0]}>
       {/* Main head - rounded box */}
       <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[1.2, 1.4, 1]} />
+        <boxGeometry args={[1.5, 1.8, 1.2]} />
         <primitive object={headMaterial} />
       </mesh>
 
       {/* Left eye */}
-      <mesh ref={leftEyeRef} position={[-0.3, 0.2, 0.55]} scale={[1, eyeScale.left, 1]}>
-        <sphereGeometry args={[0.15, 16, 16]} />
+      <mesh ref={leftEyeRef} position={[-0.4, 0.3, 0.7]} scale={[1, eyeScale.left, 1]}>
+        <sphereGeometry args={[0.2, 16, 16]} />
         <primitive object={eyeMaterial} />
       </mesh>
 
       {/* Right eye */}
-      <mesh ref={rightEyeRef} position={[0.3, 0.2, 0.55]} scale={[1, eyeScale.right, 1]}>
-        <sphereGeometry args={[0.15, 16, 16]} />
+      <mesh ref={rightEyeRef} position={[0.4, 0.3, 0.7]} scale={[1, eyeScale.right, 1]}>
+        <sphereGeometry args={[0.2, 16, 16]} />
         <primitive object={eyeMaterial} />
       </mesh>
 
       {/* Jaw - moves when speaking */}
-      <mesh ref={jawRef} position={[0, -0.6, 0]} rotation={[0, 0, 0]}>
-        <boxGeometry args={[0.8, 0.3, 0.6]} />
+      <mesh ref={jawRef} position={[0, -0.8, 0]} rotation={[0, 0, 0]}>
+        <boxGeometry args={[1.0, 0.4, 0.8]} />
         <primitive object={jawMaterial} />
       </mesh>
 

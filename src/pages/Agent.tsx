@@ -84,7 +84,7 @@ export default function Agent() {
   return (
     <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
       {/* Dark gradient overlay */}
-      <div className="fixed inset-0 bg-gradient-to-b from-black via-[#050510] to-black -z-10" />
+      <div className="fixed inset-0 bg-gradient-to-b from-black via-[#050510] to-black z-0" />
       
       {/* Minimal AI Scene with Robotic Head */}
       <MinimalAIScene 
@@ -94,7 +94,7 @@ export default function Agent() {
       />
 
       {/* Minimal Header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-sm border-b border-cyan-500/10">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-sm border-b border-cyan-500/10">
         <div className="px-4 h-12 flex items-center">
           <Button
             variant="ghost"
