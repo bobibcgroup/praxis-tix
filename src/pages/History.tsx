@@ -116,7 +116,15 @@ const History = () => {
         createdAt: user.createdAt,
       });
       const entries = await getOutfitHistory(user.id);
-      console.log('✅ Loaded history entries:', entries.length, entries);
+      console.log('✅ Loaded history entries:', entries.length);
+      console.log('📋 History entries details:', entries.map(e => ({
+        id: e.id,
+        outfitId: e.outfitId,
+        title: e.outfitData?.title,
+        occasion: e.occasion,
+        hasTryOnImage: !!e.tryOnImageUrl,
+        selectedAt: e.selectedAt
+      })));
       setHistory(entries);
       const favs = await getFavorites(user.id);
       setFavorites(favs);

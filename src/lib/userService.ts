@@ -471,19 +471,61 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
       colorPalette: null, // Column doesn't exist in database, always null
     }));
     
-    // IMPORTANT: Only check localStorage if Supabase query succeeded but returned 0 entries
-    // AND we have reason to believe data might be in localStorage (e.g., previous saves failed)
-    // However, we should NOT fall back to localStorage if Supabase is working properly,
-    // as this causes device-specific data isolation issues.
-    // 
-    // If Supabase returns 0 entries, it could mean:
-    // 1. User genuinely has no history (correct behavior)
-    // 2. RLS policies are blocking access (needs fixing)
-    // 3. Data was saved to localStorage (should migrate to Supabase)
-    //
-    // For now, we'll only check localStorage if there was an error, not if we got 0 results.
-    // This prevents the device-specific data isolation issue.
+    // Also check localStorage for entries that might have been saved as fallback
+    // Merge them with Supabase entries, avoiding duplicates
+    try {
+      const localStorageHistory = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+      const localStorageEntries = localStorageHistory.filter((entry: OutfitHistoryEntry) => {
+        // Only include entries for this user
+        return entry.userId === userId;
+      });
+      
+      if (localStorageEntries.length > 0) {
+        console.log('📦 Found', localStorageEntries.length, 'entries in localStorage for user:', userId);
+        
+        // Create a Set of Supabase entry IDs to avoid duplicates
+        const supabaseIds = new Set(mapped.map(e => e.id));
+        
+        // Also create a map of outfitId + selectedAt combinations from Supabase to avoid duplicates
+        const supabaseCombinations = new Set(
+          mapped.map(e => `${e.outfitId}_${e.selectedAt}`)
+        );
+        
+        // Add localStorage entries that aren't already in Supabase results
+        localStorageEntries.forEach((entry: OutfitHistoryEntry) => {
+          // Skip if this entry ID already exists in Supabase
+          if (supabaseIds.has(entry.id)) {
+            return;
+          }
+          
+          // Skip if this outfitId + selectedAt combination already exists
+          const combination = `${entry.outfitId}_${entry.selectedAt}`;
+          if (supabaseCombinations.has(combination)) {
+            return;
+          }
+          
+          // This is a unique localStorage entry, add it
+          console.log('➕ Adding localStorage entry to results:', {
+            id: entry.id,
+            outfitId: entry.outfitId,
+            title: entry.outfitData?.title,
+            selectedAt: entry.selectedAt
+          });
+          mapped.push(entry);
+        });
+        
+        // Sort by selectedAt descending (newest first)
+        mapped.sort((a, b) => 
+          new Date(b.selectedAt).getTime() - new Date(a.selectedAt).getTime()
+        );
+        
+        console.log('📊 Merged results: Supabase entries:', data?.length || 0, '+ localStorage entries:', localStorageEntries.length, '= Total:', mapped.length);
+      }
+    } catch (localError) {
+      console.warn('⚠️ Error reading localStorage history:', localError);
+    }
     
+    console.log('✅ Returning', mapped.length, 'total history entries (Supabase + localStorage)');
     return mapped;
   } catch (error) {
     console.error('❌ Error fetching outfit history from Supabase:', error);
