@@ -440,7 +440,10 @@ export async function deleteOutfitFromHistory(
 /**
  * Get outfit history for user
  */
-export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEntry[]> {
+export async function getOutfitHistory(
+  userId: string,
+  email?: string // Optional email for fallback query
+): Promise<OutfitHistoryEntry[]> {
   if (!userId) {
     console.warn('getOutfitHistory called without userId');
     return [];
@@ -459,12 +462,55 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
   }
 
   try {
-    console.log('🔍 Fetching outfit history from Supabase for user:', userId);
-    const { data, error } = await supabase
+    console.log('🔍 Fetching outfit history from Supabase for user:', userId, email ? `(email: ${email})` : '');
+    
+    // First, try querying by user_id
+    let { data, error } = await supabase
       .from('outfit_history')
       .select('*')
       .eq('user_id', userId)
       .order('selected_at', { ascending: false });
+    
+    // If query failed or returned no results, try querying by email as fallback
+    // This helps when RLS policies might be blocking or email column exists
+    if ((error || !data || data.length === 0) && email) {
+      console.log('⚠️ Query by user_id failed or returned no results, trying email fallback...');
+      console.log('   Original error:', error);
+      
+      try {
+        const { data: emailData, error: emailError } = await supabase
+          .from('outfit_history')
+          .select('*')
+          .eq('email', email)
+          .order('selected_at', { ascending: false });
+        
+        if (!emailError && emailData && emailData.length > 0) {
+          console.log(`✅ Found ${emailData.length} entries by email, filtering to current user_id...`);
+          // Filter to only entries that match current user_id (in case multiple user_ids share email)
+          const filteredByUserId = emailData.filter(row => row.user_id === userId);
+          if (filteredByUserId.length > 0) {
+            console.log(`✅ ${filteredByUserId.length} entries match current user_id`);
+            data = filteredByUserId;
+            error = null;
+          } else {
+            console.log('⚠️ Entries found by email but none match current user_id');
+            // Still use emailData - might be from previous user_id that needs migration
+            data = emailData;
+            error = null;
+          }
+        } else if (emailError) {
+          // If email column doesn't exist, that's okay - continue with original query result
+          if (emailError.message?.includes('column') || emailError.code === '42703') {
+            console.log('⚠️ Email column not found, using user_id query result');
+          } else {
+            console.error('   Email query also failed:', emailError);
+          }
+        }
+      } catch (emailQueryErr) {
+        console.warn('   Error querying by email:', emailQueryErr);
+        // Continue with original query result
+      }
+    }
     
     // Debug: Check if there are entries with different user_ids but same email
     if (data && data.length === 0) {
@@ -482,16 +528,55 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
       
       if (testError) {
         console.error('   ❌ Cannot query outfit_history table:', testError);
+        console.error('   Error code:', testError.code);
+        console.error('   Error message:', testError.message);
         console.error('   This suggests an RLS policy issue. Check Supabase dashboard.');
+        console.error('   Make sure RLS policies allow: SELECT WHERE user_id = auth.uid()');
       } else if (testData && testData.length > 0) {
         console.log('   ⚠️ Table has data, but not for this user_id. Possible RLS issue.');
+        console.log('   Found user_id in table:', testData[0].user_id);
+        console.log('   Current user_id:', userId);
       } else {
         console.log('   ✅ Table is accessible but empty (or RLS is working correctly)');
       }
     }
 
     if (error) {
-      console.error('Supabase error fetching outfit history:', error);
+      console.error('❌ Supabase error fetching outfit history:', error);
+      console.error('   Error code:', error.code);
+      console.error('   Error message:', error.message);
+      console.error('   Error details:', error.details);
+      console.error('   Error hint:', error.hint);
+      
+      // Check if it's an RLS policy error
+      if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('RLS') || error.message?.includes('row-level security')) {
+        console.error('   🚨 RLS POLICY ERROR DETECTED');
+        console.error('   This means Row Level Security is blocking access.');
+        console.error('   Solution: Run the SQL migration in SUPABASE_MIGRATION.sql');
+        console.error('   Or temporarily disable RLS: ALTER TABLE outfit_history DISABLE ROW LEVEL SECURITY;');
+      }
+      
+      // Don't throw immediately - try to get more info
+      // Check authentication (though we use Clerk, not Supabase Auth)
+      try {
+        const { data: authData, error: authError } = await supabase.auth.getSession();
+        if (authError) {
+          console.log('   ℹ️ No Supabase auth session (expected when using Clerk)');
+        } else {
+          console.log('   Auth session:', authData?.session ? 'exists' : 'missing');
+          console.log('   Auth user:', authData?.session?.user?.id || 'none');
+        }
+      } catch (authErr) {
+        console.log('   ℹ️ Auth check failed (expected when using Clerk)');
+      }
+      
+      // If RLS error, try to return empty array instead of throwing
+      // This allows the app to continue and show helpful message
+      if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('RLS')) {
+        console.error('   Returning empty array due to RLS error. Check console for diagnosis.');
+        return [];
+      }
+      
       throw error;
     }
 
@@ -571,6 +656,25 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
     console.error('   This might indicate an RLS policy issue or authentication problem.');
     console.error('   Check Supabase RLS policies for the outfit_history table.');
     
+    // Log detailed error for debugging
+    if (error && typeof error === 'object') {
+      const err = error as any;
+      console.error('   Error code:', err.code);
+      console.error('   Error message:', err.message);
+      console.error('   Error details:', err.details);
+      console.error('   Error hint:', err.hint);
+      
+      // Check for specific error types
+      if (err.code === '42501' || err.message?.includes('permission') || err.message?.includes('RLS')) {
+        console.error('   🚨 RLS POLICY ERROR - Access denied by Row Level Security');
+        console.error('   Run the SQL migration in SUPABASE_MIGRATION.sql to fix RLS policies');
+      }
+      
+      if (err.message?.includes('fetch') || err.message?.includes('network')) {
+        console.error('   🚨 NETWORK ERROR - Check internet connection');
+      }
+    }
+    
     // Only fall back to localStorage if Supabase is completely unavailable
     // This prevents device-specific data isolation
     if (!supabase) {
@@ -583,9 +687,25 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
       return filtered;
     }
     
-    // If Supabase is configured but query failed, return empty array
-    // This ensures we don't show device-specific localStorage data
-    console.warn('⚠️ Supabase query failed, returning empty array to prevent localStorage fallback');
+    // If Supabase is configured but query failed, try localStorage as last resort
+    // This helps when there's a temporary network issue
+    try {
+      const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+      const filtered = history.filter((entry: OutfitHistoryEntry) => {
+        return entry.userId === userId;
+      });
+      
+      if (filtered.length > 0) {
+        console.log(`⚠️ Supabase query failed, returning ${filtered.length} entries from localStorage as fallback`);
+        console.log('   This is a temporary fallback. Fix Supabase connection to see all data.');
+        return filtered;
+      }
+    } catch (localErr) {
+      console.warn('   Could not read localStorage fallback:', localErr);
+    }
+    
+    // If all else fails, return empty array
+    console.warn('⚠️ Supabase query failed and no localStorage data, returning empty array');
     return [];
   }
 }

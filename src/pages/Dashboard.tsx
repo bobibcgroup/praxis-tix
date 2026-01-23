@@ -26,7 +26,8 @@ const Dashboard = () => {
   const loadRecentStyles = useCallback(async () => {
     if (!user) return;
     try {
-      const history = await getOutfitHistory(user.id);
+      const userEmail = user.primaryEmailAddress?.emailAddress;
+      const history = await getOutfitHistory(user.id, userEmail);
       setRecentStyles(history.slice(0, 3)); // Show 3 most recent
     } catch (error) {
       console.error('Error loading recent styles:', error);
@@ -38,7 +39,8 @@ const Dashboard = () => {
   const loadGeneratedOutfits = useCallback(async () => {
     if (!user) return;
     try {
-      const history = await getOutfitHistory(user.id);
+      const userEmail = user.primaryEmailAddress?.emailAddress;
+      const history = await getOutfitHistory(user.id, userEmail);
       
       // Check for active generations to exclude them
       const activeGenStr = localStorage.getItem('praxis_active_generation');

@@ -6,6 +6,8 @@ import "./lib/testHistory";
 import "./lib/debugHistory";
 // Import cleanup utilities (exposes window.cleanupUserData and window.listUsersWithData)
 import "./lib/cleanupUserData";
+// Import diagnosis utility (exposes window.diagnoseHistory)
+import "./lib/diagnoseHistory";
 // Register service worker for PWA
 import { registerServiceWorker } from "./utils/serviceWorker";
 

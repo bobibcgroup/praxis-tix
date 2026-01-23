@@ -136,13 +136,14 @@ const History = () => {
 
     try {
       setLoading(true);
+      const userEmail = user.primaryEmailAddress?.emailAddress;
       console.log('🔍 Loading history for user:', {
         userId: user.id,
-        email: user.primaryEmailAddress?.emailAddress,
+        email: userEmail,
         allEmails: user.emailAddresses?.map(e => e.emailAddress) || [],
         createdAt: user.createdAt,
       });
-      const entries = await getOutfitHistory(user.id);
+      const entries = await getOutfitHistory(user.id, userEmail);
       console.log('✅ Loaded history entries:', entries.length);
       console.log('📋 History entries details:', entries.map(e => ({
         id: e.id,
@@ -152,6 +153,23 @@ const History = () => {
         hasTryOnImage: !!e.tryOnImageUrl,
         selectedAt: e.selectedAt
       })));
+      
+      // If no entries found, run diagnosis
+      if (entries.length === 0) {
+        console.warn('⚠️ No history entries found. Running diagnosis...');
+        try {
+          const { diagnoseHistoryIssue } = await import('@/lib/diagnoseHistory');
+          const diagnosis = await diagnoseHistoryIssue(user.id, userEmail);
+          console.log('📊 Diagnosis results:', diagnosis);
+          
+          if (diagnosis.rlsIssue) {
+            console.error('❌ RLS policy issue detected. Check recommendations above.');
+          }
+        } catch (diagErr) {
+          console.warn('Could not run diagnosis:', diagErr);
+        }
+      }
+      
       setHistory(entries);
       const favs = await getFavorites(user.id);
       setFavorites(favs);
@@ -159,7 +177,22 @@ const History = () => {
       // Check for active generations and mark entries as generating
       checkActiveGenerations(entries);
     } catch (error) {
-      console.error('Error loading history:', error);
+      console.error('❌ Error loading history:', error);
+      
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('   Error message:', error.message);
+        console.error('   Error stack:', error.stack);
+      }
+      
+      // Check if it's a network error (common on mobile)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('   🚨 Network error detected - check internet connection');
+        console.error('   This is common on mobile devices with poor connectivity');
+      }
+      
+      // Still set empty history so UI doesn't break
+      setHistory([]);
     } finally {
       setLoading(false);
     }

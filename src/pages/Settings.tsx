@@ -47,8 +47,9 @@ const Settings = () => {
     if (!user) return;
 
     try {
+      const userEmail = user.primaryEmailAddress?.emailAddress;
       const [history, profile, favorites] = await Promise.all([
-        getOutfitHistory(user.id),
+        getOutfitHistory(user.id, userEmail),
         getUserProfile(user.id),
         getFavorites(user.id),
       ]);
