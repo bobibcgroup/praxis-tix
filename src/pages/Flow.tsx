@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { SEO } from '@/components/SEO';
 import ProgressIndicator from '@/components/app/ProgressIndicator';
 import StepModeSelect from '@/components/app/StepModeSelect';
 import StepOccasion from '@/components/app/StepOccasion';
@@ -26,7 +27,6 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNavMenu } from '@/components/app/MobileNavMenu';
-import { useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import type { 
   OccasionData, 
@@ -268,6 +268,17 @@ const Flow = () => {
                         (mode === 'personal' && step >= 10 && step <= 17);
 
   const progress = getProgressInfo();
+
+  // Update SEO metadata based on flow step
+  useEffect(() => {
+    if (step === 0) {
+      document.title = 'Praxis — Smart Styling, Instantly';
+    } else if (mode === 'quick' && step === 4) {
+      document.title = 'Your Looks — Praxis';
+    } else if (mode === 'personal' && step === 16) {
+      document.title = 'Your Looks — Praxis Agent';
+    }
+  }, [step, mode]);
 
   const renderStep = () => {
     switch (step) {

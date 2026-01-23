@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { SEO } from "@/components/SEO";
 import Flow from "./pages/Flow";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
@@ -29,6 +30,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <SEO />
             <Routes>
               <Route path="/" element={<Flow />} />
               <Route path="/landing" element={<Landing />} />
