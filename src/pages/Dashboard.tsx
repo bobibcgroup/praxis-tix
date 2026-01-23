@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Calendar, Heart, UtensilsCrossed, Briefcase, Sparkles, Loader2 } from 'lucide-react';
+import { Calendar, Heart, UtensilsCrossed, Briefcase, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import { useUser } from '@clerk/clerk-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getOutfitHistory } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isLoaded } = useUser();
   const [recentStyles, setRecentStyles] = useState<OutfitHistoryEntry[]>([]);
+  const [generatedOutfits, setGeneratedOutfits] = useState<OutfitHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeGeneration, setActiveGeneration] = useState<{
     outfitId: number;
@@ -20,53 +21,30 @@ const Dashboard = () => {
     status: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (isLoaded && user) {
-      loadRecentStyles();
-      checkActiveGeneration();
-    } else {
+  const loadRecentStyles = useCallback(async () => {
+    if (!user) return;
+    try {
+      const history = await getOutfitHistory(user.id);
+      setRecentStyles(history.slice(0, 3)); // Show 3 most recent
+    } catch (error) {
+      console.error('Error loading recent styles:', error);
+    } finally {
       setLoading(false);
     }
-  }, [user, isLoaded]);
+  }, [user]);
 
-  // Check for active generation on mount and listen for completion
-  useEffect(() => {
-    const checkActiveGeneration = () => {
-      const stored = localStorage.getItem('praxis_active_generation');
-      if (stored) {
-        try {
-          const generation = JSON.parse(stored);
-          setActiveGeneration(generation);
-        } catch (e) {
-          console.error('Error parsing generation state:', e);
-          localStorage.removeItem('praxis_active_generation');
-        }
-      } else {
-        setActiveGeneration(null);
-      }
-    };
-
-    checkActiveGeneration();
-
-    // Listen for generation completion events
-    const handleGenerationComplete = (event: CustomEvent) => {
-      setActiveGeneration(null);
-      loadRecentStyles(); // Refresh to show new entry
-      toast.success('Your style image is ready!');
-    };
-
-    window.addEventListener('generation-complete', handleGenerationComplete as EventListener);
-    
-    // Check periodically for completion (in case user navigated away and back)
-    const interval = setInterval(() => {
-      checkActiveGeneration();
-    }, 2000);
-
-    return () => {
-      window.removeEventListener('generation-complete', handleGenerationComplete as EventListener);
-      clearInterval(interval);
-    };
-  }, []);
+  const loadGeneratedOutfits = useCallback(async () => {
+    if (!user) return;
+    try {
+      const history = await getOutfitHistory(user.id);
+      // Filter to only show outfits that have been generated (have try-on images)
+      const generated = history.filter(entry => entry.tryOnImageUrl);
+      // Show 6 most recent generated outfits
+      setGeneratedOutfits(generated.slice(0, 6));
+    } catch (error) {
+      console.error('Error loading generated outfits:', error);
+    }
+  }, [user]);
 
   const checkActiveGeneration = () => {
     const stored = localStorage.getItem('praxis_active_generation');
@@ -83,17 +61,40 @@ const Dashboard = () => {
     }
   };
 
-  const loadRecentStyles = async () => {
-    if (!user) return;
-    try {
-      const history = await getOutfitHistory(user.id);
-      setRecentStyles(history.slice(0, 3)); // Show 3 most recent
-    } catch (error) {
-      console.error('Error loading recent styles:', error);
-    } finally {
+  useEffect(() => {
+    if (isLoaded && user) {
+      loadRecentStyles();
+      loadGeneratedOutfits();
+      checkActiveGeneration();
+    } else {
       setLoading(false);
     }
-  };
+  }, [user, isLoaded, loadRecentStyles, loadGeneratedOutfits]);
+
+  // Check for active generation on mount and listen for completion
+  useEffect(() => {
+    checkActiveGeneration();
+
+    // Listen for generation completion events
+    const handleGenerationComplete = (event: CustomEvent) => {
+      setActiveGeneration(null);
+      loadRecentStyles(); // Refresh to show new entry
+      loadGeneratedOutfits(); // Refresh generated outfits section
+      toast.success('Your style image is ready!');
+    };
+
+    window.addEventListener('generation-complete', handleGenerationComplete as EventListener);
+    
+    // Check periodically for completion (in case user navigated away and back)
+    const interval = setInterval(() => {
+      checkActiveGeneration();
+    }, 2000);
+
+    return () => {
+      window.removeEventListener('generation-complete', handleGenerationComplete as EventListener);
+      clearInterval(interval);
+    };
+  }, [loadRecentStyles, loadGeneratedOutfits]);
 
   const handleOccasionClick = (occasion: string) => {
     navigate('/', { state: { occasion: occasion.toUpperCase() } });
@@ -188,8 +189,58 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Recent Styles (if authenticated) */}
-        {isLoaded && user && !loading && recentStyles.length > 0 && (
+        {/* Latest Generated Outfits (if authenticated) */}
+        {isLoaded && user && !loading && generatedOutfits.length > 0 && (
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-medium text-foreground">Latest Generated Outfits</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/history')}
+                className="text-xs"
+              >
+                View All
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {generatedOutfits.map((entry) => (
+                <div
+                  key={entry.id}
+                  onClick={() => navigate('/history')}
+                  className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors duration-200 cursor-pointer"
+                >
+                  {entry.tryOnImageUrl ? (
+                    <img
+                      src={entry.tryOnImageUrl}
+                      alt={entry.outfitData.title}
+                      className="w-full aspect-[3/4] rounded-lg object-cover mb-3"
+                    />
+                  ) : entry.outfitData.imageUrl ? (
+                    <img
+                      src={entry.outfitData.imageUrl}
+                      alt={entry.outfitData.title}
+                      className="w-full aspect-[3/4] rounded-lg object-cover mb-3"
+                    />
+                  ) : (
+                    <div className="w-full aspect-[3/4] rounded-lg bg-muted flex items-center justify-center mb-3">
+                      <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <h3 className="text-sm font-medium text-foreground truncate">
+                    {entry.outfitData.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground capitalize mt-1">
+                    {entry.occasion.toLowerCase()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Styles (if authenticated and no generated outfits yet) */}
+        {isLoaded && user && !loading && generatedOutfits.length === 0 && recentStyles.length > 0 && (
           <div className="mt-12">
             <h2 className="text-xl font-medium text-foreground mb-4">Recent Styles</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -197,14 +248,24 @@ const Dashboard = () => {
                 <div
                   key={entry.id}
                   onClick={() => navigate('/history')}
-                  className="bg-card rounded-xl border border-border p-6 hover:border-primary/50 transition-colors cursor-pointer"
+                  className="bg-card rounded-xl border border-border p-6 hover:border-primary/50 transition-colors duration-200 cursor-pointer"
                 >
-                  {entry.tryOnImageUrl && (
+                  {entry.tryOnImageUrl ? (
                     <img
                       src={entry.tryOnImageUrl}
                       alt={entry.outfitData.title}
                       className="w-full aspect-[3/4] rounded-lg object-cover mb-3"
                     />
+                  ) : entry.outfitData.imageUrl ? (
+                    <img
+                      src={entry.outfitData.imageUrl}
+                      alt={entry.outfitData.title}
+                      className="w-full aspect-[3/4] rounded-lg object-cover mb-3"
+                    />
+                  ) : (
+                    <div className="w-full aspect-[3/4] rounded-lg bg-muted flex items-center justify-center mb-3">
+                      <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                    </div>
                   )}
                   <h3 className="text-sm font-medium text-foreground truncate">
                     {entry.outfitData.title}
