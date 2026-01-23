@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, Upload, AlertCircle, X, User, Sun, Maximize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useUser, SignInButton } from '@clerk/clerk-react';
 import FlowStep from './FlowStep';
 import PhotoCropModal from './PhotoCropModal';
 import { analyzePhoto } from '@/lib/photoAnalysis';
@@ -25,6 +26,8 @@ const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
+  const { user, isLoaded } = useUser();
+  
   // State
   const [rawPhoto, setRawPhoto] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -493,6 +496,38 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
           </div>
         )}
       </div>
+    );
+  }
+
+  // Sign-in prompt if not authenticated
+  if (isLoaded && !user) {
+    return (
+      <FlowStep 
+        title="Build my personal style"
+        subtitle="Sign in to continue building your personalized style profile."
+        onBack={onBack}
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-start gap-3">
+              <User className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-foreground mb-2">
+                  Sign in to save your style profile and access your outfit history across all devices.
+                </p>
+                <SignInButton mode="modal">
+                  <Button variant="cta" size="sm" className="w-full">
+                    Sign in to continue
+                  </Button>
+                </SignInButton>
+              </div>
+            </div>
+          </div>
+          <Button onClick={onSkip} variant="outline" size="lg" className="w-full">
+            Skip for now
+          </Button>
+        </div>
+      </FlowStep>
     );
   }
 

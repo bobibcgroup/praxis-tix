@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2, Palette } from 'lucide-react';
 import { getOutfitHistory, deleteOutfitFromHistory, addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
 import Header from '@/components/Header';
@@ -321,6 +321,13 @@ const History = () => {
                       </span>
                     </div>
 
+                    {/* Style Name */}
+                    {entry.styleName && (
+                      <div className="mb-2">
+                        <p className="text-sm font-medium text-foreground">{entry.styleName}</p>
+                      </div>
+                    )}
+
                     <div className="space-y-1 text-sm mb-3">
                       <div className="flex gap-2">
                         <span className="text-muted-foreground w-16 shrink-0">Top</span>
@@ -335,6 +342,45 @@ const History = () => {
                         <span className="text-foreground">{entry.outfitData.items.shoes}</span>
                       </div>
                     </div>
+
+                    {/* Style DNA */}
+                    {entry.styleDNA && (
+                      <div className="mb-3 p-3 bg-muted/30 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Palette className="w-4 h-4 text-primary" />
+                          <span className="text-xs font-medium text-foreground">Style DNA</span>
+                        </div>
+                        <div className="space-y-1">
+                          {entry.styleDNA.primaryStyle && (
+                            <p className="text-xs text-foreground capitalize">
+                              {entry.styleDNA.primaryStyle.toLowerCase().replace('_', ' ')}
+                            </p>
+                          )}
+                          {entry.styleDNA.secondaryStyle && (
+                            <p className="text-xs text-muted-foreground capitalize">
+                              {entry.styleDNA.secondaryStyle.toLowerCase().replace('_', ' ')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Color Palette */}
+                    {entry.colorPalette && entry.colorPalette.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs text-muted-foreground mb-2">Color Palette</p>
+                        <div className="flex gap-2">
+                          {entry.colorPalette.map((color, idx) => (
+                            <div
+                              key={idx}
+                              className="w-8 h-8 rounded-full border border-border"
+                              style={{ backgroundColor: color.hex }}
+                              title={color.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex gap-2 mt-4">
                       <Button

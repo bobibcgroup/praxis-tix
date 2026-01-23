@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useUser, UserButton, SignInButton } from "@clerk/clerk-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, History, Heart, Settings } from "lucide-react";
+import { User, History, Heart, Settings, LayoutDashboard } from "lucide-react";
 
 const Header = () => {
   const { user, isLoaded } = useUser();
@@ -24,6 +24,15 @@ const Header = () => {
           {/* Navigation - Center aligned */}
           {isLoaded && user && (
             <nav className="hidden md:flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+                className="px-4"
+              >
+                <LayoutDashboard className="w-4 h-4 mr-2" />
+                Dashboard
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

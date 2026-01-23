@@ -9,6 +9,9 @@ export interface OutfitHistoryEntry {
   tryOnImageUrl?: string | null;
   animatedVideoUrl?: string | null;
   selectedAt: string;
+  styleName?: string | null;
+  styleDNA?: StyleDNA | null;
+  colorPalette?: Array<{ name: string; hex: string }> | null;
 }
 
 /**
@@ -84,7 +87,10 @@ export async function saveOutfitToHistory(
   outfit: Outfit,
   occasion: string,
   tryOnImageUrl?: string,
-  animatedVideoUrl?: string
+  animatedVideoUrl?: string,
+  styleName?: string,
+  styleDNA?: StyleDNA,
+  colorPalette?: Array<{ name: string; hex: string }>
 ): Promise<string | null> {
   if (!supabase) {
     // Fallback to localStorage
@@ -98,6 +104,9 @@ export async function saveOutfitToHistory(
       tryOnImageUrl,
       animatedVideoUrl,
       selectedAt: new Date().toISOString(),
+      styleName: styleName || null,
+      styleDNA: styleDNA || null,
+      colorPalette: colorPalette || null,
     });
     localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
     return entryId;
@@ -114,6 +123,9 @@ export async function saveOutfitToHistory(
         try_on_image_url: tryOnImageUrl || null,
         animated_video_url: animatedVideoUrl || null,
         selected_at: new Date().toISOString(),
+        style_name: styleName || null,
+        style_dna: styleDNA || null,
+        color_palette: colorPalette || null,
       })
       .select('id')
       .single();
@@ -133,6 +145,9 @@ export async function saveOutfitToHistory(
       tryOnImageUrl,
       animatedVideoUrl,
       selectedAt: new Date().toISOString(),
+      styleName: styleName || null,
+      styleDNA: styleDNA || null,
+      colorPalette: colorPalette || null,
     });
     localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
     return entryId;
@@ -140,12 +155,15 @@ export async function saveOutfitToHistory(
 }
 
 /**
- * Update existing outfit history entry with try-on image URL
+ * Update existing outfit history entry with try-on image URL and style data
  */
 export async function updateOutfitHistoryTryOn(
   userId: string,
   historyId: string,
-  tryOnImageUrl: string
+  tryOnImageUrl: string,
+  styleName?: string,
+  styleDNA?: StyleDNA,
+  colorPalette?: Array<{ name: string; hex: string }>
 ): Promise<void> {
   if (!supabase) {
     // Fallback to localStorage
@@ -163,6 +181,9 @@ export async function updateOutfitHistoryTryOn(
       .from('outfit_history')
       .update({
         try_on_image_url: tryOnImageUrl,
+        style_name: styleName || null,
+        style_dna: styleDNA || null,
+        color_palette: colorPalette || null,
       })
       .eq('id', historyId)
       .eq('user_id', userId);
@@ -239,6 +260,9 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
       tryOnImageUrl: row.try_on_image_url,
       animatedVideoUrl: row.animated_video_url,
       selectedAt: row.selected_at,
+      styleName: row.style_name || null,
+      styleDNA: row.style_dna || null,
+      colorPalette: row.color_palette || null,
     }));
   } catch (error) {
     console.error('Error fetching outfit history:', error);

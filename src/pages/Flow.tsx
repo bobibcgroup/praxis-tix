@@ -17,7 +17,7 @@ import StepStyleDNA from '@/components/app/StepStyleDNA';
 import StepPersonalLoading from '@/components/app/StepPersonalLoading';
 import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
 import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
-import { generatePersonalOutfits, deriveStyleColorProfile } from '@/lib/personalOutfitGenerator';
+import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import { useLocation } from 'react-router-dom';
@@ -98,28 +98,22 @@ const Flow = () => {
   
   const { user, isLoaded } = useUser();
 
-  // Check if we're editing profile or using outfit again
+  // Check if we're editing profile or using outfit again or coming from dashboard
   useEffect(() => {
     const state = location.state as { editProfile?: boolean; occasion?: string } | null;
     if (state?.editProfile && isLoaded && user) {
       setMode('personal');
       setStep(10);
-    } else if (state?.occasion && isLoaded && user) {
-      // Pre-select occasion for "Use this outfit again"
+    } else if (state?.occasion) {
+      // Pre-select occasion (from dashboard or "Use this outfit again")
       setMode('quick');
       setOccasion({ event: state.occasion.toUpperCase() as OccasionType });
       setStep(1);
     }
   }, [location.state, isLoaded, user]);
 
-  // Guard: Redirect personal flow steps if not authenticated
-  useEffect(() => {
-    if (isLoaded && mode === 'personal' && !user) {
-      // If user tries to access personal flow without being logged in, reset to mode select
-      setMode(null);
-      setStep(0);
-    }
-  }, [isLoaded, user, mode]);
+  // Guard: Show sign-in prompt at step 10 (Photo) if not authenticated
+  // Allow users to start personal flow but require auth at photo step
 
   // Quick flow handlers
   const handleGetOutfits = () => {
@@ -386,14 +380,8 @@ const Flow = () => {
           />
         );
       
-      // Personal flow - require authentication
+      // Personal flow - show sign-in prompt at photo step if not authenticated
       case 10:
-        // Guard: If not authenticated, redirect to mode select
-        if (isLoaded && !user) {
-          setMode(null);
-          setStep(0);
-          return null;
-        }
         return (
           <StepPhoto
             onPhotoConfirmed={(result: { 
@@ -562,12 +550,19 @@ const Flow = () => {
                 // Save to history immediately if user is authenticated
                 if (user) {
                   try {
+                    const colorPalette = personal.skinTone?.bucket
+                      ? getRecommendedSwatches(personal.skinTone.bucket).slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
+                      : null;
+                    
                     const entryId = await saveOutfitToHistory(
                       user.id,
                       outfit,
                       personal.lifestyle as OccasionType || 'WORK',
                       undefined, // Try-on URL will be added later if available
-                      undefined
+                      undefined,
+                      undefined, // styleName - will be set when try-on completes
+                      personal.styleDNA || undefined,
+                      colorPalette || undefined
                     );
                     setHistoryEntryId(entryId);
                   } catch (err) {
@@ -596,13 +591,24 @@ const Flow = () => {
               userPhoto={personal.photoCropped}
               personalData={personal}
               onBack={() => setStep(16)}
-              onComplete={async (tryOnUrl: string) => {
+              onComplete={async (tryOnUrl: string, styleName?: string) => {
                 setTryOnImageUrl(tryOnUrl);
                 
-                // Update history entry with try-on URL if we have a history entry ID
-                if (user && historyEntryId) {
+                // Update history entry with try-on URL, style name, DNA, and colors
+                if (user && historyEntryId && selectedOutfit) {
                   try {
-                    await updateOutfitHistoryTryOn(user.id, historyEntryId, tryOnUrl);
+                    const colorPalette = personal.skinTone?.bucket
+                      ? getRecommendedSwatches(personal.skinTone.bucket).slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
+                      : null;
+                    
+                    await updateOutfitHistoryTryOn(
+                      user.id,
+                      historyEntryId,
+                      tryOnUrl,
+                      styleName,
+                      personal.styleDNA || undefined,
+                      colorPalette || undefined
+                    );
                   } catch (err) {
                     console.error('Error updating history with try-on URL:', err);
                   }
