@@ -31,6 +31,7 @@ export function MinimalInput({
     <motion.form
       onSubmit={handleSubmit}
       className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-xl px-4 z-40"
+      style={{ pointerEvents: 'auto' }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}

@@ -44,7 +44,8 @@ export function MinimalResponseDisplay({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.4 }}
-          className="fixed top-[60%] left-1/2 transform -translate-x-1/2 w-full max-w-2xl px-4 z-30"
+          className="fixed top-[65%] left-1/2 transform -translate-x-1/2 w-full max-w-2xl px-4 z-30"
+          style={{ pointerEvents: 'none' }}
         >
           <div className="text-center">
             <motion.p

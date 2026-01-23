@@ -94,7 +94,7 @@ export default function Agent() {
       />
 
       {/* Minimal Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-sm border-b border-cyan-500/10">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-sm border-b border-cyan-500/10" style={{ pointerEvents: 'auto' }}>
         <div className="px-4 h-12 flex items-center">
           <Button
             variant="ghost"

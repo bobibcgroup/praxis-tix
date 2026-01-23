@@ -26,22 +26,19 @@ export function RoboticHead({
   const [headRotation, setHeadRotation] = useState({ x: 0, y: 0 });
   
   useEffect(() => {
-    if (headRef.current) {
-      const targetX = mousePosition.y * 0.3;
-      const targetY = mousePosition.x * 0.3;
-      
-      setHeadRotation(prev => ({
-        x: prev.x + (targetX - prev.x) * 0.1,
-        y: prev.y + (targetY - prev.y) * 0.1,
-      }));
-    }
+    const targetX = mousePosition.y * 0.3;
+    const targetY = mousePosition.x * 0.3;
+    
+    setHeadRotation(prev => ({
+      x: prev.x + (targetX - prev.x) * 0.1,
+      y: prev.y + (targetY - prev.y) * 0.1,
+    }));
   }, [mousePosition]);
 
   // Blink animation
   useEffect(() => {
     const blink = () => {
       setIsBlinking(true);
-      // Scale eyes down on Y axis
       setEyeScale({ left: 0.1, right: 0.1 });
       
       setTimeout(() => {
@@ -85,11 +82,13 @@ export function RoboticHead({
     const eyeIntensity = isSpeaking ? 1.5 : isThinking ? 1.2 : 0.8;
     const pulse = Math.sin(time * 2) * 0.2 + eyeIntensity;
     
-    if (leftEyeRef.current) {
-      (leftEyeRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity = pulse;
+    if (leftEyeRef.current && leftEyeRef.current.material) {
+      const material = leftEyeRef.current.material as THREE.MeshStandardMaterial;
+      material.emissiveIntensity = pulse;
     }
-    if (rightEyeRef.current) {
-      (rightEyeRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity = pulse;
+    if (rightEyeRef.current && rightEyeRef.current.material) {
+      const material = rightEyeRef.current.material as THREE.MeshStandardMaterial;
+      material.emissiveIntensity = pulse;
     }
 
     // Jaw movement when speaking
@@ -101,72 +100,104 @@ export function RoboticHead({
     }
   });
 
-  // Holographic material
-  const headMaterial = new THREE.MeshStandardMaterial({
-    color: 0x00f0ff,
-    emissive: 0x00f0ff,
-    emissiveIntensity: 0.3,
-    metalness: 0.9,
-    roughness: 0.1,
-    transparent: true,
-    opacity: 0.85,
-  });
+  // Create materials once
+  const headMaterial = useRef(
+    new THREE.MeshStandardMaterial({
+      color: 0x00f0ff,
+      emissive: 0x00f0ff,
+      emissiveIntensity: 0.5,
+      metalness: 0.9,
+      roughness: 0.1,
+      transparent: true,
+      opacity: 0.9,
+    })
+  ).current;
 
-  const eyeMaterial = new THREE.MeshStandardMaterial({
-    color: 0x00f0ff,
-    emissive: 0x00f0ff,
-    emissiveIntensity: 0.8,
-    transparent: true,
-  });
+  const eyeMaterial = useRef(
+    new THREE.MeshStandardMaterial({
+      color: 0x00f0ff,
+      emissive: 0x00f0ff,
+      emissiveIntensity: 1.0,
+      transparent: true,
+    })
+  ).current;
 
-  const jawMaterial = new THREE.MeshStandardMaterial({
-    color: 0x00f0ff,
-    emissive: 0x00f0ff,
-    emissiveIntensity: 0.2,
-    metalness: 0.9,
-    roughness: 0.1,
-    transparent: true,
-    opacity: 0.8,
-  });
+  const jawMaterial = useRef(
+    new THREE.MeshStandardMaterial({
+      color: 0x00f0ff,
+      emissive: 0x00f0ff,
+      emissiveIntensity: 0.3,
+      metalness: 0.9,
+      roughness: 0.1,
+      transparent: true,
+      opacity: 0.85,
+    })
+  ).current;
 
   return (
     <group ref={headRef} position={[0, 0, 0]}>
-      {/* Main head - rounded box */}
+      {/* Main head - larger and more visible */}
       <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[1.5, 1.8, 1.2]} />
-        <primitive object={headMaterial} />
+        <boxGeometry args={[2, 2.4, 1.8]} />
+        <meshStandardMaterial
+          color={0x00f0ff}
+          emissive={0x00f0ff}
+          emissiveIntensity={0.5}
+          metalness={0.9}
+          roughness={0.1}
+          transparent
+          opacity={0.9}
+        />
       </mesh>
 
-      {/* Left eye */}
-      <mesh ref={leftEyeRef} position={[-0.4, 0.3, 0.7]} scale={[1, eyeScale.left, 1]}>
-        <sphereGeometry args={[0.2, 16, 16]} />
-        <primitive object={eyeMaterial} />
+      {/* Left eye - larger */}
+      <mesh ref={leftEyeRef} position={[-0.5, 0.5, 1.0]} scale={[1, eyeScale.left, 1]}>
+        <sphereGeometry args={[0.3, 16, 16]} />
+        <meshStandardMaterial
+          color={0x00f0ff}
+          emissive={0x00f0ff}
+          emissiveIntensity={1.0}
+          transparent
+        />
       </mesh>
 
-      {/* Right eye */}
-      <mesh ref={rightEyeRef} position={[0.4, 0.3, 0.7]} scale={[1, eyeScale.right, 1]}>
-        <sphereGeometry args={[0.2, 16, 16]} />
-        <primitive object={eyeMaterial} />
+      {/* Right eye - larger */}
+      <mesh ref={rightEyeRef} position={[0.5, 0.5, 1.0]} scale={[1, eyeScale.right, 1]}>
+        <sphereGeometry args={[0.3, 16, 16]} />
+        <meshStandardMaterial
+          color={0x00f0ff}
+          emissive={0x00f0ff}
+          emissiveIntensity={1.0}
+          transparent
+        />
       </mesh>
 
       {/* Jaw - moves when speaking */}
-      <mesh ref={jawRef} position={[0, -0.8, 0]} rotation={[0, 0, 0]}>
-        <boxGeometry args={[1.0, 0.4, 0.8]} />
-        <primitive object={jawMaterial} />
+      <mesh ref={jawRef} position={[0, -1.2, 0]} rotation={[0, 0, 0]}>
+        <boxGeometry args={[1.4, 0.5, 1.2]} />
+        <meshStandardMaterial
+          color={0x00f0ff}
+          emissive={0x00f0ff}
+          emissiveIntensity={0.3}
+          metalness={0.9}
+          roughness={0.1}
+          transparent
+          opacity={0.85}
+        />
       </mesh>
 
-      {/* Decorative lines/panels */}
-      <mesh position={[0, 0.4, 0.51]}>
-        <boxGeometry args={[0.8, 0.05, 0.02]} />
-        <meshStandardMaterial color={0xb026ff} emissive={0xb026ff} emissiveIntensity={0.3} />
+      {/* Decorative lines/panels - more visible */}
+      <mesh position={[0, 0.8, 1.01]}>
+        <boxGeometry args={[1.4, 0.08, 0.02]} />
+        <meshStandardMaterial color={0xb026ff} emissive={0xb026ff} emissiveIntensity={0.5} />
       </mesh>
-      <mesh position={[-0.6, 0, 0.51]}>
-        <boxGeometry args={[0.05, 0.6, 0.02]} />
-        <meshStandardMaterial color={0xb026ff} emissive={0xb026ff} emissiveIntensity={0.3} />
+      <mesh position={[-1.0, 0, 1.01]}>
+        <boxGeometry args={[0.08, 1.0, 0.02]} />
+        <meshStandardMaterial color={0xb026ff} emissive={0xb026ff} emissiveIntensity={0.5} />
       </mesh>
-      <mesh position={[0.6, 0, 0.51]}>
-        <boxGeometry args={[0.05, 0.6, 0.02]} />
-        <meshStandardMaterial color={0xb026ff} emissive={0xb026ff} emissiveIntensity={0.3} />
+      <mesh position={[1.0, 0, 1.01]}>
+        <boxGeometry args={[0.08, 1.0, 0.02]} />
+        <meshStandardMaterial color={0xb026ff} emissive={0xb026ff} emissiveIntensity={0.5} />
       </mesh>
     </group>
   );
