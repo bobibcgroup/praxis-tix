@@ -54,6 +54,22 @@ const History = () => {
     }
   }, [user, isLoaded, navigate]);
 
+  // Listen for generation completion to refresh history
+  useEffect(() => {
+    if (!user) return;
+    
+    const handleGenerationComplete = () => {
+      console.log('🔄 History page: Generation complete, refreshing history...');
+      loadHistory();
+    };
+
+    window.addEventListener('generation-complete', handleGenerationComplete as EventListener);
+    
+    return () => {
+      window.removeEventListener('generation-complete', handleGenerationComplete as EventListener);
+    };
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const loadHistory = async () => {
     if (!user) return;
 

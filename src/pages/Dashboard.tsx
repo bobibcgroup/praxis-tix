@@ -4,9 +4,10 @@ import { Calendar, Heart, UtensilsCrossed, Briefcase, Sparkles, Loader2, Image a
 import Header from '@/components/Header';
 import { useUser } from '@clerk/clerk-react';
 import { useEffect, useState, useCallback } from 'react';
-import { getOutfitHistory } from '@/lib/userService';
+import { getOutfitHistory, updateOutfitHistoryTryOn } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
 import { toast } from 'sonner';
+import { getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -76,22 +77,94 @@ const Dashboard = () => {
     checkActiveGeneration();
 
     // Listen for generation completion events
-    const handleGenerationComplete = (event: CustomEvent) => {
+    const handleGenerationComplete = async (event: CustomEvent) => {
+      const detail = event.detail || {};
+      const { imageUrl, historyEntryId, userId, styleName, personalData } = detail;
+      
+      console.log('🎉 Generation complete event received:', detail);
+      
+      // Update history entry with try-on URL if we have the necessary data
+      if (imageUrl && historyEntryId && userId) {
+        try {
+          // Get color palette if skinTone is available
+          const colorPalette = personalData?.skinTone?.bucket
+            ? getRecommendedSwatches(personalData.skinTone.bucket).slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
+            : undefined;
+          
+          await updateOutfitHistoryTryOn(
+            userId,
+            historyEntryId,
+            imageUrl,
+            styleName || undefined,
+            personalData?.styleDNA || undefined,
+            colorPalette
+          );
+          
+          console.log('✅ History updated with try-on image:', historyEntryId);
+        } catch (err) {
+          console.error('❌ Error updating history with try-on URL:', err);
+          // Don't show error toast - generation succeeded, just history update failed
+        }
+      } else {
+        console.warn('⚠️ Missing data for history update:', { imageUrl: !!imageUrl, historyEntryId: !!historyEntryId, userId: !!userId });
+      }
+      
+      // Clear generation state
       setActiveGeneration(null);
+      localStorage.removeItem('praxis_active_generation');
+      localStorage.removeItem('praxis_current_history_entry_id');
+      
+      // Refresh data
       loadRecentStyles(); // Refresh to show new entry
       loadGeneratedOutfits(); // Refresh generated outfits section
+      
       toast.success('Your style image is ready!');
     };
 
+    // Listen for generation errors
+    const handleGenerationError = (event: CustomEvent) => {
+      console.error('❌ Generation error:', event.detail);
+      setActiveGeneration(null);
+      localStorage.removeItem('praxis_active_generation');
+      localStorage.removeItem('praxis_current_history_entry_id');
+      toast.error('Image generation failed. Please try again.');
+    };
+
     window.addEventListener('generation-complete', handleGenerationComplete as EventListener);
+    window.addEventListener('generation-error', handleGenerationError as EventListener);
     
     // Check periodically for completion (in case user navigated away and back)
+    // Also check if generation has been stuck for too long (> 5 minutes)
     const interval = setInterval(() => {
       checkActiveGeneration();
+      
+      // Check for stuck generations (older than 5 minutes)
+      const stored = localStorage.getItem('praxis_active_generation');
+      if (stored) {
+        try {
+          const generation = JSON.parse(stored);
+          const startedAt = new Date(generation.startedAt);
+          const now = new Date();
+          const minutesElapsed = (now.getTime() - startedAt.getTime()) / 1000 / 60;
+          
+          if (minutesElapsed > 5) {
+            console.warn('⚠️ Generation stuck for > 5 minutes, clearing state');
+            setActiveGeneration(null);
+            localStorage.removeItem('praxis_active_generation');
+            localStorage.removeItem('praxis_current_history_entry_id');
+            toast.error('Generation timed out. Please try again.');
+          }
+        } catch (e) {
+          // Invalid data, clear it
+          localStorage.removeItem('praxis_active_generation');
+          localStorage.removeItem('praxis_current_history_entry_id');
+        }
+      }
     }, 2000);
 
     return () => {
       window.removeEventListener('generation-complete', handleGenerationComplete as EventListener);
+      window.removeEventListener('generation-error', handleGenerationError as EventListener);
       clearInterval(interval);
     };
   }, [loadRecentStyles, loadGeneratedOutfits]);

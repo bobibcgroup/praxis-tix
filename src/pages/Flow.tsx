@@ -232,6 +232,9 @@ const Flow = () => {
     setSelectedOutfit(null);
     setTryOnImageUrl(null);
     setHistoryEntryId(null);
+    // Clear generation tracking state
+    localStorage.removeItem('praxis_active_generation');
+    localStorage.removeItem('praxis_current_history_entry_id');
     setStep(0);
   };
 
@@ -586,7 +589,9 @@ const Flow = () => {
                     
                     setHistoryEntryId(entryId);
                     
+                    // Store historyEntryId in localStorage for background generation tracking
                     if (entryId) {
+                      localStorage.setItem('praxis_current_history_entry_id', entryId);
                       console.log('✅ Personal flow outfit saved to history successfully:', entryId);
                       toast.success('Outfit saved to history');
                     } else {

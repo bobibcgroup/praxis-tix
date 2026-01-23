@@ -79,6 +79,30 @@ const StepVirtualTryOn = ({
         setTryOnImage(result.imageUrl);
         setIsGenerating(false);
         
+        // Get generation state and history entry ID from localStorage
+        const generationStateStr = localStorage.getItem('praxis_active_generation');
+        const historyEntryId = localStorage.getItem('praxis_current_history_entry_id');
+        
+        // Dispatch custom event with all necessary data for history update
+        const completionData = {
+          outfitId: outfit.id,
+          imageUrl: result.imageUrl,
+          historyEntryId: historyEntryId || (generationStateStr ? JSON.parse(generationStateStr).historyEntryId : null),
+          userId: user?.id,
+          styleName: styleName || null,
+          personalData: personalData ? {
+            styleDNA: personalData.styleDNA || null,
+            skinTone: personalData.skinTone || null,
+          } : null,
+        };
+        
+        console.log('✅ Generation complete, dispatching event with data:', completionData);
+        
+        // Dispatch custom event for dashboard/history to update
+        window.dispatchEvent(new CustomEvent('generation-complete', { 
+          detail: completionData
+        }));
+        
         // Clear generation state from localStorage
         localStorage.removeItem('praxis_active_generation');
         
@@ -86,11 +110,6 @@ const StepVirtualTryOn = ({
         if (document.hidden) {
           toast.success('Your style image is ready!');
         }
-        
-        // Dispatch custom event for dashboard to update
-        window.dispatchEvent(new CustomEvent('generation-complete', { 
-          detail: { outfitId: outfit.id, imageUrl: result.imageUrl } 
-        }));
       } catch (err) {
         console.error('Try-on generation error:', err);
         const errorMessage = err instanceof Error ? err.message : 'Failed to generate try-on image';
@@ -111,6 +130,12 @@ const StepVirtualTryOn = ({
         
         // Clear generation state on error
         localStorage.removeItem('praxis_active_generation');
+        localStorage.removeItem('praxis_current_history_entry_id');
+        
+        // Dispatch error event so dashboard can clear the stuck state
+        window.dispatchEvent(new CustomEvent('generation-error', { 
+          detail: { outfitId: outfit.id, error: errorMessage } 
+        }));
       }
     })();
 
@@ -182,33 +207,27 @@ const StepVirtualTryOn = ({
 
   const handleGoToDashboard = () => {
     if (user && isGenerating) {
+      // Get historyEntryId from localStorage (stored when outfit was saved to history)
+      const historyEntryId = localStorage.getItem('praxis_current_history_entry_id');
+      
       // Store generation state in localStorage for dashboard to track
       const generationState = {
         outfitId: outfit.id,
         outfitTitle: outfit.title,
         startedAt: new Date().toISOString(),
         status: 'generating',
+        userId: user.id,
+        historyEntryId: historyEntryId || null,
+        styleName: styleName || null,
+        // Store personal data for history update
+        personalData: personalData ? {
+          styleDNA: personalData.styleDNA || null,
+          skinTone: personalData.skinTone || null,
+        } : null,
       };
       localStorage.setItem('praxis_active_generation', JSON.stringify(generationState));
       
-      // Set up listener for when generation completes
-      const checkGenerationComplete = () => {
-        if (tryOnImage) {
-          localStorage.removeItem('praxis_active_generation');
-          toast.success('Your style image is ready!');
-        }
-      };
-      
-      // Check periodically if generation completed
-      const interval = setInterval(() => {
-        if (tryOnImage) {
-          clearInterval(interval);
-          checkGenerationComplete();
-        }
-      }, 1000);
-      
-      // Clean up interval after 5 minutes (generation should be done by then)
-      setTimeout(() => clearInterval(interval), 5 * 60 * 1000);
+      console.log('📤 Stored generation state for background processing:', generationState);
     }
     navigate('/dashboard');
   };
