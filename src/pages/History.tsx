@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2, Palette, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Calendar, Image as ImageIcon, Trash2, Heart, Search, Filter, X, Maximize2, Palette, RefreshCw, Loader2 } from 'lucide-react';
 import { getOutfitHistory, deleteOutfitFromHistory, addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
 import type { OutfitHistoryEntry } from '@/lib/userService';
 import Header from '@/components/Header';
@@ -38,6 +38,7 @@ const History = () => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [generatingEntryIds, setGeneratingEntryIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isLoaded) {
@@ -60,15 +61,45 @@ const History = () => {
     
     const handleGenerationComplete = () => {
       console.log('🔄 History page: Generation complete, refreshing history...');
-      loadHistory();
+      // Clear generating state
+      setGeneratingEntryIds(new Set());
+      // Small delay to ensure database update completes before refreshing
+      setTimeout(() => {
+        loadHistory();
+      }, 500);
     };
+
+    // Check for active generations periodically
+    const checkInterval = setInterval(() => {
+      // Re-check active generations with current history
+      const activeGenStr = localStorage.getItem('praxis_active_generation');
+      const generatingIds = new Set<string>();
+      
+      if (activeGenStr && history.length > 0) {
+        try {
+          const activeGen = JSON.parse(activeGenStr);
+          history.forEach(entry => {
+            if ((entry.id === activeGen.historyEntryId || 
+                 entry.outfitId === activeGen.outfitId) &&
+                !entry.tryOnImageUrl) {
+              generatingIds.add(entry.id);
+            }
+          });
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      
+      setGeneratingEntryIds(generatingIds);
+    }, 2000);
 
     window.addEventListener('generation-complete', handleGenerationComplete as EventListener);
     
     return () => {
       window.removeEventListener('generation-complete', handleGenerationComplete as EventListener);
+      clearInterval(checkInterval);
     };
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, history]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadHistory = async () => {
     if (!user) return;
@@ -81,11 +112,40 @@ const History = () => {
       setHistory(entries);
       const favs = await getFavorites(user.id);
       setFavorites(favs);
+      
+      // Check for active generations and mark entries as generating
+      checkActiveGenerations(entries);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkActiveGenerations = (entries: OutfitHistoryEntry[]) => {
+    const activeGenStr = localStorage.getItem('praxis_active_generation');
+    const generatingIds = new Set<string>();
+    
+    if (activeGenStr) {
+      try {
+        const activeGen = JSON.parse(activeGenStr);
+        // Find entries that match the active generation
+        entries.forEach(entry => {
+          // Match by historyEntryId or outfitId
+          if (entry.id === activeGen.historyEntryId || 
+              entry.outfitId === activeGen.outfitId) {
+            // Only mark as generating if it doesn't have a try-on image yet
+            if (!entry.tryOnImageUrl) {
+              generatingIds.add(entry.id);
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Error parsing active generation:', e);
+      }
+    }
+    
+    setGeneratingEntryIds(generatingIds);
   };
 
   const handleDelete = async () => {
@@ -285,7 +345,23 @@ const History = () => {
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* Image - more compact on mobile */}
                   <div className="w-full md:w-40 aspect-[3/4] rounded-lg overflow-hidden bg-muted shrink-0 relative group cursor-pointer">
-                    {entry.tryOnImageUrl ? (
+                    {generatingEntryIds.has(entry.id) ? (
+                      // Show generating state
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 relative">
+                        {entry.outfitData.imageUrl && (
+                          <img
+                            src={entry.outfitData.imageUrl}
+                            alt={entry.outfitData.title}
+                            className="w-full h-full object-cover opacity-30"
+                          />
+                        )}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                          <p className="text-xs text-muted-foreground font-medium">Generating...</p>
+                        </div>
+                      </div>
+                    ) : entry.tryOnImageUrl ? (
+                      // Show try-on image (prioritize over original)
                       <>
                         <img
                           src={entry.tryOnImageUrl}
@@ -305,6 +381,7 @@ const History = () => {
                         </button>
                       </>
                     ) : entry.outfitData.imageUrl ? (
+                      // Show original outfit image
                       <>
                         <img
                           src={entry.outfitData.imageUrl}

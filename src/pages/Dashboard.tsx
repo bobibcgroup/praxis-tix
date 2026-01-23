@@ -38,8 +38,19 @@ const Dashboard = () => {
     if (!user) return;
     try {
       const history = await getOutfitHistory(user.id);
+      
+      // Check for active generations to exclude them
+      const activeGenStr = localStorage.getItem('praxis_active_generation');
+      const activeGenHistoryId = activeGenStr ? JSON.parse(activeGenStr).historyEntryId : null;
+      
       // Filter to only show outfits that have been generated (have try-on images)
-      const generated = history.filter(entry => entry.tryOnImageUrl);
+      // AND are not currently generating
+      const generated = history.filter(entry => {
+        const hasTryOn = !!entry.tryOnImageUrl;
+        const isGenerating = entry.id === activeGenHistoryId && !hasTryOn;
+        return hasTryOn && !isGenerating;
+      });
+      
       // Show 6 most recent generated outfits
       setGeneratedOutfits(generated.slice(0, 6));
     } catch (error) {
@@ -114,9 +125,12 @@ const Dashboard = () => {
       localStorage.removeItem('praxis_active_generation');
       localStorage.removeItem('praxis_current_history_entry_id');
       
-      // Refresh data
-      loadRecentStyles(); // Refresh to show new entry
-      loadGeneratedOutfits(); // Refresh generated outfits section
+      // Small delay to ensure database update completes before refreshing
+      setTimeout(() => {
+        // Refresh data
+        loadRecentStyles(); // Refresh to show new entry
+        loadGeneratedOutfits(); // Refresh generated outfits section
+      }, 500);
       
       toast.success('Your style image is ready!');
     };
