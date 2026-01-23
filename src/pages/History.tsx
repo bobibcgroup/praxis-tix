@@ -55,7 +55,9 @@ const History = () => {
 
     try {
       setLoading(true);
+      console.log('Loading history for user:', user.id);
       const entries = await getOutfitHistory(user.id);
+      console.log('Loaded history entries:', entries.length, entries);
       setHistory(entries);
       const favs = await getFavorites(user.id);
       setFavorites(favs);

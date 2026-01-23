@@ -113,6 +113,19 @@ export async function saveOutfitToHistory(
   }
 
   try {
+    // Validate required fields
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (!outfit || !outfit.id) {
+      throw new Error('Outfit data is required');
+    }
+    if (!occasion) {
+      throw new Error('Occasion is required');
+    }
+
+    console.log('Saving outfit to history:', { userId, outfitId: outfit.id, occasion });
+    
     const { data, error } = await supabase
       .from('outfit_history')
       .insert({
@@ -130,27 +143,38 @@ export async function saveOutfitToHistory(
       .select('id')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error saving outfit history:', error);
+      throw error;
+    }
+    
+    console.log('Outfit saved to history successfully:', data?.id);
     return data?.id || null;
   } catch (error) {
     console.error('Error saving outfit history:', error);
     // Fallback to localStorage
-    const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
-    const entryId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    history.push({
-      id: entryId,
-      outfitId: outfit.id,
-      occasion,
-      outfitData: outfit,
-      tryOnImageUrl,
-      animatedVideoUrl,
-      selectedAt: new Date().toISOString(),
-      styleName: styleName || null,
-      styleDNA: styleDNA || null,
-      colorPalette: colorPalette || null,
-    });
-    localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
-    return entryId;
+    try {
+      const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
+      const entryId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      history.push({
+        id: entryId,
+        outfitId: outfit.id,
+        occasion,
+        outfitData: outfit,
+        tryOnImageUrl,
+        animatedVideoUrl,
+        selectedAt: new Date().toISOString(),
+        styleName: styleName || null,
+        styleDNA: styleDNA || null,
+        colorPalette: colorPalette || null,
+      });
+      localStorage.setItem('praxis_outfit_history', JSON.stringify(history));
+      console.log('Saved to localStorage fallback:', entryId);
+      return entryId;
+    } catch (localError) {
+      console.error('Error saving to localStorage fallback:', localError);
+      throw error; // Re-throw original error
+    }
   }
 }
 
@@ -237,22 +261,39 @@ export async function deleteOutfitFromHistory(
  * Get outfit history for user
  */
 export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEntry[]> {
+  if (!userId) {
+    console.warn('getOutfitHistory called without userId');
+    return [];
+  }
+
   if (!supabase) {
     // Fallback to localStorage
+    console.log('Supabase not configured, using localStorage fallback');
     const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
-    return history;
+    // Filter by userId if stored in localStorage
+    const filtered = history.filter((entry: OutfitHistoryEntry) => {
+      // If localStorage entries have userId, filter by it
+      return !entry.userId || entry.userId === userId;
+    });
+    return filtered;
   }
 
   try {
+    console.log('Fetching outfit history from Supabase for user:', userId);
     const { data, error } = await supabase
       .from('outfit_history')
       .select('*')
       .eq('user_id', userId)
       .order('selected_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error fetching outfit history:', error);
+      throw error;
+    }
 
-    return (data || []).map(row => ({
+    console.log('Fetched', data?.length || 0, 'history entries from Supabase');
+    
+    const mapped = (data || []).map(row => ({
       id: row.id,
       outfitId: row.outfit_id,
       occasion: row.occasion,
@@ -264,11 +305,16 @@ export async function getOutfitHistory(userId: string): Promise<OutfitHistoryEnt
       styleDNA: row.style_dna || null,
       colorPalette: row.color_palette || null,
     }));
+    
+    return mapped;
   } catch (error) {
     console.error('Error fetching outfit history:', error);
     // Fallback to localStorage
     const history = JSON.parse(localStorage.getItem('praxis_outfit_history') || '[]');
-    return history;
+    const filtered = history.filter((entry: OutfitHistoryEntry) => {
+      return !entry.userId || entry.userId === userId;
+    });
+    return filtered;
   }
 }
 

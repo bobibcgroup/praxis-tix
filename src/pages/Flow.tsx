@@ -22,6 +22,7 @@ import { saveOutfitToHistory, updateOutfitHistoryTryOn } from '@/lib/userService
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Menu, LayoutDashboard, History, Heart, User, Settings } from 'lucide-react';
@@ -102,6 +103,13 @@ const Flow = () => {
   const [historyEntryId, setHistoryEntryId] = useState<string | null>(null);
   
   const { user, isLoaded } = useUser();
+  
+  // Debug: Log user state changes
+  useEffect(() => {
+    if (isLoaded) {
+      console.log('User state loaded:', { userId: user?.id, isAuthenticated: !!user });
+    }
+  }, [user, isLoaded]);
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -321,18 +329,25 @@ const Flow = () => {
                   timestamp: new Date().toISOString(),
                 }));
                 // Save to history if user is authenticated
-                if (user) {
+                if (isLoaded && user) {
                   try {
-                    await saveOutfitToHistory(
+                    const entryId = await saveOutfitToHistory(
                       user.id,
                       outfit,
                       occasion.event as OccasionType,
                       undefined, // No try-on for Quick Flow
                       undefined
                     );
+                    console.log('Quick Flow outfit saved to history:', entryId);
                   } catch (err) {
                     console.error('Error saving Quick Flow outfit to history:', err);
+                    // Show user-friendly error
+                    toast.error('Failed to save outfit to history');
                   }
+                } else if (!isLoaded) {
+                  console.warn('User state not loaded yet, skipping history save');
+                } else {
+                  console.warn('User not authenticated, skipping history save');
                 }
                 // Check if user has photo for try-on (only in personal flow, so skip to complete)
                 setStep(5); // Go to virtual try-on if photo available, otherwise complete
@@ -518,7 +533,7 @@ const Flow = () => {
                   timestamp: new Date().toISOString(),
                 }));
                 // Save to history immediately if user is authenticated
-                if (user) {
+                if (isLoaded && user) {
                   try {
                     const colorPalette = personal.skinTone?.bucket
                       ? getRecommendedSwatches(personal.skinTone.bucket).slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
@@ -535,9 +550,15 @@ const Flow = () => {
                       colorPalette || undefined
                     );
                     setHistoryEntryId(entryId);
+                    console.log('Personal flow outfit saved to history:', entryId);
                   } catch (err) {
                     console.error('Error saving outfit to history:', err);
+                    toast.error('Failed to save outfit to history');
                   }
+                } else if (!isLoaded) {
+                  console.warn('User state not loaded yet, skipping history save');
+                } else {
+                  console.warn('User not authenticated, skipping history save');
                 }
                 // Go to virtual try-on if photo available
                 setStep(17);
