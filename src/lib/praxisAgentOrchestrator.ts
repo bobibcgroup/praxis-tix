@@ -8,25 +8,37 @@ import type {
   LocationType,
   TimeType,
   BudgetType,
+  SkinToneData,
+  ContrastLevel,
+  BodyProportions,
+  FaceShapeData,
 } from '@/types/praxis';
 import { generateOutfits } from './outfitGenerator';
+import { analyzePhoto } from './photoAnalysis';
+import { generateAgentResponse, extractContextFromMessage } from './agentOpenAIService';
 import type { FlowData } from '@/types/praxis';
 
 /**
  * Praxis Agent Orchestrator
  * 
  * Manages the agent conversation flow and outfit generation.
- * Uses a mock/deterministic provider for MVP - can be swapped with real LLM later.
+ * Uses OpenAI for natural conversation and leverages existing services.
  */
 class PraxisAgentOrchestrator {
   private conversationHistory: PraxisAgentMessage[] = [];
   private context: PraxisAgentContext = {};
   private currentStage: AgentStage = 'intake';
+  private photoAnalysis?: {
+    skinTone?: SkinToneData;
+    contrastLevel?: ContrastLevel;
+    bodyProportions?: BodyProportions;
+    faceShape?: FaceShapeData;
+  };
 
   /**
-   * Process a user text message
+   * Process a user text message (async with OpenAI)
    */
-  processUserMessage(text: string, context: PraxisAgentContext): AgentResponse {
+  async processUserMessage(text: string, context: PraxisAgentContext): Promise<AgentResponse> {
     this.conversationHistory.push({
       id: Date.now().toString(),
       role: 'user',
@@ -34,11 +46,24 @@ class PraxisAgentOrchestrator {
       createdAt: new Date(),
     });
 
+    // Extract context from message using LLM
+    const extractedContext = await extractContextFromMessage(text, this.context);
+    
     // Update context with new information
-    this.context = { ...this.context, ...context };
+    this.context = { ...this.context, ...context, ...extractedContext };
 
-    // Determine next stage and generate response
-    const response = this.determineResponse(text);
+    // Generate response using OpenAI
+    const response = await generateAgentResponse(
+      text,
+      this.conversationHistory,
+      this.context,
+      this.currentStage
+    );
+    
+    // Apply context patch
+    if (response.contextPatch) {
+      this.context = { ...this.context, ...response.contextPatch };
+    }
     
     // Add assistant message to history
     this.conversationHistory.push({
@@ -54,24 +79,47 @@ class PraxisAgentOrchestrator {
   }
 
   /**
-   * Process a voice transcript
+   * Process a voice transcript (async)
    */
-  processVoiceTranscript(transcript: string, context: PraxisAgentContext): AgentResponse {
+  async processVoiceTranscript(transcript: string, context: PraxisAgentContext): Promise<AgentResponse> {
     return this.processUserMessage(transcript, context);
   }
 
   /**
-   * Process an attachment (photo/video)
+   * Process an attachment (photo/video) with analysis
    */
-  processAttachment(
+  async processAttachment(
     metadata: { type: 'photo' | 'video'; url: string },
     context: PraxisAgentContext
-  ): AgentResponse {
+  ): Promise<AgentResponse> {
     this.context = { ...this.context, ...context };
     
-    // For MVP, just acknowledge and move forward
+    // Analyze photo if it's an image
+    if (metadata.type === 'photo') {
+      try {
+        const analysis = await analyzePhoto(metadata.url);
+        if (analysis) {
+          this.photoAnalysis = {
+            skinTone: analysis.skinTone,
+            contrastLevel: analysis.contrastLevel,
+            bodyProportions: analysis.bodyProportions,
+            faceShape: analysis.faceShape,
+          };
+          
+          // Update context with fit info
+          if (analysis.bodyProportions) {
+            this.context.fitInfo = {
+              fitPreference: this.context.fitInfo?.fitPreference || 'regular',
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Photo analysis error:', error);
+      }
+    }
+    
     const response: AgentResponse = {
-      assistantMessage: 'Got it. I\'ll use this to refine your fit and color preferences.',
+      assistantMessage: 'Perfect! I\'ve analyzed your photo and will use it to personalize your outfit recommendations.',
       nextStage: 'generate',
       contextPatch: {},
     };
@@ -99,7 +147,7 @@ class PraxisAgentOrchestrator {
   }
 
   /**
-   * Generate outfits based on current context
+   * Generate outfits based on current context (with photo analysis if available)
    */
   generateOutfits(context: PraxisAgentContext): Outfit[] {
     // Convert agent context to FlowData format
@@ -118,32 +166,58 @@ class PraxisAgentOrchestrator {
       },
     };
 
+    // Note: Photo analysis results are stored in this.photoAnalysis
+    // The generateOutfits function can use this data if we pass PersonalData
+    // For now, we'll use the basic flow - can enhance later with PersonalData integration
     const { outfits } = generateOutfits(flowData, []);
     return outfits;
   }
 
   /**
-   * Refine outfits based on refinement text
+   * Get photo analysis results
    */
-  refineOutfits(context: PraxisAgentContext, refinementText: string): Outfit[] {
-    // Parse refinement text for keywords
+  getPhotoAnalysis() {
+    return this.photoAnalysis;
+  }
+
+  /**
+   * Refine outfits based on refinement text (with LLM understanding)
+   */
+  async refineOutfits(context: PraxisAgentContext, refinementText: string): Promise<Outfit[]> {
+    // Use LLM to extract refinement intent
+    const extractedContext = await extractContextFromMessage(refinementText, context);
+    
+    // Update context with refinements
+    const updatedContext = { ...context, ...extractedContext };
+    
+    // Parse common refinement patterns
     const lowerText = refinementText.toLowerCase();
     
-    // Update context based on refinement
-    if (lowerText.includes('more formal') || lowerText.includes('formal')) {
-      context.vibe = 'sharp';
-    } else if (lowerText.includes('less black') || lowerText.includes('lighter')) {
-      // Could filter by color in future
-    } else if (lowerText.includes('hot weather') || lowerText.includes('summer')) {
-      context.weatherPreference = 'hot';
-    } else if (lowerText.includes('budget') || lowerText.includes('cheap') || lowerText.includes('affordable')) {
-      context.budget = 'EVERYDAY';
-    } else if (lowerText.includes('premium') || lowerText.includes('expensive')) {
-      context.budget = 'PREMIUM';
+    if (lowerText.includes('more formal') || lowerText.includes('formal') || lowerText.includes('sharper')) {
+      updatedContext.vibe = 'sharp';
+    } else if (lowerText.includes('less formal') || lowerText.includes('casual') || lowerText.includes('relaxed')) {
+      updatedContext.vibe = 'relaxed';
+    } else if (lowerText.includes('safer') || lowerText.includes('conservative')) {
+      updatedContext.vibe = 'safe';
+    }
+    
+    if (lowerText.includes('hot weather') || lowerText.includes('summer') || lowerText.includes('warm')) {
+      updatedContext.weatherPreference = 'hot';
+    } else if (lowerText.includes('cold') || lowerText.includes('winter')) {
+      updatedContext.weatherPreference = 'cold';
+    }
+    
+    if (lowerText.includes('budget') || lowerText.includes('cheap') || lowerText.includes('affordable') || lowerText.includes('under')) {
+      updatedContext.budget = 'EVERYDAY';
+    } else if (lowerText.includes('premium') || lowerText.includes('expensive') || lowerText.includes('high-end')) {
+      updatedContext.budget = 'PREMIUM';
     }
 
+    // Update orchestrator context
+    this.context = updatedContext;
+    
     // Regenerate with updated context
-    return this.generateOutfits(context);
+    return this.generateOutfits(updatedContext);
   }
 
   /**
@@ -193,7 +267,7 @@ class PraxisAgentOrchestrator {
 
       // We have enough info, move to optional capture
       return {
-        assistantMessage: 'Perfect! I can refine fit and color if you\'d like to share a photo, or I can generate your looks now.',
+        assistantMessage: 'Perfect! I have everything I need. I can refine fit and color with a photo, or generate your looks right away. What would you prefer?',
         nextStage: 'capture_optional',
         contextPatch: {},
         actions: [{ type: 'request_capture' }],
@@ -208,7 +282,7 @@ class PraxisAgentOrchestrator {
 
       if (hasOccasion && hasLocationOrTime && hasVibeOrBudget) {
         return {
-          assistantMessage: 'Got it! Ready to generate your looks. Want to add a photo for better fit and color matching?',
+          assistantMessage: 'Excellent! I\'m ready to create your looks. You can add a photo for personalized fit and color matching, or I\'ll generate them now based on what you\'ve told me.',
           nextStage: 'capture_optional',
           contextPatch: {},
           actions: [{ type: 'request_capture' }],
@@ -241,12 +315,25 @@ class PraxisAgentOrchestrator {
 
     if (currentStage === 'capture_optional') {
       // User can skip or provide capture
-      if (lowerText.includes('skip') || lowerText.includes('no') || lowerText.includes('generate')) {
+      if (lowerText.includes('skip') || lowerText.includes('no') || lowerText.includes('generate') || 
+          lowerText.includes('now') || lowerText.includes('go ahead') || lowerText.includes('yes') ||
+          lowerText.includes('sure') || lowerText === 'ok' || lowerText === 'okay') {
         return {
-          assistantMessage: 'Generating your looks now...',
+          assistantMessage: 'Perfect! Generating your looks now...',
           nextStage: 'generate',
           contextPatch: {},
           actions: [{ type: 'generate_outfits' }],
+        };
+      }
+      
+      // If they want to add photo
+      if (lowerText.includes('photo') || lowerText.includes('picture') || lowerText.includes('image') ||
+          lowerText.includes('yes') || lowerText.includes('sure') || lowerText.includes('add')) {
+        return {
+          assistantMessage: 'Great! You can take or upload a photo on the next screen.',
+          nextStage: 'capture_optional',
+          contextPatch: {},
+          actions: [{ type: 'request_capture' }],
         };
       }
       
@@ -256,7 +343,7 @@ class PraxisAgentOrchestrator {
 
     // Default: move to generate
     return {
-      assistantMessage: 'Generating your looks...',
+      assistantMessage: 'Got it! Generating your looks now...',
       nextStage: 'generate',
       contextPatch: {},
       actions: [{ type: 'generate_outfits' }],

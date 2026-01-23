@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Mic, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { transcribeAudio } from '@/lib/agentOpenAIService';
 
 interface AgentVoiceRecorderProps {
   onTranscript: (transcript: string) => void;
@@ -32,17 +33,15 @@ export const AgentVoiceRecorder = ({ onTranscript, onError }: AgentVoiceRecorder
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
         
-        // For MVP: Use Web Speech API for transcription
-        // In production, this would call a speech-to-text service
+        // Transcribe using OpenAI Whisper
         setIsProcessing(true);
         
         try {
-          // Mock transcription for MVP - in production, use a real service
-          // For now, we'll use a simple prompt
-          const mockTranscript = '[Voice message recorded - transcription coming soon]';
-          onTranscript(mockTranscript);
+          const transcript = await transcribeAudio(audioBlob);
+          onTranscript(transcript);
         } catch (error) {
-          onError?.('Failed to transcribe audio');
+          console.error('Transcription error:', error);
+          onError?.('Failed to transcribe audio. Please try typing instead.');
         } finally {
           setIsProcessing(false);
         }

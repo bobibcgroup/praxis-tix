@@ -18,6 +18,7 @@ import Dashboard from "./pages/Dashboard";
 import Agent from "./pages/Agent";
 import AgentCapture from "./pages/AgentCapture";
 import AgentResults from "./pages/AgentResults";
+import AgentPurchase from "./pages/AgentPurchase";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/agent" element={<Agent />} />
               <Route path="/agent/capture" element={<AgentCapture />} />
               <Route path="/agent/results" element={<AgentResults />} />
+              <Route path="/agent/purchase" element={<AgentPurchase />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

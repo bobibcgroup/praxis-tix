@@ -3,18 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { AgentChatInput } from '@/components/app/AgentChatInput';
 import OutfitCard from '@/components/app/OutfitCard';
+import StyleNameModal from '@/components/app/StyleNameModal';
 import { praxisAgentOrchestrator } from '@/lib/praxisAgentOrchestrator';
-import type { Outfit } from '@/types/praxis';
+import { saveOutfitToHistory, updateOutfitHistoryStyleName } from '@/lib/userService';
+import { useUser } from '@clerk/clerk-react';
+import type { Outfit, OccasionType } from '@/types/praxis';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSEO } from '@/hooks/useSEO';
+import { triggerConfettiBurst } from '@/lib/confetti';
 
 export default function AgentResults() {
   const navigate = useNavigate();
+  const { user, isLoaded } = useUser();
   useSEO(); // Set SEO metadata for this route
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [isGenerating, setIsGenerating] = useState(true);
   const [isRefining, setIsRefining] = useState(false);
+  const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
+  const [historyEntryId, setHistoryEntryId] = useState<string | null>(null);
+  const [showStyleNameModal, setShowStyleNameModal] = useState(false);
 
   useEffect(() => {
     // Generate outfits on mount
@@ -34,12 +42,99 @@ export default function AgentResults() {
     generate();
   }, []);
 
-  const handleChooseLook = (outfitId: number) => {
+  const handleChooseLook = async (outfitId: number) => {
     const outfit = outfits.find(o => o.id === outfitId);
-    if (outfit) {
-      toast.success(`Selected: ${outfit.title}`);
-      // In future, could navigate to purchase or save to history
+    if (!outfit) return;
+
+    setSelectedOutfit(outfit);
+    
+    // Store selection for analytics
+    localStorage.setItem('praxis_selected_outfit', JSON.stringify({
+      outfitId,
+      mode: 'agent',
+      timestamp: new Date().toISOString(),
+    }));
+
+    // Save to history if user is authenticated
+    if (isLoaded && user) {
+      try {
+        const context = praxisAgentOrchestrator.getContext();
+        const occasionValue = (context.occasion as OccasionType) || 'WORK';
+        
+        if (!occasionValue || occasionValue === '') {
+          console.error('Invalid occasion value:', occasionValue);
+          toast.error('Cannot save: Invalid occasion');
+          return;
+        }
+        
+        console.log('Saving Agent Flow outfit to history:', {
+          userId: user.id,
+          outfitId: outfit.id,
+          outfitTitle: outfit.title,
+          occasion: occasionValue
+        });
+        
+        const entryId = await saveOutfitToHistory(
+          user.id,
+          outfit,
+          occasionValue,
+          undefined, // No try-on for Agent Flow (can add later)
+          undefined,
+          undefined, // styleName - will be set when user names it
+          undefined,
+          undefined,
+          user.primaryEmailAddress?.emailAddress
+        );
+        
+        setHistoryEntryId(entryId);
+        
+        if (entryId) {
+          console.log('✅ Agent Flow outfit saved to history successfully:', entryId);
+          toast.success('Outfit saved to history');
+        } else {
+          console.warn('⚠️ saveOutfitToHistory returned null');
+          toast.error('Failed to save outfit to history');
+        }
+      } catch (err) {
+        console.error('❌ Error saving Agent Flow outfit to history:', err);
+        toast.error('Failed to save outfit to history');
+      }
     }
+
+    // Trigger confetti
+    triggerConfettiBurst();
+
+    // If user is signed in, show name modal, otherwise go to purchase
+    if (isLoaded && user) {
+      setShowStyleNameModal(true);
+    } else {
+      navigate('/agent/purchase', { state: { outfit } });
+    }
+  };
+
+  const handleStyleNameConfirm = async (styleName: string) => {
+    setShowStyleNameModal(false);
+    
+    // Update history entry with style name if we have one
+    if (user && historyEntryId) {
+      try {
+        await updateOutfitHistoryStyleName(
+          user.id,
+          historyEntryId,
+          styleName
+        );
+        console.log('✅ Agent Flow style name saved:', styleName);
+      } catch (err) {
+        console.error('❌ Error updating Agent Flow style name:', err);
+      }
+    }
+    
+    navigate('/agent/purchase', { state: { outfit: selectedOutfit } });
+  };
+
+  const handleStyleNameCancel = () => {
+    setShowStyleNameModal(false);
+    navigate('/agent/purchase', { state: { outfit: selectedOutfit } });
   };
 
   const handleRefine = async (refinementText: string) => {
@@ -47,15 +142,18 @@ export default function AgentResults() {
 
     setIsRefining(true);
     
-    // Small delay for UX
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const context = praxisAgentOrchestrator.getContext();
-    const refined = praxisAgentOrchestrator.refineOutfits(context, refinementText);
-    
-    setOutfits(refined);
-    setIsRefining(false);
-    toast.success('Looks updated');
+    try {
+      const context = praxisAgentOrchestrator.getContext();
+      const refined = await praxisAgentOrchestrator.refineOutfits(context, refinementText);
+      
+      setOutfits(refined);
+      toast.success('Looks updated based on your preferences');
+    } catch (error) {
+      console.error('Refinement error:', error);
+      toast.error('Failed to refine looks. Please try again.');
+    } finally {
+      setIsRefining(false);
+    }
   };
 
   const handleVoiceRecord = () => {
@@ -152,6 +250,13 @@ export default function AgentResults() {
           placeholder="e.g., more formal, less black, hot weather..."
         />
       </div>
+
+      {/* Style Name Modal */}
+      <StyleNameModal
+        open={showStyleNameModal}
+        onConfirm={handleStyleNameConfirm}
+        onCancel={handleStyleNameCancel}
+      />
     </div>
   );
 }

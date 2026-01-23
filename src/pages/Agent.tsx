@@ -81,9 +81,10 @@ export default function Agent() {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    // Process with orchestrator
-    const context = praxisAgentOrchestrator.getContext();
-    const response = praxisAgentOrchestrator.processUserMessage(text, context);
+    try {
+      // Process with orchestrator (now async with OpenAI)
+      const context = praxisAgentOrchestrator.getContext();
+      const response = await praxisAgentOrchestrator.processUserMessage(text, context);
 
     // Add assistant response
     const assistantMessage: PraxisAgentMessage = {
@@ -95,34 +96,40 @@ export default function Agent() {
     setMessages((prev) => [...prev, assistantMessage]);
     setStage(response.nextStage);
 
-    // Handle actions
-    if (response.actions) {
-      for (const action of response.actions) {
-        if (action.type === 'request_capture') {
-          // Navigate to capture page after a short delay
-          setTimeout(() => {
-            navigate('/agent/capture');
-          }, 1000);
-        } else if (action.type === 'generate_outfits') {
-          // Navigate to results page
-          setTimeout(() => {
-            navigate('/agent/results');
-          }, 1000);
+      // Handle actions with auto-navigation
+      if (response.actions) {
+        for (const action of response.actions) {
+          if (action.type === 'request_capture') {
+            // Navigate to capture page after a short delay
+            setTimeout(() => {
+              navigate('/agent/capture');
+            }, 1500);
+          } else if (action.type === 'generate_outfits') {
+            // Navigate to results page after a short delay
+            setTimeout(() => {
+              navigate('/agent/results');
+            }, 1500);
+          }
         }
+      } else if (response.nextStage === 'generate') {
+        // Auto-navigate to results if stage is generate
+        setTimeout(() => {
+          navigate('/agent/results');
+        }, 1500);
       }
+    } catch (error) {
+      console.error('Error processing message:', error);
+      toast.error('Failed to process message. Please try again.');
+    } finally {
+      setIsProcessing(false);
     }
-
-    setIsProcessing(false);
   };
 
   const handleVoiceTranscript = async (transcript: string) => {
     setIsRecording(false);
-    // Only send if transcript is not the mock placeholder
-    if (transcript && !transcript.includes('transcription coming soon')) {
+    // Send the transcript (now using real Whisper transcription)
+    if (transcript && transcript.trim()) {
       await handleSendMessage(transcript);
-    } else {
-      // For MVP, show a message that voice transcription is coming soon
-      toast.info('Voice transcription coming soon. Please use text input for now.');
     }
   };
 

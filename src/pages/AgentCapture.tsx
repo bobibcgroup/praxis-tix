@@ -1,20 +1,127 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Camera, Upload, Video, Mic, SkipForward, Lock } from 'lucide-react';
+import { ArrowLeft, Camera, Upload, Video, SkipForward, Lock, X } from 'lucide-react';
 import { praxisAgentOrchestrator } from '@/lib/praxisAgentOrchestrator';
 import { toast } from 'sonner';
 import { useSEO } from '@/hooks/useSEO';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { analyzePhoto } from '@/lib/photoAnalysis';
 
 export default function AgentCapture() {
   const navigate = useNavigate();
   useSEO(); // Set SEO metadata for this route
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isStreamReady, setIsStreamReady] = useState(false);
 
-  const handlePhotoCapture = () => {
-    fileInputRef.current?.click();
+  // Stop camera stream
+  const stopCameraStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsStreamReady(false);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCameraStream();
+    };
+  }, [stopCameraStream]);
+
+  // Start camera stream
+  const startCameraStream = useCallback(async () => {
+    setCameraError(null);
+    setIsStreamReady(false);
+    
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Camera not supported in this browser.');
+      return false;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 1600 },
+        },
+        audio: false,
+      });
+      
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          setIsStreamReady(true);
+        };
+      }
+      
+      return true;
+    } catch (err) {
+      console.log('Camera access error:', err);
+      
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setCameraError('Camera permission denied.');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setCameraError('No camera found on this device.');
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setCameraError('Camera is in use by another application.');
+        } else {
+          setCameraError('Could not access camera.');
+        }
+      } else {
+        setCameraError('Could not access camera.');
+      }
+      
+      return false;
+    }
+  }, []);
+
+  // Capture photo from video stream
+  const captureFromStream = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    
+    if (!context) return;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Mirror for selfie
+    context.translate(canvas.width, 0);
+    context.scale(-1, 1);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    
+    stopCameraStream();
+    setShowCameraModal(false);
+    
+    handlePhotoProcessed(dataUrl, 'photo');
+  }, [stopCameraStream]);
+
+  const handlePhotoCapture = async () => {
+    setShowCameraModal(true);
+    const success = await startCameraStream();
+    if (!success) {
+      // Fallback to file input
+      fileInputRef.current?.click();
+    }
   };
 
   const handlePhotoUpload = () => {
@@ -25,38 +132,71 @@ export default function AgentCapture() {
     videoInputRef.current?.click();
   };
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handlePhotoProcessed = async (imageUrl: string, type: 'photo' | 'video') => {
     setIsProcessing(true);
 
     try {
-      // Create object URL for preview (MVP - not uploaded to server)
-      const objectUrl = URL.createObjectURL(file);
-      const isVideo = file.type.startsWith('video/');
+      // Analyze photo if it's an image
+      if (type === 'photo') {
+        toast.info('Analyzing your photo...');
+        try {
+          const analysis = await analyzePhoto(imageUrl);
+          if (analysis) {
+            toast.success('Photo analyzed! Using it to personalize your looks.');
+          }
+        } catch (error) {
+          console.error('Photo analysis error:', error);
+          // Continue even if analysis fails
+        }
+      }
 
-      // Process attachment
+      // Process attachment (now async and analyzes photo)
       const context = praxisAgentOrchestrator.getContext();
-      praxisAgentOrchestrator.processAttachment(
+      await praxisAgentOrchestrator.processAttachment(
         {
-          type: isVideo ? 'video' : 'photo',
-          url: objectUrl,
+          type: type,
+          url: imageUrl,
         },
         context
       );
 
-      toast.success(isVideo ? 'Video captured' : 'Photo captured');
+      toast.success(type === 'video' ? 'Video captured' : 'Photo captured');
       
       // Navigate to results
       setTimeout(() => {
         navigate('/agent/results');
       }, 500);
     } catch (error) {
+      console.error('Error processing attachment:', error);
       toast.error('Failed to process file');
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type.startsWith('video/')) {
+      // Handle video
+      const objectUrl = URL.createObjectURL(file);
+      handlePhotoProcessed(objectUrl, 'video');
+    } else {
+      // Handle image upload
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        handlePhotoProcessed(result, 'photo');
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read file');
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    // Reset input
+    e.target.value = '';
   };
 
   const handleSkip = () => {
@@ -159,6 +299,70 @@ export default function AgentCapture() {
           className="hidden"
         />
       </main>
+
+      {/* Camera Modal */}
+      <Dialog open={showCameraModal} onOpenChange={(open) => {
+        if (!open) {
+          stopCameraStream();
+          setShowCameraModal(false);
+        }
+      }}>
+        <DialogContent className="max-w-md p-0 gap-0">
+          <div className="relative bg-black rounded-lg overflow-hidden">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className="w-full h-auto max-h-[80vh] object-cover"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            
+            {cameraError && (
+              <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-4">
+                <div className="text-center text-white">
+                  <p className="mb-4">{cameraError}</p>
+                  <Button onClick={() => {
+                    setShowCameraModal(false);
+                    fileInputRef.current?.click();
+                  }} variant="default">
+                    Use File Instead
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {!cameraError && (
+              <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="flex gap-4 justify-center">
+                  <Button
+                    onClick={() => {
+                      stopCameraStream();
+                      setShowCameraModal(false);
+                    }}
+                    variant="outline"
+                    size="lg"
+                    className="bg-white/20 text-white border-white/30 hover:bg-white/30"
+                  >
+                    <X className="w-5 h-5 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={captureFromStream}
+                    variant="default"
+                    size="lg"
+                    disabled={!isStreamReady}
+                    className="bg-white text-black hover:bg-white/90"
+                  >
+                    <Camera className="w-5 h-5 mr-2" />
+                    Capture
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
