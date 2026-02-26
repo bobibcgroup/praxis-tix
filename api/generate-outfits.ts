@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { runDecisionEngine } from '../src/lib/decisionEngine';
+import { runDecisionEngine } from '../src/lib/decisionEngine/index';
 import type { FlowData } from '../src/types/praxis';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

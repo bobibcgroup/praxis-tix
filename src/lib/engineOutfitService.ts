@@ -13,12 +13,6 @@ const API_BASE =
   typeof window !== 'undefined' ? (import.meta.env.VITE_API_BASE ?? '') : '';
 const GENERATE_OUTFITS_URL = `${API_BASE || ''}/api/generate-outfits`;
 
-// #region agent log
-const DEBUG_LOG = (payload: Record<string, unknown>) => {
-  fetch('http://127.0.0.1:7523/ingest/cd5b1cd2-f021-4085-ace2-0568b7026af3', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '5a3013' }, body: JSON.stringify({ sessionId: '5a3013', ...payload, timestamp: Date.now() }) }).catch(() => {});
-};
-// #endregion
-
 export interface EnginePlusTrendResult {
   outfits: Outfit[];
   thinkingSteps: string[];
@@ -30,9 +24,6 @@ export interface EnginePlusTrendResult {
 export async function getOutfitsWithTrend(
   flowData: FlowData
 ): Promise<EnginePlusTrendResult> {
-  // #region agent log
-  DEBUG_LOG({ location: 'engineOutfitService.ts:getOutfitsWithTrend:beforeFetch', message: 'generate-outfits request', data: { url: GENERATE_OUTFITS_URL, occasionEvent: flowData?.occasion?.event, hasContext: !!flowData?.context, hasPreferences: !!flowData?.preferences }, hypothesisId: 'H2,H3' });
-  // #endregion
   const res = await fetch(GENERATE_OUTFITS_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -46,9 +37,6 @@ export async function getOutfitsWithTrend(
     } catch {
       data = { _raw: text.slice(0, 500) };
     }
-    // #region agent log
-    DEBUG_LOG({ location: 'engineOutfitService.ts:getOutfitsWithTrend:resNotOk', message: 'generate-outfits error response', data: { status: res.status, statusText: res.statusText, bodyError: data?.error, bodyMessage: data?.message, bodyRaw: data._raw }, hypothesisId: 'H1,H4' });
-    // #endregion
     throw new Error(data?.message as string || data?.error as string || `Engine failed: ${res.status}`);
   }
   const engineResult: GenerateOutfitsResponse = await res.json();

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { runDecisionEngine } from '../src/lib/decisionEngine';
+import { runDecisionEngine } from '../src/lib/decisionEngine/index';
 import type { FlowData } from '../src/types/praxis';
 import type { GenerateOutfitsResponse } from '../src/types/decisionEngine';
 
