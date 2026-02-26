@@ -70,6 +70,60 @@ export interface StyleDNA {
   /** Set by drift helper when persisting */
   version?: number;
   updatedAt?: string;
+  /** Biometric-derived identity (when confidence >= threshold) */
+  identity_core?: IdentityCore;
+}
+
+// ---------- Biometric / Identity core (from face + body pipelines) ----------
+
+export type UndertoneType = 'warm' | 'cool' | 'neutral';
+
+export interface QualityGateReport {
+  passed: boolean;
+  notes: string[];
+}
+
+export interface FaceProfile {
+  status: 'ok' | 'low_confidence' | 'rejected';
+  color_season?: string;
+  confidence: number;
+  undertone?: UndertoneType;
+  contrast_ratio?: number;
+  hair_cluster?: string;
+  eye_cluster?: string;
+  skin_lab_mean?: { L: number; a: number; b: number };
+  quality_gates: QualityGateReport;
+  reject_reason?: string;
+  how_to_fix?: string;
+}
+
+export interface BodyMeasurements {
+  vertical_ratio?: number;
+  shoulder_angle_deg?: number;
+  curve_score?: number;
+  width_ratio?: number;
+}
+
+export interface KibbeCluster {
+  [type: string]: number; // e.g. { Natural: 0.78, Classic: 0.22 }
+}
+
+export interface BodyProfile {
+  status: 'ok' | 'low_confidence' | 'rejected';
+  kibbe_cluster?: KibbeCluster;
+  confidence: number;
+  measurements?: BodyMeasurements;
+  quality_gates: QualityGateReport;
+  reject_reason?: string;
+  how_to_fix?: string;
+}
+
+export interface IdentityCore {
+  kibbe?: KibbeCluster;
+  color_season?: string;
+  assessed_date?: string;
+  /** true when confidence was below threshold at capture */
+  provisional?: boolean;
 }
 
 // Skin tone detection

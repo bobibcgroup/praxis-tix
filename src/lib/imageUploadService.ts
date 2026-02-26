@@ -70,7 +70,12 @@ async function uploadToSupabaseStorage(imageData: string, fileName: string): Pro
     console.log(`[IMAGE] Public URL obtained: ${urlData.publicUrl}`);
     return urlData.publicUrl;
   } catch (error) {
-    console.error('[IMAGE] Error uploading to Supabase:', error);
+    const isNetworkError = error instanceof TypeError && (error.message === 'Load failed' || error.message === 'Failed to fetch');
+    if (isNetworkError) {
+      console.warn('[IMAGE] Supabase unreachable (network/DNS). Storage upload skipped. See docs/TROUBLESHOOTING.md if this persists.');
+    } else {
+      console.error('[IMAGE] Error uploading to Supabase:', error);
+    }
     return null;
   }
 }

@@ -1,0 +1,296 @@
+openapi: 3.0.3
+info:
+  title: PRAXIS API
+  version: 0.1.0
+servers:
+  - url: https://api.trypraxis.ai
+paths:
+  /intent/interpret:
+    post:
+      summary: Interpret user input into a structured IntentObject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntentInterpretRequest'
+      responses:
+        '200':
+          description: Intent classified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntentObject'
+  /biometrics/session/start:
+    post:
+      summary: Start a biometrics capture session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                flow:
+                  type: string
+                  enum: [occasion, dna]
+              required: [user_id, flow]
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricsSession'
+  /biometrics/session/face:
+    post:
+      summary: Upload face image for color analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                image:
+                  type: string
+                  description: Base64 or data URL
+                save_raw:
+                  type: boolean
+                  default: false
+              required: [session_id, image]
+      responses:
+        '200':
+          description: Face image accepted (may still fail quality gates)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FaceUploadResponse'
+  /biometrics/session/body:
+    post:
+      summary: Upload full-body image for Kibbe / body-line clustering
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                image:
+                  type: string
+                  description: Base64 or data URL
+                save_raw:
+                  type: boolean
+                  default: false
+              required: [session_id, image]
+      responses:
+        '200':
+          description: Body image accepted (may still fail quality gates)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BodyUploadResponse'
+  /biometrics/session/finalize:
+    post:
+      summary: Run analysis pipelines and produce FaceProfile + BodyProfile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+              required: [session_id]
+      responses:
+        '200':
+          description: Biometrics result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricsResult'
+  /biometrics/session/result:
+    get:
+      summary: Get biometrics result for a session
+      parameters:
+        - in: query
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: FaceProfile, BodyProfile, confidence scores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricsResult'
+  /recommendations/generate:
+    post:
+      summary: Generate recommendations (map to curated demo looks)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                intent:
+                  $ref: '#/components/schemas/IntentObject'
+                style_dna_id:
+                  type: string
+                mode:
+                  type: string
+                  enum: [demo, retail]
+      responses:
+        '200':
+          description: Recommendation set
+  /events/stream:
+    get:
+      summary: SSE event stream for progressive reasoning UI
+      parameters:
+        - in: query
+          name: session_id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /feedback/submit:
+    post:
+      summary: Submit user feedback on recommendations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                outfit_id:
+                  type: string
+                rating:
+                  type: string
+                  enum: [up, down]
+                issues:
+                  type: array
+                  items:
+                    type: string
+                    enum: [too_formal, too_casual, colors_off, fit_off, not_me, other]
+      responses:
+        '200':
+          description: Feedback recorded
+components:
+  schemas:
+    IntentInterpretRequest:
+      type: object
+      properties:
+        user_id: { type: string }
+        free_text: { type: string }
+        occasion: { type: string }
+        location: { type: string }
+        time_of_day: { type: string, enum: [day, night] }
+        psychological_goal: { type: string }
+        risk_level: { type: string, enum: [low, moderate, high] }
+      required: [user_id]
+    IntentObject:
+      type: object
+      properties:
+        domain: { type: string }
+        event: { type: string }
+        mood: { type: string }
+        psychological_goal: { type: string }
+        risk_level: { type: string, enum: [low, moderate, high] }
+        constraints: { type: array, items: { type: string } }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+      required: [domain, confidence]
+    BiometricsSession:
+      type: object
+      properties:
+        session_id: { type: string }
+        user_id: { type: string }
+        flow: { type: string, enum: [occasion, dna] }
+        face_status: { type: string, enum: [missing, uploaded, processed, rejected] }
+        body_status: { type: string, enum: [missing, uploaded, processed, rejected] }
+        created_at: { type: string, format: date-time }
+      required: [session_id, user_id, flow, face_status, body_status, created_at]
+    FaceUploadResponse:
+      type: object
+      properties:
+        accepted: { type: boolean }
+        next: { type: string }
+        status: { type: string }
+        confidence: { type: number }
+        reject_reason: { type: string }
+        how_to_fix: { type: string }
+      required: [accepted]
+    BodyUploadResponse:
+      type: object
+      properties:
+        accepted: { type: boolean }
+        next: { type: string }
+        status: { type: string }
+        confidence: { type: number }
+        reject_reason: { type: string }
+        how_to_fix: { type: string }
+      required: [accepted]
+    BiometricsResult:
+      type: object
+      properties:
+        session_id: { type: string }
+        face_profile: { $ref: '#/components/schemas/FaceProfile' }
+        body_profile: { $ref: '#/components/schemas/BodyProfile' }
+        overall_confidence: { type: number, minimum: 0, maximum: 1 }
+        face_status: { type: string }
+        body_status: { type: string }
+      required: [session_id, overall_confidence]
+    FaceProfile:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, low_confidence, rejected] }
+        color_season: { type: string }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        undertone: { type: string, enum: [warm, cool, neutral] }
+        contrast_ratio: { type: number }
+        hair_cluster: { type: string }
+        eye_cluster: { type: string }
+        quality_gates: { $ref: '#/components/schemas/QualityGateReport' }
+        reject_reason: { type: string }
+        how_to_fix: { type: string }
+      required: [status, confidence]
+    BodyProfile:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, low_confidence, rejected] }
+        kibbe_cluster:
+          type: object
+          additionalProperties: { type: number, minimum: 0, maximum: 1 }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        measurements:
+          type: object
+          properties:
+            vertical_ratio: { type: number }
+            shoulder_angle_deg: { type: number }
+            curve_score: { type: number }
+            width_ratio: { type: number }
+        quality_gates: { $ref: '#/components/schemas/QualityGateReport' }
+        reject_reason: { type: string }
+        how_to_fix: { type: string }
+      required: [status, confidence]
+    QualityGateReport:
+      type: object
+      properties:
+        passed: { type: boolean }
+        notes: { type: array, items: { type: string } }
+      required: [passed]

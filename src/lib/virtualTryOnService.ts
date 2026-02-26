@@ -64,7 +64,11 @@ export async function generateVirtualTryOn(
     // Ensure source image is a URL (not data URL) for best results
     if (userPhotoUrl.startsWith('data:')) {
       console.error('[TRYON] Source image is data URL, not supported');
-      throw new Error('Source image must be a hosted URL, not a data URL. Please upload to Supabase Storage first.');
+      throw new Error(
+        'Photo upload failed—try-on needs a connection to storage. ' +
+        'Check your internet connection and try again. ' +
+        'If the problem continues, the app’s storage service may be temporarily unavailable.'
+      );
     }
     
     // Call server-side generation endpoint that handles prediction creation and polling

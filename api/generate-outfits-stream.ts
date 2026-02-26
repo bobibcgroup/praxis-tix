@@ -24,12 +24,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const flowData = req.body as FlowData;
+    const flowData = (req.body as FlowData & { biometrics_session_id?: string }) ?? {};
     if (!flowData?.occasion?.event) {
       return res.status(400).json({ error: 'flowData.occasion.event is required' });
     }
 
     const geminiApiKey = process.env.GEMINI_API_KEY ?? process.env.VITE_GEMINI_API_KEY;
+    const hasBiometrics = Boolean(flowData.biometrics_session_id);
+
+    if (hasBiometrics) {
+      sendSSE(res, 'reasoning_step', { message: 'Matching silhouettes to your lines…' });
+      sendSSE(res, 'reasoning_step', { message: 'Finalizing palette + structure…' });
+    }
     sendSSE(res, 'reasoning_step', { message: 'Analyzing event context…' });
     sendSSE(res, 'reasoning_step', { message: 'Balancing formality and comfort…' });
 

@@ -55,8 +55,11 @@ Outfit metadata includes: formality, temperature_range, vibe, silhouette, retail
 - `POST /api/generate-trend-outfits` — Body: flowData, outfits (concepts). Returns: trend-generated image URLs (primary path for demo).
 - `POST /api/generate-style-dna` — Body: lifestyle, inspirationPreset, skinToneBucket, contrastLevel. Returns: AI-generated Style DNA copy.
 - `POST /api/log-feedback` — Body: FeedbackPayload (event, outfit_id, time_to_decision_ms, etc.).
-- `POST /api/analyze-body` — Stub: returns low_confidence / insufficient_resolution until image quality gates exist.
-- `POST /api/analyze-color` — Stub: same for color analysis.
+- `POST /api/analyze-body` — Body: `{ image: base64 }`. Quality gate + body pipeline; returns BodyProfile (kibbe_cluster, measurements, confidence). Rejects with reason + how_to_fix when gate fails.
+- `POST /api/analyze-color` — Body: `{ image: base64 }`. Quality gate + face pipeline; returns FaceProfile (color_season, undertone, confidence). Rejects with reason + how_to_fix when gate fails.
+- **Biometric session** (optional): `POST /api/biometrics/session/start` (body: user_id, flow) → session_id; `POST .../face`, `.../body` (session_id + image); `POST .../finalize`; `GET .../result?session_id=`. Raw images are not stored; only FaceProfile/BodyProfile kept in memory.
+- `GET /api/events/stream?session_id=...` — SSE stream for progressive reasoning (e.g. "Extracting color signals…", "Clustering body lines…").
+- `POST /api/generate-outfits-stream` — Body may include optional `biometrics_session_id`; when present, stream includes extra reasoning steps (e.g. "Matching silhouettes to your lines…").
 
 ## 6. Retail Readiness
 
