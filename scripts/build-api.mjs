@@ -1,6 +1,6 @@
 /**
  * Bundle API routes that import from src/ so path alias @/ and ../src resolve in Vercel.
- * Outputs .js and removes the .ts so only the bundled handler is deployed (no duplicate routes).
+ * Outputs .js then overwrites .ts with a stub that re-exports the .js (file stays so Vercel finds it).
  */
 import * as esbuild from 'esbuild';
 import path from 'path';
@@ -11,13 +11,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 
 const apiRoutesToBundle = [
-  'api/generate-outfits.ts',
-  'api/generate-outfits-stream.ts',
-  'api/interpret-intent.ts',
+  { entry: 'api/generate-outfits.ts', stub: "export { default } from './generate-outfits.js';\n" },
+  { entry: 'api/generate-outfits-stream.ts', stub: "export { default, config } from './generate-outfits-stream.js';\n" },
+  { entry: 'api/interpret-intent.ts', stub: "export { default } from './interpret-intent.js';\n" },
 ];
 
 async function build() {
-  for (const entry of apiRoutesToBundle) {
+  for (const { entry, stub } of apiRoutesToBundle) {
     const entryPath = path.join(root, entry);
     const out = entry.replace(/\.ts$/, '.js');
     await esbuild.build({
@@ -35,10 +35,10 @@ async function build() {
     console.log('Bundled', entry, '->', out);
     if (process.env.VERCEL === '1') {
       try {
-        fs.unlinkSync(entryPath);
-        console.log('Removed', entry);
+        fs.writeFileSync(entryPath, stub, 'utf8');
+        console.log('Wrote stub', entry);
       } catch (e) {
-        console.warn('Could not remove', entry, e.message);
+        console.warn('Could not write stub', entry, e.message);
       }
     }
   }
