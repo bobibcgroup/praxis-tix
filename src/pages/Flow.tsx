@@ -159,6 +159,9 @@ const Flow = () => {
       })
       .catch((err) => {
         if (cancelled) return;
+        // #region agent log
+        fetch('http://127.0.0.1:7523/ingest/cd5b1cd2-f021-4085-ace2-0568b7026af3', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '5a3013' }, body: JSON.stringify({ sessionId: '5a3013', location: 'Flow.tsx:engineCatch', message: 'Engine+trend failed', data: { errorMessage: err?.message, name: err?.name }, hypothesisId: 'H1,H5', timestamp: Date.now() }) }).catch(() => {});
+        // #endregion
         console.warn('Engine+trend failed, fallback to library:', err);
         toast.error('Trend looks unavailable. Showing curated looks.');
         const { outfits: generatedOutfits, usedIds } = generateOutfits(flowData, []);
