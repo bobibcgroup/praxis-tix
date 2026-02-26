@@ -33,6 +33,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<'camera' | 'upload' | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [hasStream, setHasStream] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isStreamReady, setIsStreamReady] = useState(false);
@@ -62,57 +63,76 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
     };
   }, [stopCameraStream]);
 
-  // Start camera stream using getUserMedia
-  const startCameraStream = useCallback(async () => {
+  // When camera modal opens, get the stream (don't attach to video yet - it isn't mounted)
+  useEffect(() => {
+    if (!showCameraModal) {
+      setHasStream(false);
+      return;
+    }
     setCameraError(null);
     setIsStreamReady(false);
-    
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError('Camera not supported in this browser.');
-      return false;
+      return;
     }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 1600 },
-        },
-        audio: false,
-      });
-      
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setIsStreamReady(true);
-        };
-      }
-      
-      return true;
-    } catch (err) {
-      console.log('Camera access error:', err);
-      
-      if (err instanceof Error) {
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setCameraError('Camera permission denied.');
-        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          setCameraError('No camera found on this device.');
-        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-          setCameraError('Camera is in use by another application.');
+    let cancelled = false;
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: 960, max: 1280 },
+        height: { ideal: 1280, max: 1600 },
+        aspectRatio: { ideal: 3 / 4 },
+      },
+      audio: false,
+    })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        setHasStream(true);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof Error) {
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            setCameraError('Camera permission denied.');
+          } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            setCameraError('No camera found on this device.');
+          } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+            setCameraError('Camera is in use by another application.');
+          } else {
+            setCameraError('Could not access camera.');
+          }
         } else {
           setCameraError('Could not access camera.');
         }
-      } else {
-        setCameraError('Could not access camera.');
+      });
+    return () => {
+      cancelled = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
-      
-      return false;
-    }
-  }, []);
+    };
+  }, [showCameraModal]);
+
+  // When modal is open and we have a stream, attach to video element (now mounted)
+  useEffect(() => {
+    if (!showCameraModal || !hasStream || !streamRef.current || !videoRef.current) return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    video.srcObject = stream;
+    const onLoaded = () => {
+      video.play().then(() => setIsStreamReady(true)).catch(() => setIsStreamReady(true));
+    };
+    video.onloadedmetadata = onLoaded;
+    if (video.readyState >= 1) onLoaded();
+    return () => {
+      video.srcObject = null;
+    };
+  }, [showCameraModal, hasStream]);
 
   // Check if image has ideal framing (head to mid-torso, centered)
   const checkIdealFraming = useCallback((imageUrl: string): Promise<boolean> => {
@@ -199,6 +219,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
     
     stopCameraStream();
     setShowCameraModal(false);
+    setHasStream(false);
     setError(null);
     
     // Use smart auto-confirm
@@ -209,6 +230,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
   const cancelCameraModal = useCallback(() => {
     stopCameraStream();
     setShowCameraModal(false);
+    setHasStream(false);
     setCameraError(null);
   }, [stopCameraStream]);
 
@@ -273,12 +295,11 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
   }, []);
 
   // Take photo button
-  const handleTakePhoto = useCallback(async () => {
+  const handleTakePhoto = useCallback(() => {
     setError(null);
     setCameraError(null);
     setShowCameraModal(true);
-    await startCameraStream();
-  }, [startCameraStream]);
+  }, []);
 
   // Upload photo button
   const handleUploadPhoto = useCallback(() => {
@@ -394,7 +415,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
           </button>
         </div>
         
-        <div className="flex-1 flex items-center justify-center bg-black relative overflow-hidden">
+        <div className="flex-1 flex items-center justify-center bg-black relative overflow-hidden min-h-0">
           {!cameraError && (
             <>
               <video
@@ -402,33 +423,29 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 style={{ transform: 'scaleX(-1)' }}
               />
               
-              {/* Ghost silhouette overlay - subtle guidance */}
+              {/* Ghost silhouette overlay - head and shoulders guidance */}
               {isStreamReady && (
-                <div className="absolute inset-0 pointer-events-none">
-                  {/* Very subtle vignette */}
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  {/* Subtle vignette */}
                   <div className="absolute inset-0" style={{ 
-                    background: 'radial-gradient(ellipse 60% 70% at 50% 45%, transparent 0%, rgba(0,0,0,0.3) 100%)' 
+                    background: 'radial-gradient(ellipse 75% 80% at 50% 50%, transparent 0%, rgba(0,0,0,0.25) 100%)' 
                   }} />
                   
-                  {/* Ghost silhouette - head and shoulders outline */}
-                  <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 w-[200px] h-[280px]">
-                    {/* Head circle */}
+                  {/* Head and shoulders outline - encourages wider framing */}
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[240px]">
                     <div 
-                      className="absolute left-1/2 top-[15%] -translate-x-1/2 w-[80px] h-[95px] rounded-full"
-                      style={{ 
-                        border: '1.5px dashed rgba(255,255,255,0.25)',
-                      }}
+                      className="absolute left-1/2 top-[12%] -translate-x-1/2 w-[70px] h-[82px] rounded-full"
+                      style={{ border: '1.5px dashed rgba(255,255,255,0.3)' }}
                     />
-                    {/* Shoulders/torso curve */}
                     <div 
-                      className="absolute left-1/2 top-[45%] -translate-x-1/2 w-[160px] h-[120px]"
+                      className="absolute left-1/2 top-[42%] -translate-x-1/2 w-[150px] h-[110px]"
                       style={{ 
-                        border: '1.5px dashed rgba(255,255,255,0.25)',
-                        borderRadius: '80px 80px 0 0',
+                        border: '1.5px dashed rgba(255,255,255,0.3)',
+                        borderRadius: '75px 75px 0 0',
                         borderBottom: 'none',
                       }}
                     />
@@ -479,9 +496,8 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
         
         {!cameraError && (
           <div className="p-6 bg-black/80 flex flex-col items-center gap-3">
-            {/* Guidance text */}
             {isStreamReady && (
-              <p className="text-white/70 text-sm">Center yourself in the frame</p>
+              <p className="text-white/70 text-sm text-center">Include head and shoulders for best color & proportion analysis</p>
             )}
             <button
               type="button"
