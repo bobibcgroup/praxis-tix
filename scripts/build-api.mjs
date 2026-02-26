@@ -1,9 +1,10 @@
 /**
  * Bundle API routes that import from src/ so path alias @/ and ../src resolve in Vercel.
- * Outputs .js next to the .ts so Vercel runs the bundled .js (ignore the .ts via .vercelignore).
+ * Outputs .js and removes the .ts so only the bundled handler is deployed (no duplicate routes).
  */
 import * as esbuild from 'esbuild';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -17,9 +18,10 @@ const apiRoutesToBundle = [
 
 async function build() {
   for (const entry of apiRoutesToBundle) {
+    const entryPath = path.join(root, entry);
     const out = entry.replace(/\.ts$/, '.js');
     await esbuild.build({
-      entryPoints: [path.join(root, entry)],
+      entryPoints: [entryPath],
       bundle: true,
       platform: 'node',
       target: 'node20',
@@ -31,6 +33,14 @@ async function build() {
       external: ['@vercel/node'],
     });
     console.log('Bundled', entry, '->', out);
+    if (process.env.VERCEL === '1') {
+      try {
+        fs.unlinkSync(entryPath);
+        console.log('Removed', entry);
+      } catch (e) {
+        console.warn('Could not remove', entry, e.message);
+      }
+    }
   }
 }
 

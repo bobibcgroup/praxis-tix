@@ -1,4 +1,1 @@
-# Bundled by scripts/build-api.mjs; Vercel should run the .js versions only
-api/generate-outfits.ts
-api/generate-outfits-stream.ts
-api/interpret-intent.ts
+# (Bundled API .ts files are removed by scripts/build-api.mjs after emitting .js)
