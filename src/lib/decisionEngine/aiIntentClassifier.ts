@@ -59,8 +59,9 @@ export async function classifyIntentWithAI(
     if (!res.ok) return null;
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
+    if (!text || typeof text !== 'string') return null;
     const parsed = JSON.parse(text) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object') return null;
     const domain = parsed.domain as IntentProfile['domain'];
     return {
       domain: domain === 'advisory' || domain === 'functional' || domain === 'educational' || domain === 'contextual' ? domain : 'advisory',

@@ -43,8 +43,12 @@ export async function runDecisionEngine(
 ): Promise<GenerateOutfitsResponse> {
   let intent = flowDataToIntent(flowData);
   if (options?.geminiApiKey) {
-    const aiIntent = await classifyIntentWithAI(flowData, options.geminiApiKey);
-    if (aiIntent) intent = aiIntent;
+    try {
+      const aiIntent = await classifyIntentWithAI(flowData, options.geminiApiKey);
+      if (aiIntent) intent = aiIntent;
+    } catch (_e) {
+      // Keep rule-based intent on any AI failure
+    }
   }
 
   const mappingResults = mapIntentToOutfitIds(intent);
@@ -58,14 +62,18 @@ export async function runDecisionEngine(
 
     let reasoning: import('@/types/decisionEngine').ReasoningExplanation;
     if (options?.geminiApiKey) {
-      const aiReasoning = await generateExplanationWithAI(
-        intent,
-        m.abstract,
-        m.tier,
-        entry.title,
-        options.geminiApiKey
-      );
-      reasoning = aiReasoning ?? generateReasoning(intent, m.abstract, m.tier);
+      try {
+        const aiReasoning = await generateExplanationWithAI(
+          intent,
+          m.abstract,
+          m.tier,
+          entry.title,
+          options.geminiApiKey
+        );
+        reasoning = aiReasoning ?? generateReasoning(intent, m.abstract, m.tier);
+      } catch (_e) {
+        reasoning = generateReasoning(intent, m.abstract, m.tier);
+      }
     } else {
       reasoning = generateReasoning(intent, m.abstract, m.tier);
     }
