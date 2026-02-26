@@ -24,6 +24,7 @@ const apiRoutesToBundle = [
   { entry: 'api/biometrics-session-body.ts', stub: "export { default } from './biometrics-session-body.js';\n" },
   { entry: 'api/biometrics-session-finalize.ts', stub: "export { default } from './biometrics-session-finalize.js';\n" },
   { entry: 'api/biometrics-session-result.ts', stub: "export { default } from './biometrics-session-result.js';\n" },
+  { entry: 'api/biometrics.ts', stub: "export { default } from './biometrics.js';\n" },
 ];
 
 async function build() {

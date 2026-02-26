@@ -14,10 +14,10 @@ interface StepQuickPhotoCaptureProps {
 }
 
 async function startBiometricsSession(userId: string, flow: 'occasion' | 'dna'): Promise<string> {
-  const res = await fetch(`${API_BASE}/api/biometrics-session-start`, {
+  const res = await fetch(`${API_BASE}/api/biometrics`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: userId, flow }),
+    body: JSON.stringify({ action: 'start', user_id: userId, flow }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -28,30 +28,30 @@ async function startBiometricsSession(userId: string, flow: 'occasion' | 'dna'):
 }
 
 async function uploadFaceImage(sessionId: string, imageBase64: string): Promise<{ accepted: boolean; reject_reason?: string; how_to_fix?: string }> {
-  const res = await fetch(`${API_BASE}/api/biometrics-session-face`, {
+  const res = await fetch(`${API_BASE}/api/biometrics`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId, image: imageBase64 }),
+    body: JSON.stringify({ action: 'face', session_id: sessionId, image: imageBase64 }),
   });
   const data = await res.json();
   return { accepted: data.accepted !== false, reject_reason: data.reject_reason, how_to_fix: data.how_to_fix };
 }
 
 async function uploadBodyImage(sessionId: string, imageBase64: string): Promise<{ accepted: boolean; reject_reason?: string; how_to_fix?: string }> {
-  const res = await fetch(`${API_BASE}/api/biometrics-session-body`, {
+  const res = await fetch(`${API_BASE}/api/biometrics`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId, image: imageBase64 }),
+    body: JSON.stringify({ action: 'body', session_id: sessionId, image: imageBase64 }),
   });
   const data = await res.json();
   return { accepted: data.accepted !== false, reject_reason: data.reject_reason, how_to_fix: data.how_to_fix };
 }
 
 async function finalizeSession(sessionId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/biometrics-session-finalize`, {
+  const res = await fetch(`${API_BASE}/api/biometrics`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId }),
+    body: JSON.stringify({ action: 'finalize', session_id: sessionId }),
   });
   if (!res.ok) throw new Error('Failed to finalize');
 }
