@@ -41,9 +41,20 @@ export async function saveUserProfile(
       const existing = await getUserProfile(userId).catch(() => null);
       styleDnaToSave = applyStyleDNAWithDrift(personalData.styleDNA, existing?.styleDNA ?? null);
     }
+    // Include skinTone and contrastLevel in style_dna JSON so Profile shows correct palette
+    const styleDnaPayload =
+      styleDnaToSave || personalData.skinTone || personalData.contrastLevel
+        ? {
+            ...(typeof styleDnaToSave === 'object' && styleDnaToSave && !Array.isArray(styleDnaToSave)
+              ? styleDnaToSave
+              : {}),
+            skinTone: personalData.skinTone ?? null,
+            contrastLevel: personalData.contrastLevel ?? null,
+          }
+        : null;
     const profileData: any = {
       user_id: userId,
-      style_dna: styleDnaToSave || null,
+      style_dna: styleDnaPayload,
       fit_calibration: personalData.fitCalibration || null,
       lifestyle: personalData.lifestyle || null,
       updated_at: new Date().toISOString(),
@@ -98,13 +109,26 @@ export async function getUserProfile(userId: string): Promise<PersonalData | nul
     if (error) throw error;
     if (!data) return null;
 
+    const raw = data.style_dna;
+    const hasExtras = raw && typeof raw === 'object' && !Array.isArray(raw) && ('skinTone' in raw || 'contrastLevel' in raw);
+    const styleDNA = hasExtras
+      ? (() => {
+          const { skinTone: _st, contrastLevel: _cl, ...rest } = raw as Record<string, unknown>;
+          return Object.keys(rest).length ? rest : null;
+        })()
+      : raw;
+    const skinTone = hasExtras ? (raw as Record<string, unknown>).skinTone : undefined;
+    const contrastLevel = hasExtras ? (raw as Record<string, unknown>).contrastLevel : undefined;
+
     return {
       hasPhoto: false,
       lifestyle: data.lifestyle || '',
       hasWardrobe: false,
       hasInspiration: false,
-      styleDNA: data.style_dna,
+      styleDNA: styleDNA ?? null,
       fitCalibration: data.fit_calibration,
+      skinTone: skinTone ?? undefined,
+      contrastLevel: contrastLevel ?? undefined,
     };
   } catch (error) {
     console.error('Error fetching profile:', error);

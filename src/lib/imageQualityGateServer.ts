@@ -22,8 +22,19 @@ const REJECT_INSTRUCTIONS: Record<NonNullable<ImageQualityResult['reason']>, str
 export async function checkImageQualityFromBuffer(buffer: Buffer): Promise<ImageQualityResult> {
   let sharp: typeof import('sharp') | null = null;
   try {
-    sharp = (await import('sharp')).default;
+    const mod = await import('sharp');
+    const s = (mod as Record<string, unknown>).default ?? mod;
+    sharp = typeof s === 'function' ? (s as typeof import('sharp')) : null;
   } catch {
+    return {
+      ok: false,
+      reason: 'unsupported_format',
+      message: 'Image processing is not available.',
+      instruction: REJECT_INSTRUCTIONS.unsupported_format,
+    };
+  }
+
+  if (!sharp) {
     return {
       ok: false,
       reason: 'unsupported_format',

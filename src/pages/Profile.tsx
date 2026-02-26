@@ -8,6 +8,7 @@ import { syncUserDataOnSignIn } from '@/lib/userSync';
 import type { PersonalData } from '@/types/praxis';
 import Header from '@/components/Header';
 import { getRecommendedSwatches, getMetalRecommendations } from '@/lib/personalOutfitGenerator';
+import { StyleDNARadarChart, getRadarValuesFromPersonal } from '@/components/app/StyleDNARadarChart';
 
 // Default color swatches when no photo analysis
 const DEFAULT_SWATCHES = [
@@ -132,21 +133,30 @@ const Profile = () => {
     );
   }
 
-  // Get color swatches - use detected or defaults
+  // Get color swatches - use detected or defaults; fallback to localStorage for older profiles
   const skinToneBucket = profile?.skinTone?.bucket;
-  const detectedSwatches = skinToneBucket ? getRecommendedSwatches(skinToneBucket) : null;
-  const colorSwatches = detectedSwatches && detectedSwatches.length > 0 
+  let detectedSwatches = skinToneBucket ? getRecommendedSwatches(skinToneBucket) : null;
+  let colorSwatches = detectedSwatches && detectedSwatches.length > 0
     ? detectedSwatches.slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
     : DEFAULT_SWATCHES;
-  
-  const metalRecommendation = skinToneBucket 
-    ? getMetalRecommendations(skinToneBucket) 
+  let metalRecommendation = skinToneBucket
+    ? getMetalRecommendations(skinToneBucket)
     : DEFAULT_METALS;
+  if (profile && !profile.skinTone) {
+    try {
+      const stored = JSON.parse(localStorage.getItem('praxis_style_dna') || '{}');
+      if (stored.colorSwatches?.length) colorSwatches = stored.colorSwatches.slice(0, 4);
+      if (stored.metalRecommendation) metalRecommendation = stored.metalRecommendation;
+    } catch {
+      // ignore
+    }
+  }
   const identity = profile?.styleDNA?.identity_core;
   const showAnalysisCard = identity && (identity.color_season || identity.kibbe || identity.undertone || identity.vertical_line || identity.shoulder);
   const archetype = identity?.kibbe && typeof identity.kibbe === 'object'
     ? (Object.entries(identity.kibbe) as [string, number][]).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0]?.[0] ?? identity.color_season ?? null
     : identity?.color_season ?? null;
+  const radarValues = getRadarValuesFromPersonal(identity, profile?.lifestyle || undefined);
 
   return (
     <div className="min-h-screen bg-background">
@@ -246,6 +256,33 @@ const Profile = () => {
                     </li>
                   )}
                 </ul>
+              </div>
+            )}
+
+            {profile?.styleDNA?.identity_core && (
+              <div className="bg-card rounded-xl border border-border p-6 mb-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Identity</span>
+                </div>
+                <p className="text-sm text-foreground font-medium mb-2">Current archetype: {archetype ?? '—'}</p>
+                <div className="flex justify-center py-2">
+                  <StyleDNARadarChart values={radarValues} size={160} className="w-[160px] h-[160px] mx-auto" />
+                </div>
+              </div>
+            )}
+
+            {identity?.color_season && (
+              <div className="bg-card rounded-xl border border-border p-6 mb-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Your season</span>
+                  <span className="text-sm font-medium text-foreground capitalize">{identity.color_season.replace(/([A-Z])/g, ' $1').trim()}</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">Rich, warm, and muted tones that echo your natural contrast.</p>
+                <div className="flex flex-wrap gap-2">
+                  {colorSwatches.map((s, i) => (
+                    <div key={i} className="h-8 w-8 rounded-full border border-border shadow-sm" style={{ backgroundColor: s.hex }} title={s.name} />
+                  ))}
+                </div>
               </div>
             )}
 

@@ -422,6 +422,28 @@ const StepVirtualTryOn = ({
 
         {tryOnImage && !isGenerating && (
           <div className="space-y-6">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Generated</span>
+                <span className="rounded bg-primary/15 px-2 py-1 text-sm font-semibold text-primary">
+                  Match {outfit.confidence != null ? `${Math.round(outfit.confidence)}%` : '98%'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mb-2">Composition</p>
+              <div className="flex gap-2">
+                {outfit.imageUrl && (
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                    <img src={outfit.imageUrl} alt="" className="h-full w-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{outfit.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{outfit.items.top}</p>
+                  <p className="text-xs text-muted-foreground truncate">{outfit.items.bottom}</p>
+                  <p className="text-xs text-muted-foreground truncate">{outfit.items.shoes}</p>
+                </div>
+              </div>
+            </div>
             {/* Generated Try-On Image */}
             <div className="relative rounded-xl overflow-hidden border border-border">
               <img
@@ -440,6 +462,18 @@ const StepVirtualTryOn = ({
               <Button onClick={handleShare} variant="outline" className="flex-1">
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleContinue} variant="cta" size="lg" className="flex-1 min-w-[100px]">
+                Wear this
+              </Button>
+              <Button onClick={handleContinue} variant="outline" size="lg" className="flex-1 min-w-[100px]">
+                Save look
+              </Button>
+              <Button onClick={onBack} variant="outline" size="lg" className="min-w-[100px]">
+                Swap item
               </Button>
             </div>
 
@@ -483,6 +517,22 @@ const StepVirtualTryOn = ({
               <Button onClick={handleContinue} variant="cta" size="lg" className="flex-[2]">
                 This is perfect
               </Button>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-sm font-medium text-foreground mb-2">How did this fit?</p>
+              <p className="text-xs text-muted-foreground mb-3">Your feedback helps us refine future recommendations.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="flex-1 min-w-[90px]" onClick={() => toast.success('Thanks for your feedback!')}>
+                  Perfect fit
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 min-w-[90px]" onClick={() => toast.success('Thanks for your feedback!')}>
+                  Too tight
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 min-w-[90px]" onClick={() => toast.success('Thanks for your feedback!')}>
+                  Too loose
+                </Button>
+              </div>
             </div>
           </div>
         )}

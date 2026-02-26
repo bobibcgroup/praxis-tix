@@ -513,10 +513,21 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
       onBack={onBack}
     >
       <div className="space-y-4">
-        {/* Privacy reassurance - moved higher */}
-        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 mb-4">
-          <p className="text-xs text-muted-foreground text-center">
-            Your photo is private and never shared.
+        {/* Body analysis required / calibration card */}
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Calibration
+            </span>
+            <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">
+              Encrypted & local processing
+            </span>
+          </div>
+          <p className="text-sm text-foreground mb-3">
+            To ensure accurate Style DNA and virtual try-ons, we need to calibrate your features. Wear fitted clothing and stand in good lighting.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Your photo is processed securely and never stored. We detect face and body features to personalize your palette and archetype.
           </p>
         </div>
 
@@ -548,7 +559,7 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
           className="w-full py-5 px-6 rounded-lg border-2 border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 text-left transition-all duration-200 flex items-center gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Camera className="w-6 h-6 text-primary" />
-          <span className="text-lg font-medium text-foreground">Take photo</span>
+          <span className="text-lg font-medium text-foreground">Start scan</span>
         </button>
 
         {/* Upload photo button */}

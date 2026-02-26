@@ -9,7 +9,8 @@ import { saveUserProfile } from '@/lib/userService';
 import { generateStyleDNACopy } from '@/lib/styleDnaService';
 import { useUser, SignInButton } from '@clerk/clerk-react';
 import { toast } from 'sonner';
-import { Save, Shirt, Check } from 'lucide-react';
+import { Save, Shirt, Check, Unlock } from 'lucide-react';
+import { StyleDNARadarChart, getRadarValuesFromPersonal } from './StyleDNARadarChart';
 
 interface StepStyleDNAProps {
   personalData: PersonalData;
@@ -128,6 +129,10 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack, onTryVirtualTryOn }:
     identity &&
     (identity.color_season || identity.kibbe || identity.undertone || identity.vertical_line || identity.shoulder);
 
+  const radarValues = getRadarValuesFromPersonal(identity, personalData.lifestyle || undefined);
+  const colorSeason = identity?.color_season;
+  const avoidColors = colorSeason ? [{ name: 'Bright pink', hex: '#ff69b4' }, { name: 'Light blue', hex: '#add8e6' }] : [];
+
   const handleSaveStyle = async (isAutoSave = false) => {
     if (!user) return;
     if (!personalData.lifestyle && !personalData.styleDNA) {
@@ -156,6 +161,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack, onTryVirtualTryOn }:
         const userEmail = user.primaryEmailAddress?.emailAddress;
         await saveUserProfile(user.id, profileDataToSave, userEmail);
         if (!isAutoSave) toast.success('Style DNA saved');
+        window.dispatchEvent(new CustomEvent('profile-should-refresh'));
       } catch (err) {
         console.error('Error saving to database:', err);
         if (!isAutoSave) toast.error(`Could not save: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -207,6 +213,19 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack, onTryVirtualTryOn }:
         This is the framework that consistently works for you.
       </p>
 
+      {archetype && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 mb-4 flex items-start gap-3">
+          <Unlock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-primary mb-0.5">Archetype unlocked</p>
+            <p className="text-sm font-medium text-foreground capitalize">{archetype}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Your Style DNA is set. We&apos;ve prioritized colors and silhouettes that match your profile.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Identity phrase - hero card */}
       <div
         className={cardClass(0)}
@@ -257,9 +276,43 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack, onTryVirtualTryOn }:
         </div>
       )}
 
+      {/* Style DNA radar chart */}
+      <div className={`mt-4 ${cardClass(2)}`} style={{ transitionDelay: `${CARD_DELAY_MS}ms` }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Identity</span>
+        </div>
+        <p className="text-sm text-foreground font-medium mb-2">Current archetype: {archetype ?? 'Building…'}</p>
+        <div className="flex justify-center py-2">
+          <StyleDNARadarChart values={radarValues} size={180} className="w-[180px] h-[180px]" />
+        </div>
+      </div>
+
+      {colorSeason && (
+        <div className={`mt-4 ${cardClass(3)}`} style={{ transitionDelay: `${CARD_DELAY_MS * 1.5}ms` }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Your season</span>
+            <span className="text-sm font-medium text-foreground capitalize">{colorSeason.replace(/([A-Z])/g, ' $1').trim()}</span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">Rich, warm, and muted tones that echo your natural contrast.</p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {colorSwatches.map((s, i) => (
+              <div key={i} className="h-8 w-8 rounded-full border border-border shadow-sm" style={{ backgroundColor: s.hex }} title={s.name} />
+            ))}
+          </div>
+          {avoidColors.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Avoid:</span>
+              {avoidColors.map((c, i) => (
+                <div key={i} className="h-5 w-5 rounded-full border border-border" style={{ backgroundColor: c.hex }} title={c.name} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Your optimal palette */}
       <div
-        className={`mt-4 ${cardClass(2)}`}
+        className={`mt-4 ${cardClass(4)}`}
         style={{ transitionDelay: `${CARD_DELAY_MS * 2}ms` }}
       >
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">
@@ -287,7 +340,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack, onTryVirtualTryOn }:
 
       {/* Lean into */}
       <div
-        className={`mt-4 ${cardClass(3)}`}
+        className={`mt-4 ${cardClass(5)}`}
         style={{ transitionDelay: `${CARD_DELAY_MS * 3}ms` }}
       >
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">Lean into</h2>
@@ -303,7 +356,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack, onTryVirtualTryOn }:
 
       {/* Avoid */}
       <div
-        className={`mt-4 ${cardClass(4)}`}
+        className={`mt-4 ${cardClass(6)}`}
         style={{ transitionDelay: `${CARD_DELAY_MS * 4}ms` }}
       >
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">Avoid</h2>

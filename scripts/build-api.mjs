@@ -41,7 +41,7 @@ async function build() {
       alias: {
         '@': path.join(root, 'src'),
       },
-      external: ['@vercel/node'],
+      external: ['@vercel/node', 'sharp'],
     });
     console.log('Bundled', entry, '->', out);
     if (process.env.VERCEL === '1') {

@@ -9,17 +9,17 @@ interface StepLifestyleProps {
 }
 
 const lifestyleOptions: { value: LifestyleType; label: string }[] = [
-  { value: 'WORK', label: 'Work focused' },
-  { value: 'SOCIAL', label: 'Social and nights out' },
-  { value: 'CASUAL', label: 'Casual and relaxed' },
+  { value: 'WORK', label: 'Corporate office' },
+  { value: 'SOCIAL', label: 'Social & nights out' },
+  { value: 'CASUAL', label: 'Casual & relaxed' },
   { value: 'MIXED', label: 'Mixed' },
 ];
 
 const StepLifestyle = ({ value, onSelect, onBack }: StepLifestyleProps) => {
   return (
     <FlowStep 
-      title="Your life is mostly…"
-      subtitle="This helps balance your wardrobe."
+      title="Where do you spend most of your week?"
+      subtitle="This helps balance your wardrobe and recommendations."
     >
       <div className="space-y-3">
         {lifestyleOptions.map((option) => (

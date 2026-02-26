@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Calendar, Heart, UtensilsCrossed, Briefcase, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Calendar, Heart, UtensilsCrossed, Briefcase, Sparkles, Loader2, Image as ImageIcon, BarChart3, Package, Gem } from 'lucide-react';
 import Header from '@/components/Header';
 import { useUser } from '@clerk/clerk-react';
 import { useEffect, useState, useCallback } from 'react';
@@ -293,6 +293,43 @@ const Dashboard = () => {
             Other Occasion
           </Button>
         </div>
+
+        {isLoaded && user && !loading && (
+          <div className="grid gap-4 md:grid-cols-2 mb-12">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Audit</span>
+              </div>
+              <h3 className="text-lg font-medium text-foreground mb-1">Wardrobe health</h3>
+              <p className="text-xs text-muted-foreground mb-4">Add your wardrobe to see utilization and get recommendations.</p>
+              <Button variant="outline" size="sm" onClick={() => navigate('/', { state: { editProfile: true } })}>Build my style</Button>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Package className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Strategic</span>
+              </div>
+              <h3 className="text-lg font-medium text-foreground mb-1">Gap analysis</h3>
+              <p className="text-xs text-muted-foreground mb-4">Once you add items, we will suggest pieces that unlock new outfits.</p>
+              <Button variant="outline" size="sm" onClick={() => navigate('/', { state: { editProfile: true } })}>View recommendations</Button>
+            </div>
+          </div>
+        )}
+
+        {isLoaded && user && !loading && (
+          <div className="mb-12">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Gem className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Hidden gem</span>
+              </div>
+              <h3 className="text-lg font-medium text-foreground mb-1">Rediscovery</h3>
+              <p className="text-xs text-muted-foreground mb-4">We will highlight unworn items and suggest fresh ways to style them with your DNA.</p>
+              <Button variant="outline" size="sm" onClick={() => navigate('/history')}>View history</Button>
+            </div>
+          </div>
+        )}
 
         {/* Active Generation Alert */}
         {isLoaded && user && activeGeneration && (
