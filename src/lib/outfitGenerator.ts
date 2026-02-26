@@ -127,3 +127,46 @@ function convertToOutfit(entry: OutfitEntry, id: number): Outfit {
     imageUrl: entry.image_url,
   };
 }
+
+/**
+ * Returns the 3 outfit library entries (SAFEST, SHARPER, RELAXED) for the given flow data.
+ * Used by the trend-based image generation API to get outfit concepts for prompts.
+ */
+export function getOutfitEntriesForFlow(data: FlowData): OutfitEntry[] {
+  const { occasion, context, preferences } = data;
+  const { event } = occasion;
+  const { location, when, setting } = context;
+  const { budget } = preferences;
+
+  if (!event) return [];
+
+  let filteredOutfits = getValidOutfits().filter(o => true);
+
+  filteredOutfits = filteredOutfits.filter(o => o.occasion === event);
+  if (location) {
+    const locationFiltered = filteredOutfits.filter(o => o.location.includes(location));
+    if (locationFiltered.length >= 3) filteredOutfits = locationFiltered;
+  }
+  if (when) {
+    const timeFiltered = filteredOutfits.filter(o => o.time.includes(when));
+    if (timeFiltered.length >= 3) filteredOutfits = timeFiltered;
+  }
+  if (setting) {
+    const settingFiltered = filteredOutfits.filter(o => o.setting.includes(setting));
+    if (settingFiltered.length >= 3) filteredOutfits = settingFiltered;
+  }
+  if (budget) {
+    const budgetFiltered = filteredOutfits.filter(o => o.budget.includes(budget));
+    if (budgetFiltered.length >= 3) filteredOutfits = budgetFiltered;
+  }
+
+  const safest = filteredOutfits.find(o => o.tier === 'SAFEST');
+  const sharper = filteredOutfits.find(o => o.tier === 'SHARPER');
+  const relaxed = filteredOutfits.find(o => o.tier === 'RELAXED');
+
+  const entries: OutfitEntry[] = [];
+  if (safest) entries.push(safest);
+  if (sharper) entries.push(sharper);
+  if (relaxed) entries.push(relaxed);
+  return entries;
+}

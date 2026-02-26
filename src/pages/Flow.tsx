@@ -19,6 +19,7 @@ import StepPersonalLoading from '@/components/app/StepPersonalLoading';
 import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
 import StyleNameModal from '@/components/app/StyleNameModal';
 import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
+import { generateTrendOutfits, mergeTrendImagesIntoOutfits } from '@/lib/trendOutfitService';
 import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory, updateOutfitHistoryTryOn, updateOutfitHistoryStyleName } from '@/lib/userService';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
@@ -90,6 +91,7 @@ const Flow = () => {
   const [preferences, setPreferences] = useState<PreferencesData>(initialPreferences);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [usedOutfitIds, setUsedOutfitIds] = useState<string[]>([]);
+  const [isQuickFlowGenerating, setIsQuickFlowGenerating] = useState(false);
   
   // Personal flow state
   const [personal, setPersonal] = useState<PersonalData>(initialPersonal);
@@ -140,8 +142,33 @@ const Flow = () => {
     const { outfits: generatedOutfits, usedIds } = generateOutfits(flowData, []);
     setOutfits(generatedOutfits);
     setUsedOutfitIds(usedIds);
+    setIsQuickFlowGenerating(true);
     setStep(4);
   };
+
+  // When on results step with trend generation loading, call API and merge images
+  useEffect(() => {
+    if (step !== 4 || !isQuickFlowGenerating || outfits.length === 0) return;
+    const flowData: FlowData = { occasion, context, preferences };
+    let cancelled = false;
+    generateTrendOutfits(flowData, outfits)
+      .then((result) => {
+        if (cancelled) return;
+        const merged = mergeTrendImagesIntoOutfits(outfits, result);
+        setOutfits(merged);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn('Trend outfit generation failed, using library images:', err);
+        toast.error('Trend images unavailable. Showing curated looks.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsQuickFlowGenerating(false);
+      });
+    return () => { cancelled = true; };
+    // Intentionally depend only on step and isQuickFlowGenerating so we run once per "Show my looks"
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, isQuickFlowGenerating]);
 
   const handleShowAlternatives = useCallback(() => {
     const flowData: FlowData = { occasion, context, preferences };
@@ -230,6 +257,7 @@ const Flow = () => {
     setPersonal(initialPersonal);
     setPersonalOutfits([]);
     setIsGenerating(false);
+    setIsQuickFlowGenerating(false);
     setGenerationError(null);
     setRetryCount(0);
     setSelectedOutfitId(null);
@@ -337,6 +365,7 @@ const Flow = () => {
             onRestart={handleRestart}
             onShowAlternatives={handleShowAlternatives}
             hasAlternatives={hasAlternatives}
+            loading={isQuickFlowGenerating}
             onComplete={async (outfitId: number) => {
               setSelectedOutfitId(outfitId);
               const outfit = outfits.find(o => o.id === outfitId);

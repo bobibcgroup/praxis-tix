@@ -7,6 +7,15 @@ import type { Outfit, OccasionType, OutfitLabel } from '@/types/praxis';
 import { getValidOutfits, getTierLabel, type TierType } from '@/lib/outfitLibrary';
 import { generateMotivationalMessage } from '@/lib/openaiService';
 
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Check, Maximize2, Loader2 } from 'lucide-react';
+import OutfitCard from './OutfitCard';
+import OutfitComparison from './OutfitComparison';
+import type { Outfit, OccasionType, OutfitLabel } from '@/types/praxis';
+import { getValidOutfits, getTierLabel, type TierType } from '@/lib/outfitLibrary';
+import { generateMotivationalMessage } from '@/lib/openaiService';
+
 interface StepResultsProps {
   outfits: Outfit[];
   occasion: OccasionType;
@@ -15,6 +24,8 @@ interface StepResultsProps {
   hasAlternatives: boolean;
   onComplete: (selectedOutfitId: number) => void;
   onBack: () => void;
+  /** When true, show loading state (trend research + image generation) instead of cards */
+  loading?: boolean;
 }
 
 // ============= RESULTS SCREEN =============
@@ -29,6 +40,7 @@ const StepResults = ({
   hasAlternatives,
   onComplete,
   onBack,
+  loading = false,
 }: StepResultsProps) => {
   const [failedOutfitIds, setFailedOutfitIds] = useState<Set<number>>(new Set());
   const [selectedOutfitId, setSelectedOutfitId] = useState<number | null>(null);
@@ -128,6 +140,15 @@ const StepResults = ({
         Back
       </button>
 
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-4">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+          <p className="text-muted-foreground text-center">
+            Researching trends & generating your looks…
+          </p>
+        </div>
+      ) : (
+        <>
       <div className="text-center mb-6">
         <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2">
           Choose your outfit
@@ -215,6 +236,8 @@ const StepResults = ({
           }}
           onClose={() => setShowComparison(false)}
         />
+      )}
+        </>
       )}
     </div>
   );
