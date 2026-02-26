@@ -18,6 +18,8 @@ interface StepVirtualTryOnProps {
   onBack: () => void;
   onComplete: (tryOnImageUrl: string, styleName?: string) => void;
   onSkip?: () => void;
+  /** Go back to results to pick a different outfit */
+  onTryAnotherOutfit?: () => void;
 }
 
 // Dummy purchase data - replace with real data later
@@ -52,6 +54,7 @@ const StepVirtualTryOn = ({
   onBack,
   onComplete,
   onSkip,
+  onTryAnotherOutfit,
 }: StepVirtualTryOnProps) => {
   const { user } = useUser();
   const navigate = useNavigate();
@@ -472,6 +475,11 @@ const StepVirtualTryOn = ({
               <Button onClick={handleContinue} variant="outline" size="lg" className="flex-1 min-w-[100px]">
                 Save look
               </Button>
+              {onTryAnotherOutfit && (
+                <Button onClick={onTryAnotherOutfit} variant="outline" size="lg" className="min-w-[100px]">
+                  Try different look
+                </Button>
+              )}
               <Button onClick={onBack} variant="outline" size="lg" className="min-w-[100px]">
                 Swap item
               </Button>

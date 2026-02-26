@@ -61,6 +61,8 @@ export async function getOutfitsWithTrend(
       reasoning: o.reasoning,
       confidence: o.confidence,
       score_breakdown: o.score_breakdown,
+      libraryId: o.outfitId,
+      retailer_ids: o.retailer_ids,
     };
   });
 

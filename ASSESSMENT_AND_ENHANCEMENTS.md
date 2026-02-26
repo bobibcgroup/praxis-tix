@@ -108,3 +108,40 @@ So the core logic is purposeful and the fallbacks (engine → library, migration
 | **Docs** | ⚠️ | All internal docs removed; add minimal README + env example for onboarding and production. |
 
 **Verdict:** Suitable for a controlled or beta production rollout after: (1) adding tests to CI, (2) protecting authenticated routes, (3) locking down and documenting env/secrets, and (4) optionally tightening lint and reducing console noise. The enhancements above will move it toward a fully production-ready state.
+
+---
+
+## 5. Flow feature ideas (what's nice to implement)
+
+Features that would add clear value inside the **Quick** and **Personal** flows.
+
+### Quick flow
+- **Name / save look before try-on** — Let users name the moment (e.g. "Interview Tuesday") at Results; makes History and "use again" more meaningful.
+- **Date or event picker** — Optional date/time for the occasion for "Remind me" or "Plan next look" later.
+- **Replace one outfit** — "Swap this one" on a single card: re-run selection for that tier only, keep the other two.
+- **Show alternatives without leaving** — "More options" per card using `generateAlternativeOutfits` in a drawer/modal.
+- **Why this outfit** — Expand reasoning/confidence on tap to build trust and teach style.
+
+### Personal flow
+- **Use wardrobe in recommendations** — Pass wardrobe images/tags into scoring so "from your closet" or "works with what you have" appears when relevant.
+- **Inspiration as strength** — Allow 1–3 inspiration presets with weights instead of a single pick.
+- **Skip wardrobe with intent** — "I'll add my closet later" vs "I don't want to" and prompt later from Profile/Settings.
+- **Resume later** — Persist flow state in Supabase for signed-in users; "Continue where you left off" on next visit.
+- **Body/fit presets** — If no photo, let users pick Slim / Regular / Athletic / Relaxed so personal scoring still improves.
+
+### Results (both flows)
+- **Save all three** — One tap to save all three outfits to History/Favorites with one shared occasion/label.
+- **Share result** — Shareable link or image (OG + deep link) to send "my three looks" to a friend or calendar.
+- **Thumbs up/down per card** — Simple feedback to your API for ranking and A/B tests.
+- **Where to buy** — Use `retailer_ids`; add "Shop similar" or product links per outfit.
+
+### Try-on step
+- **Download options** — Download in different sizes or "share to Instagram story" aspect.
+- **Try another outfit** — From try-on, "Try different look" to pick another of the three without restarting.
+
+### Complete / post-flow
+- **Plan next look** — CTA back to Mode select (or occasion) with optional prefill.
+- **Email summary** — Optional "Email my looks" (link + thumbnails) for signed-in users.
+- **Add to calendar** — "Add to calendar" with event title + date from Quick flow.
+
+**Priorities:** "Replace one outfit" and "Show alternatives" improve Quick flow without new backend. "Use wardrobe" and "Resume later" make Personal flow stickier. "Share result" and "Where to buy" help acquisition and conversion.

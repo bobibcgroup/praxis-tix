@@ -1,21 +1,29 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User, Share2, Heart } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User, Share2, Heart, ThumbsUp, ThumbsDown, RefreshCw, List, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useUser } from '@clerk/clerk-react';
 import { addToFavorites, removeFromFavorites, getFavorites } from '@/lib/userService';
+import { logFeedback } from '@/lib/feedbackApi';
 import type { Outfit, WardrobeItems } from '@/types/praxis';
+import type { TierType } from '@/lib/outfitLibrary';
 
 interface OutfitCardProps {
   outfit: Outfit;
   onImageError?: () => void;
   inspirationNote?: string;
   wardrobeItems?: WardrobeItems;
-  hasPhotoAnalysis?: boolean; // Whether user uploaded a photo for color analysis
-  hasProportionAnalysis?: boolean; // Whether body proportions were detected
-  hasFaceAnalysis?: boolean; // Whether face shape was detected
-  /** When true, show "Best for you" pill in description (e.g. first recommendation on results) */
+  hasPhotoAnalysis?: boolean;
+  hasProportionAnalysis?: boolean;
+  hasFaceAnalysis?: boolean;
   isFirstRecommendation?: boolean;
+  /** Results step: show Swap / More options / Thumbs / Shop similar */
+  showResultsActions?: boolean;
+  tier?: TierType;
+  onSwapThisOne?: (tier: TierType) => void;
+  onMoreOptions?: (tier: TierType) => void;
+  onFeedback?: (outfitId: number, vote: 'up' | 'down') => void;
+  retailerIds?: string[];
 }
 
 // "Why this works" explanations based on tier
@@ -78,13 +86,30 @@ interface CarouselImage {
   label?: string;
 }
 
-const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasPhotoAnalysis = false, hasProportionAnalysis = false, hasFaceAnalysis = false, isFirstRecommendation = false }: OutfitCardProps) => {
+const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasPhotoAnalysis = false, hasProportionAnalysis = false, hasFaceAnalysis = false, isFirstRecommendation = false, showResultsActions = false, tier, onSwapThisOne, onMoreOptions, onFeedback, retailerIds }: OutfitCardProps) => {
   const { user } = useUser();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState<'up' | 'down' | null>(null);
+
+  const handleThumbs = useCallback(
+    (vote: 'up' | 'down') => {
+      if (feedbackSent) return;
+      setFeedbackSent(vote);
+      logFeedback({
+        event: vote === 'up' ? 'outfit_accepted' : 'outfit_rejected',
+        outfit_id: outfit.id,
+        user_id: user?.id,
+        occasion: outfit.title,
+        mode: 'quick',
+      }).catch(() => {});
+      onFeedback?.(outfit.id, vote);
+    },
+    [feedbackSent, outfit.id, outfit.title, user?.id, onFeedback]
+  );
 
   // Check if outfit is favorited
   useEffect(() => {
@@ -460,6 +485,57 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
               <span>Take your friend's opinion</span>
             </button>
           </div>
+
+          {/* Results step: Swap, More options, Thumbs, Shop similar */}
+          {showResultsActions && tier && (
+            <div className="mt-3 pt-3 border-t border-border space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Help us improve:</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleThumbs('up'); }}
+                  disabled={!!feedbackSent}
+                  className={`p-1.5 rounded-full transition-colors ${feedbackSent === 'up' ? 'bg-primary/20 text-primary' : 'hover:bg-muted'}`}
+                  aria-label="Good pick"
+                >
+                  <ThumbsUp className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleThumbs('down'); }}
+                  disabled={!!feedbackSent}
+                  className={`p-1.5 rounded-full transition-colors ${feedbackSent === 'down' ? 'bg-destructive/20 text-destructive' : 'hover:bg-muted'}`}
+                  aria-label="Not for me"
+                >
+                  <ThumbsDown className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {onSwapThisOne && (
+                  <Button variant="outline" size="sm" className="text-xs" onClick={(e) => { e.stopPropagation(); onSwapThisOne(tier); }}>
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Swap this one
+                  </Button>
+                )}
+                {onMoreOptions && (
+                  <Button variant="outline" size="sm" className="text-xs" onClick={(e) => { e.stopPropagation(); onMoreOptions(tier); }}>
+                    <List className="w-3 h-3 mr-1" />
+                    More options
+                  </Button>
+                )}
+              </div>
+              {retailerIds && retailerIds.length > 0 && (
+                <a
+                  href="https://www.praxis.style/shop"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <ShoppingBag className="w-3 h-3" />
+                  Shop similar
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

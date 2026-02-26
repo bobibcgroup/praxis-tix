@@ -1,16 +1,53 @@
 import { Button } from '@/components/ui/button';
 import { useUser, SignInButton } from '@clerk/clerk-react';
-import { User } from 'lucide-react';
+import { User, Mail, Calendar } from 'lucide-react';
+import { useState } from 'react';
 import FlowStep from './FlowStep';
 
 interface StepCompleteProps {
   onRestart: () => void;
   showUpsell?: boolean;
   onStartPersonal?: () => void;
+  /** Optional: share URL for "Email my looks" / "Add to calendar" */
+  shareUrl?: string;
+  occasion?: string;
+  eventDate?: string;
+  lookName?: string;
 }
 
-const StepComplete = ({ onRestart, showUpsell, onStartPersonal }: StepCompleteProps) => {
+const StepComplete = ({ onRestart, showUpsell, onStartPersonal, shareUrl, occasion, eventDate, lookName }: StepCompleteProps) => {
   const { user, isLoaded } = useUser();
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleEmailSummary = async () => {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleAddToCalendar = () => {
+    const title = lookName ? `Praxis: ${lookName}` : occasion ? `Praxis look: ${occasion}` : 'Praxis look';
+    const start = eventDate ? new Date(eventDate + 'T09:00:00') : new Date();
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      `DTSTART:${start.toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+      `DTEND:${end.toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+      `SUMMARY:${title.replace(/,/g, '\\,')}`,
+      `DESCRIPTION:${shareUrl.replace(/,/g, '\\,')}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'praxis-look.ics';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
   return (
     <FlowStep title="This is the right choice.">
       <div className="space-y-8">
@@ -79,24 +116,50 @@ const StepComplete = ({ onRestart, showUpsell, onStartPersonal }: StepCompletePr
                 size="lg"
                 className="w-full"
               >
-                Style another moment
+                Plan next look
               </Button>
               <p className="text-[11px] text-muted-foreground/70 text-center">
-                For a quick, occasion-based recommendation.
+                Style another moment — quick, occasion-based recommendation.
               </p>
+              {shareUrl && (
+                <div className="pt-2 space-y-2 border-t border-border">
+                  <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={handleEmailSummary}>
+                    <Mail className="w-4 h-4" />
+                    {linkCopied ? 'Link copied — paste in email' : 'Email my looks'}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={handleAddToCalendar}>
+                    <Calendar className="w-4 h-4" />
+                    Add to calendar
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {!showUpsell && (
-          <Button 
-            onClick={onRestart}
-            variant="cta"
-            size="lg"
-            className="w-full"
-          >
-            Style another moment
-          </Button>
+          <div className="space-y-2">
+            <Button 
+              onClick={onRestart}
+              variant="cta"
+              size="lg"
+              className="w-full"
+            >
+              Plan next look
+            </Button>
+            {shareUrl && (
+              <div className="pt-2 space-y-2 border-t border-border">
+                <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={handleEmailSummary}>
+                  <Mail className="w-4 h-4" />
+                  {linkCopied ? 'Link copied' : 'Email my looks'}
+                </Button>
+                <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={handleAddToCalendar}>
+                  <Calendar className="w-4 h-4" />
+                  Add to calendar
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </FlowStep>

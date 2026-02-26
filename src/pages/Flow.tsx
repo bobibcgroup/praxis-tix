@@ -20,7 +20,7 @@ import StepStyleDNA from '@/components/app/StepStyleDNA';
 import StepPersonalLoading from '@/components/app/StepPersonalLoading';
 import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
 import StyleNameModal from '@/components/app/StyleNameModal';
-import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
+import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits, replaceOneOutfit, getAlternativeOutfitsForTier } from '@/lib/outfitGenerator';
 import { getOutfitsWithTrend } from '@/lib/engineOutfitService';
 import { logEvent } from '@/lib/eventLog';
 import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
@@ -53,6 +53,7 @@ import type {
   HeightUnit,
   FitPreference,
 } from '@/types/praxis';
+import type { TierType } from '@/lib/outfitLibrary';
 
 const initialOccasion: OccasionData = {
   event: '',
@@ -95,6 +96,7 @@ const Flow = () => {
   const [preferences, setPreferences] = useState<PreferencesData>(initialPreferences);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [usedOutfitIds, setUsedOutfitIds] = useState<string[]>([]);
+  const [usedLibraryIds, setUsedLibraryIds] = useState<string[]>([]);
   const [isQuickFlowGenerating, setIsQuickFlowGenerating] = useState(false);
   
   // Personal flow state
@@ -152,6 +154,7 @@ const Flow = () => {
         if (cancelled) return;
         setOutfits(nextOutfits);
         setUsedOutfitIds(nextOutfits.map((o) => String(o.id)));
+        setUsedLibraryIds(nextOutfits.map((o) => o.libraryId).filter(Boolean) as string[]);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -159,7 +162,8 @@ const Flow = () => {
         toast.error('Trend looks unavailable. Showing curated looks.');
         const { outfits: generatedOutfits, usedIds } = generateOutfits(flowData, []);
         setOutfits(generatedOutfits);
-        setUsedOutfitIds(usedIds);
+        setUsedOutfitIds(generatedOutfits.map((o) => String(o.id)));
+        setUsedLibraryIds(usedIds);
       })
       .finally(() => {
         if (!cancelled) setIsQuickFlowGenerating(false);
@@ -170,17 +174,101 @@ const Flow = () => {
 
   const handleShowAlternatives = useCallback(() => {
     const flowData: FlowData = { occasion, context, preferences };
-    const { outfits: alternativeOutfits, usedIds } = generateAlternativeOutfits(flowData, usedOutfitIds);
+    const { outfits: alternativeOutfits, usedIds } = generateAlternativeOutfits(flowData, usedLibraryIds);
     if (alternativeOutfits.length > 0) {
       setOutfits(alternativeOutfits);
-      setUsedOutfitIds(prev => [...prev, ...usedIds]);
+      setUsedOutfitIds(alternativeOutfits.map((o) => String(o.id)));
+      setUsedLibraryIds(usedIds);
     }
-  }, [occasion, context, preferences, usedOutfitIds]);
+  }, [occasion, context, preferences, usedLibraryIds]);
 
   const hasAlternatives = useMemo(() => {
     const flowData: FlowData = { occasion, context, preferences };
-    return hasAlternativeOutfits(flowData, usedOutfitIds);
-  }, [occasion, context, preferences, usedOutfitIds]);
+    return hasAlternativeOutfits(flowData, usedLibraryIds);
+  }, [occasion, context, preferences, usedLibraryIds]);
+
+  const handleReplaceOneOutfit = useCallback(
+    (tier: TierType) => {
+      const flowData: FlowData = { occasion, context, preferences };
+      const result = replaceOneOutfit(flowData, outfits, tier, usedLibraryIds);
+      if (result) {
+        setOutfits(result.outfits);
+        setUsedLibraryIds(result.usedIds);
+        setUsedOutfitIds(result.outfits.map((o) => String(o.id)));
+        toast.success('Outfit swapped');
+      } else {
+        toast.error('No alternative for this tier right now');
+      }
+    },
+    [occasion, context, preferences, outfits, usedLibraryIds]
+  );
+
+  const handleGetAlternativesForTier = useCallback(
+    (tier: TierType) => {
+      const flowData: FlowData = { occasion, context, preferences };
+      return getAlternativeOutfitsForTier(flowData, tier, usedLibraryIds);
+    },
+    [occasion, context, preferences, usedLibraryIds]
+  );
+
+  const handleReplaceWithOutfit = useCallback(
+    (tier: TierType, outfit: Outfit) => {
+      const labelToTier = (l: string) =>
+        l === 'Safest choice' ? 'SAFEST' : l === 'Sharper choice' ? 'SHARPER' : 'RELAXED';
+      const idx = outfits.findIndex((o) => labelToTier(o.label) === tier);
+      if (idx === -1) return;
+      const next = [...outfits];
+      next[idx] = { ...outfit, id: outfits[idx].id };
+      setOutfits(next);
+      if (outfit.libraryId) {
+        const currentLibId = outfits[idx].libraryId;
+        setUsedLibraryIds((prev) =>
+          currentLibId ? [...prev.filter((id) => id !== currentLibId), outfit.libraryId!] : [...prev, outfit.libraryId]
+        );
+      }
+      toast.success('Outfit updated');
+    },
+    [outfits]
+  );
+
+  const handleSaveAllThree = useCallback(async () => {
+    if (!user || !occasion.event) return;
+    const occasionValue = occasion.event as OccasionType;
+    try {
+      for (const outfit of outfits) {
+        await saveOutfitToHistory(
+          user.id,
+          outfit,
+          occasionValue,
+          undefined,
+          undefined,
+          occasion.lookName ?? undefined,
+          undefined,
+          undefined,
+          user.primaryEmailAddress?.emailAddress
+        );
+      }
+      toast.success('All three looks saved to history');
+    } catch {
+      toast.error('Failed to save some outfits');
+    }
+  }, [user, occasion.event, occasion.lookName, outfits]);
+
+  const handleShareResults = useCallback(async () => {
+    const url = window.location.href;
+    const text = `My three looks for ${occasion.event} — Praxis`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Praxis looks', text, url });
+        toast.success('Shared');
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        toast.success('Link copied to clipboard');
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') toast.error('Share failed');
+    }
+  }, [occasion.event]);
 
   // Personal flow handlers - trigger generation and go to loading step
   const handleStartPersonalGeneration = useCallback(() => {
@@ -378,9 +466,19 @@ const Flow = () => {
           <StepResults
             outfits={outfits}
             occasion={occasion.event as OccasionType}
+            flowData={{ occasion, context, preferences }}
+            usedLibraryIds={usedLibraryIds}
             onRestart={handleRestart}
             onShowAlternatives={handleShowAlternatives}
             hasAlternatives={hasAlternatives}
+            onReplaceOne={handleReplaceOneOutfit}
+            onGetAlternativesForTier={handleGetAlternativesForTier}
+            onReplaceWithOutfit={handleReplaceWithOutfit}
+            onSaveAllThree={user ? handleSaveAllThree : undefined}
+            onShareResults={handleShareResults}
+            eventDate={occasion.eventDate}
+            lookName={occasion.lookName}
+            onUpdateOccasion={(updates) => setOccasion((prev) => ({ ...prev, ...updates }))}
             loading={isQuickFlowGenerating}
             onComplete={async (outfitId: number) => {
               setSelectedOutfitId(outfitId);
@@ -470,6 +568,10 @@ const Flow = () => {
           <StepComplete 
             onRestart={handleRestart}
             showUpsell={true}
+            shareUrl={typeof window !== 'undefined' ? window.location.href : undefined}
+            occasion={occasion.event || undefined}
+            eventDate={occasion.eventDate}
+            lookName={occasion.lookName}
             onStartPersonal={() => {
               // Require authentication
               if (isLoaded && user) {
@@ -486,6 +588,10 @@ const Flow = () => {
           <StepComplete 
             onRestart={handleRestart}
             showUpsell={true}
+            shareUrl={typeof window !== 'undefined' ? window.location.href : undefined}
+            occasion={occasion.event || undefined}
+            eventDate={occasion.eventDate}
+            lookName={occasion.lookName}
             onStartPersonal={() => {
               // Require authentication
               if (isLoaded && user) {
@@ -601,6 +707,7 @@ const Flow = () => {
               setPersonal(p => ({ ...p, hasWardrobe: hasItems, wardrobeItems: items }));
             }}
             onSkip={handleStartPersonalGeneration}
+            onSkipWithReason={(reason) => setPersonal(p => ({ ...p, wardrobeSkipReason: reason }))}
             onBack={() => setStep(13)}
             onContinue={(items: WardrobeItems) => {
               const hasItems = Object.values(items).some(item => item !== null);
@@ -718,6 +825,7 @@ const Flow = () => {
               userPhoto={personal.photoCropped}
               personalData={personal}
               onBack={() => setStep(17)}
+              onTryAnotherOutfit={() => setStep(16)}
               onComplete={async (tryOnUrl: string, styleName?: string) => {
                 setTryOnImageUrl(tryOnUrl);
 

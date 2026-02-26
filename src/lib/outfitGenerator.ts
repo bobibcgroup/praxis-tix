@@ -1,5 +1,5 @@
-import type { FlowData, Outfit } from '@/types/praxis';
-import { getValidOutfits, getTierLabel, type OutfitEntry } from './outfitLibrary';
+import type { FlowData, Outfit, OutfitLabel } from '@/types/praxis';
+import { getValidOutfits, getTierLabel, type OutfitEntry, type TierType } from './outfitLibrary';
 import { selectOutfitsFromMatrix, hasMatrixAlternatives } from './outfitSelectionEngine';
 
 // ============= INTELLIGENT OUTFIT GENERATOR =============
@@ -110,6 +110,57 @@ export function hasAlternativeOutfits(data: FlowData, excludeIds: string[]): boo
   return hasSafest || hasSharper || hasRelaxed;
 }
 
+function outfitLabelToTier(label: OutfitLabel): TierType {
+  if (label === 'Safest choice') return 'SAFEST';
+  if (label === 'Sharper choice') return 'SHARPER';
+  return 'RELAXED';
+}
+
+/** Get 1–2 alternative outfits for a single tier (for "More options" per card). */
+export function getAlternativeOutfitsForTier(
+  data: FlowData,
+  tier: TierType,
+  excludeIds: string[]
+): Outfit[] {
+  const { occasion } = data;
+  const { event } = occasion;
+  if (!event) return [];
+
+  const filtered = getValidOutfits().filter(
+    (o) => o.occasion === event && o.tier === tier && !excludeIds.includes(o.id)
+  );
+  return filtered.slice(0, 2).map((entry, i) => convertToOutfit(entry, 1000 + i));
+}
+
+/** Replace a single outfit by tier; keeps other two. Returns new outfits array and new usedIds. */
+export function replaceOneOutfit(
+  data: FlowData,
+  currentOutfits: Outfit[],
+  tierToReplace: TierType,
+  usedLibraryIds: string[]
+): GenerateResult | null {
+  const otherLibraryIds = currentOutfits
+    .filter((o) => outfitLabelToTier(o.label) !== tierToReplace)
+    .map((o) => o.libraryId)
+    .filter((id): id is string => Boolean(id));
+  const excludeIds = [...usedLibraryIds];
+  const filtered = getValidOutfits().filter(
+    (o) =>
+      o.occasion === data.occasion.event &&
+      o.tier === tierToReplace &&
+      !excludeIds.includes(o.id)
+  );
+  const replacement = filtered[0];
+  if (!replacement) return null;
+
+  const idx = currentOutfits.findIndex((o) => outfitLabelToTier(o.label) === tierToReplace);
+  if (idx === -1) return null;
+  const newOutfit = convertToOutfit(replacement, currentOutfits[idx].id);
+  const nextOutfits = [...currentOutfits];
+  nextOutfits[idx] = { ...newOutfit, id: currentOutfits[idx].id };
+  return { outfits: nextOutfits, usedIds: [...otherLibraryIds, replacement.id] };
+}
+
 // Convert library entry to Outfit type
 // CRITICAL: All fields come from the SAME entry object - no mixing
 function convertToOutfit(entry: OutfitEntry, id: number): Outfit {
@@ -125,6 +176,7 @@ function convertToOutfit(entry: OutfitEntry, id: number): Outfit {
     },
     reason: entry.reason,
     imageUrl: entry.image_url,
+    libraryId: entry.id,
   };
 }
 

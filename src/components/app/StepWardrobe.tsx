@@ -9,6 +9,7 @@ interface StepWardrobeProps {
   onSkip: () => void;
   onBack: () => void;
   onContinue: (items: WardrobeItems) => void;
+  onSkipWithReason?: (reason: 'later' | 'no') => void;
 }
 
 const MAX_FILE_SIZE_MB = 10;
@@ -21,7 +22,7 @@ const WARDROBE_CATEGORIES = [
   { id: 'shoes', label: 'Shoes', helper: 'Sneakers, loafers, boots, oxfords' },
 ] as const;
 
-const StepWardrobe = ({ onWardrobeUpdate, onSkip, onBack, onContinue }: StepWardrobeProps) => {
+const StepWardrobe = ({ onWardrobeUpdate, onSkip, onBack, onContinue, onSkipWithReason }: StepWardrobeProps) => {
   const [items, setItems] = useState<WardrobeItems>({
     top: null,
     jacket: null,
@@ -171,13 +172,34 @@ const StepWardrobe = ({ onWardrobeUpdate, onSkip, onBack, onContinue }: StepWard
         </Button>
         
         {!hasAnyUploads && (
-          <button
-            type="button"
-            onClick={onSkip}
-            className="w-full py-3 text-center text-muted-foreground hover:text-foreground transition-colors duration-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
-          >
-            Skip
-          </button>
+          <div className="space-y-2">
+            {onSkipWithReason ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { onSkipWithReason('later'); onSkip(); }}
+                  className="w-full py-3 text-center text-muted-foreground hover:text-foreground transition-colors duration-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+                >
+                  I'll add my closet later
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onSkipWithReason('no'); onSkip(); }}
+                  className="w-full py-2 text-center text-muted-foreground/80 hover:text-foreground transition-colors duration-200 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+                >
+                  Skip for now
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={onSkip}
+                className="w-full py-3 text-center text-muted-foreground hover:text-foreground transition-colors duration-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+              >
+                Skip
+              </button>
+            )}
+          </div>
         )}
       </div>
 

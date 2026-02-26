@@ -49,6 +49,10 @@ export type InspirationPresetType =
 
 export interface OccasionData {
   event: OccasionType | '';
+  /** Optional date for the occasion (ISO date string) */
+  eventDate?: string;
+  /** Optional name for this look (e.g. "Interview Tuesday") */
+  lookName?: string;
 }
 
 export interface ContextData {
@@ -209,9 +213,13 @@ export interface PersonalData {
   hasInspiration: boolean;
   inspirationData?: string; // Base64 encoded image data
   inspirationPreset?: InspirationPresetType; // Selected style preset
+  /** Multiple inspiration presets with weights (e.g. [{ preset: 'QUIET_LUXURY', weight: 0.7 }, ...]) */
+  inspirationPresets?: Array<{ preset: InspirationPresetType; weight: number }>;
   styleDirectionImages?: string[]; // Image URLs/identifiers for the selected style
   styleDNA?: StyleDNA; // Style DNA anchor
   hasWardrobe: boolean;
+  /** When user skips wardrobe: 'later' | 'no' */
+  wardrobeSkipReason?: 'later' | 'no';
   wardrobeItems?: WardrobeItems; // Structured wardrobe uploads
 }
 
@@ -273,4 +281,8 @@ export interface Outfit {
   confidence?: number;
   /** Chain-of-Style sub-scores when present */
   score_breakdown?: ScoreBreakdown;
+  /** Library entry id (e.g. date_safest_01) for replace-one and alternatives */
+  libraryId?: string;
+  /** Retailer/shop ids for "Where to buy" */
+  retailer_ids?: string[];
 }

@@ -1,9 +1,16 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Check, Maximize2, Calendar, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, Maximize2, Calendar, SlidersHorizontal, Sparkles, Share2, ThumbsUp, ThumbsDown, RefreshCw, List } from 'lucide-react';
 import OutfitCard from './OutfitCard';
 import OutfitComparison from './OutfitComparison';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import type { Outfit, OccasionType, OutfitLabel } from '@/types/praxis';
+import type { FlowData } from '@/types/praxis';
 import { getValidOutfits, getTierLabel, type TierType } from '@/lib/outfitLibrary';
 import { generateMotivationalMessage } from '@/lib/openaiService';
 
@@ -17,6 +24,17 @@ interface StepResultsProps {
   onBack: () => void;
   /** When true, show loading state (trend research + image generation) instead of cards */
   loading?: boolean;
+  /** Quick flow: pass for replace one / more options / save all / share */
+  flowData?: FlowData;
+  usedLibraryIds?: string[];
+  onReplaceOne?: (tier: TierType) => void;
+  onGetAlternativesForTier?: (tier: TierType) => Outfit[];
+  onReplaceWithOutfit?: (tier: TierType, outfit: Outfit) => void;
+  onSaveAllThree?: () => void | Promise<void>;
+  onShareResults?: () => void | Promise<void>;
+  eventDate?: string;
+  lookName?: string;
+  onUpdateOccasion?: (updates: { eventDate?: string; lookName?: string }) => void;
 }
 
 const THINKING_STEPS = [
@@ -45,12 +63,26 @@ const StepResults = ({
   onComplete,
   onBack,
   loading = false,
+  flowData,
+  usedLibraryIds = [],
+  onReplaceOne,
+  onGetAlternativesForTier,
+  onReplaceWithOutfit,
+  onSaveAllThree,
+  onShareResults,
+  eventDate,
+  lookName,
+  onUpdateOccasion,
 }: StepResultsProps) => {
   const [failedOutfitIds, setFailedOutfitIds] = useState<Set<number>>(new Set());
   const [selectedOutfitId, setSelectedOutfitId] = useState<number | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
+  const [alternativesSheetOpen, setAlternativesSheetOpen] = useState(false);
+  const [alternativesTier, setAlternativesTier] = useState<TierType | null>(null);
+  const [alternativesList, setAlternativesList] = useState<Outfit[]>([]);
+  const showResultsActions = Boolean(onReplaceOne && onGetAlternativesForTier && onReplaceWithOutfit);
 
   // Optional: cycle step highlight (kept for any future use; card shows all steps)
   useEffect(() => {
@@ -220,6 +252,26 @@ const StepResults = ({
         )}
       </div>
 
+      {/* Optional: Name this look / When is it? */}
+      {onUpdateOccasion && (
+        <div className="mb-4 p-4 rounded-xl border border-border bg-muted/30 space-y-3">
+          <label className="text-xs font-medium text-muted-foreground">Name this look (optional)</label>
+          <input
+            type="text"
+            placeholder="e.g. Interview Tuesday"
+            value={lookName ?? ''}
+            onChange={(e) => onUpdateOccasion({ lookName: e.target.value || undefined })}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          />
+          <label className="text-xs font-medium text-muted-foreground">When is it? (optional)</label>
+          <input
+            type="date"
+            value={eventDate ?? ''}
+            onChange={(e) => onUpdateOccasion({ eventDate: e.target.value || undefined })}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+      )}
       {/* Outfit Stack - Always stacked */}
       <div className="space-y-4">
         {displayOutfits.map((outfit, index) => (
@@ -243,12 +295,38 @@ const StepResults = ({
               outfit={outfit} 
               onImageError={() => handleImageError(outfit.id)}
               isFirstRecommendation={index === 0}
+              showResultsActions={showResultsActions}
+              tier={labelToTier(outfit.label)}
+              onSwapThisOne={onReplaceOne}
+              onMoreOptions={
+                onGetAlternativesForTier && onReplaceWithOutfit
+                  ? (t) => {
+                      const list = onGetAlternativesForTier(t);
+                      setAlternativesList(list);
+                      setAlternativesTier(t);
+                      setAlternativesSheetOpen(true);
+                    }
+                  : undefined
+              }
+              onFeedback={undefined}
+              retailerIds={outfit.retailer_ids}
             />
           </div>
         ))}
       </div>
 
       <div className="mt-6 space-y-3">
+        {onSaveAllThree && (
+          <Button onClick={onSaveAllThree} variant="outline" size="lg" className="w-full">
+            Save all three to history
+          </Button>
+        )}
+        {onShareResults && (
+          <Button onClick={onShareResults} variant="outline" size="lg" className="w-full">
+            <Share2 className="w-4 h-4 mr-2" />
+            Share my looks
+          </Button>
+        )}
         {displayOutfits.length > 1 && (
           <Button 
             onClick={() => setShowComparison(true)} 
@@ -290,6 +368,38 @@ const StepResults = ({
           onClose={() => setShowComparison(false)}
         />
       )}
+
+      {/* More options sheet: pick one alternative for this tier */}
+      <Sheet open={alternativesSheetOpen} onOpenChange={setAlternativesSheetOpen}>
+        <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>More options for this look</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-3">
+            {alternativesList.map((alt) => (
+              <div
+                key={alt.id}
+                className="flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer"
+                onClick={() => {
+                  if (alternativesTier && onReplaceWithOutfit) {
+                    onReplaceWithOutfit(alternativesTier, alt);
+                    setAlternativesSheetOpen(false);
+                  }
+                }}
+              >
+                <img src={alt.imageUrl} alt={alt.title} className="w-16 h-20 object-cover rounded" />
+                <div>
+                  <p className="font-medium">{alt.title}</p>
+                  <p className="text-sm text-muted-foreground">{alt.reason}</p>
+                </div>
+              </div>
+            ))}
+            {alternativesList.length === 0 && (
+              <p className="text-sm text-muted-foreground">No other options for this tier right now.</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
         </>
       )}
     </div>
