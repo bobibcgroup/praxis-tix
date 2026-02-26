@@ -5,6 +5,7 @@
 
 import type { FlowData } from '@/types/praxis';
 import type { GenerateOutfitsResponse, EngineOutfitResult } from '@/types/decisionEngine';
+import type { MappingResult } from './mappingEngine';
 import { flowDataToIntent } from './intentBuilder';
 import { classifyIntentWithAI } from './aiIntentClassifier';
 import { mapIntentToOutfitIds } from './mappingEngine';
@@ -18,6 +19,19 @@ const THINKING_STEPS = [
   'Balancing formality and comfort…',
   'Selecting optimal silhouettes…',
 ];
+
+function compositeConfidence(m: MappingResult): number {
+  const b = m.score_breakdown;
+  if (!b) return 70 + m.score / 4;
+  const v =
+    (b.body_harmony ?? 0.75) * 0.25 +
+    (b.color_harmony ?? 0.8) * 0.2 +
+    (b.event_appropriateness ?? 0.8) * 0.2 +
+    (b.psychological_projection ?? 0.75) * 0.15 +
+    (b.weather_compatibility ?? 0.8) * 0.1 +
+    (b.user_preference_match ?? 0.8) * 0.1;
+  return v * 100;
+}
 
 export interface RunDecisionEngineOptions {
   geminiApiKey?: string;
@@ -62,8 +76,10 @@ export async function runDecisionEngine(
       id: id++,
       label,
       reasoning,
-      confidence: Math.min(98, 70 + m.score / 4),
+      confidence: Math.min(98, Math.round(compositeConfidence(m))),
       abstract: m.abstract,
+      score_breakdown: m.score_breakdown,
+      retailer_ids: m.retailer_ids?.length ? m.retailer_ids : undefined,
     });
   }
 

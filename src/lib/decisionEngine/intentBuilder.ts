@@ -42,6 +42,7 @@ export function flowDataToIntent(flowData: FlowData): IntentProfile {
   const risk: RiskAppetite = priority === 'SHARP' ? 'medium' : priority === 'COMFORT' ? 'low' : 'low';
 
   return {
+    domain: 'advisory',
     occasion: event || 'unspecified',
     formality,
     temperature,

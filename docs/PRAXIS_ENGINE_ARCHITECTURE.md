@@ -49,9 +49,14 @@ Outfit metadata includes: formality, temperature_range, vibe, silhouette, retail
 
 ## 5. API Contracts
 
-- `POST /api/generate-outfits` — Body: FlowData. Returns: GenerateOutfitsResponse (intent, outfits with reasoning and confidence, thinkingSteps).
+- `POST /api/generate-outfits` — Body: FlowData. Returns: GenerateOutfitsResponse (intent, outfits with reasoning, confidence, score_breakdown, retailer_ids, thinkingSteps).
+- `POST /api/generate-outfits-stream` — Same body; `Accept: text/event-stream`. Streams: intent_classified, reasoning_step, analysis_complete, outfit_1..3, done.
+- `POST /api/interpret-intent` — Body: FlowData. Returns: { intent }.
 - `POST /api/generate-trend-outfits` — Body: flowData, outfits (concepts). Returns: trend-generated image URLs (primary path for demo).
-- Future: `POST /api/analyze-user`, `POST /api/generate-style-dna`.
+- `POST /api/generate-style-dna` — Body: lifestyle, inspirationPreset, skinToneBucket, contrastLevel. Returns: AI-generated Style DNA copy.
+- `POST /api/log-feedback` — Body: FeedbackPayload (event, outfit_id, time_to_decision_ms, etc.).
+- `POST /api/analyze-body` — Stub: returns low_confidence / insufficient_resolution until image quality gates exist.
+- `POST /api/analyze-color` — Stub: same for color analysis.
 
 ## 6. Retail Readiness
 

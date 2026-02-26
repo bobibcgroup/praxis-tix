@@ -5,33 +5,30 @@
 
 // ============= INTENT (user inputs → structured) =============
 
+export type IntentDomain = 'advisory' | 'functional' | 'educational' | 'contextual';
 export type FormalityLevel = 'low' | 'medium' | 'high';
 export type TemperatureContext = 'cool' | 'mild' | 'hot';
 export type VibeType = 'sharp' | 'comfort' | 'relaxed' | 'classic' | 'expressive';
 export type RiskAppetite = 'low' | 'medium' | 'high';
 
 export interface IntentProfile {
+  /** Routing: why the user is here */
+  domain?: IntentDomain;
   /** From flow: occasion (event) */
   occasion: string;
-  /** Derived or from flow: formality */
   formality: FormalityLevel;
-  /** Weather/context: cool/mild/hot */
   temperature: TemperatureContext;
-  /** Vibe: sharp, comfort, relaxed, classic, expressive */
   vibe: VibeType;
-  /** Risk: low = safest, high = bolder */
   risk: RiskAppetite;
-  /** Location from context */
+  /** e.g. competent_but_relaxed, sharp_but_approachable */
+  psychological_goal?: string;
+  /** Optional mood tag */
+  mood?: string;
   location?: string;
-  /** Time of day */
   when?: string;
-  /** Setting: indoor/outdoor/both */
   setting?: string;
-  /** Budget vibe */
   budget?: string;
-  /** Priority from preferences */
   priority?: string;
-  /** Optional constraints (e.g. heat_management) */
   constraints?: string[];
 }
 
@@ -68,11 +65,28 @@ export interface GarmentSchema {
 
 // ============= MODULAR OUTFIT (retail-ready) =============
 
+export type GarmentSuperCategory = 'upper' | 'lower' | 'outerwear' | 'footwear';
+
+export interface GarmentModule {
+  super_category: GarmentSuperCategory;
+  category?: string;
+  description: string;
+  retailer_id?: string;
+  garment?: Partial<GarmentSchema>;
+}
+
+/** Inventory-ready: upper, lower, outer, footwear */
+export interface OutfitModules {
+  upper: GarmentModule;
+  lower: GarmentModule;
+  outer?: GarmentModule;
+  footwear: GarmentModule;
+}
+
 export interface OutfitModule {
-  /** e.g. jacket, pants, shoes */
+  /** @deprecated use GarmentModule.super_category */
   role: 'jacket' | 'top' | 'bottom' | 'shoes' | 'extras';
   description: string;
-  /** Inventory placeholder for retailer integration */
   retailer_id?: string;
   garment?: Partial<GarmentSchema>;
 }
@@ -88,20 +102,32 @@ export interface ModularOutfit {
 // ============= OUTFIT METADATA (for library entries) =============
 
 export interface OutfitMetadata {
-  /** Same as OutfitEntry.id */
   outfitId: string;
   formality: FormalityLevel;
-  temperature_range: [number, number]; // celsius, e.g. [15, 30]
+  temperature_range: [number, number];
   vibe: VibeType[];
   silhouette: SilhouetteType;
   retailer_compatibility: string[];
-  /** Modular parts for retailer mapping */
+  /** @deprecated use modules + retailer_ids */
   modular_parts: ModularOutfit;
-  /** Abstract attributes for mapping engine */
+  /** Inventory-ready: SKU ids for this outfit */
+  retailer_ids?: string[];
+  /** New shape: upper, lower, outer, footwear */
+  modules?: OutfitModules;
   abstract: AbstractOutfitAttributes;
 }
 
 // ============= ENGINE OUTPUT (to frontend / trend API) =============
+
+/** Chain-of-Style: traceable score breakdown (0–1 per dimension) */
+export interface ScoreBreakdown {
+  body_harmony?: number;
+  color_harmony?: number;
+  event_appropriateness?: number;
+  psychological_projection?: number;
+  weather_compatibility?: number;
+  user_preference_match?: number;
+}
 
 export interface ReasoningExplanation {
   summary: string;
@@ -111,18 +137,16 @@ export interface ReasoningExplanation {
 }
 
 export interface EngineOutfitResult {
-  /** Mapped outfit id from library (e.g. date_safest_01) */
   outfitId: string;
-  /** Display id 1,2,3 */
   id: number;
-  /** Label: Safest choice, etc. */
   label: string;
-  /** Backend-generated reasoning (not hardcoded) */
   reasoning: ReasoningExplanation;
-  /** 0-100 */
   confidence: number;
-  /** Abstract attributes used for this pick */
   abstract: AbstractOutfitAttributes;
+  /** Chain-of-Style transparency */
+  score_breakdown?: ScoreBreakdown;
+  /** Inventory-ready SKU mapping */
+  retailer_ids?: string[];
 }
 
 export interface GenerateOutfitsResponse {

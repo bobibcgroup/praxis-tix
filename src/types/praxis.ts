@@ -67,6 +67,9 @@ export interface StyleDNA {
   primaryStyle: InspirationPresetType;
   secondaryStyle?: InspirationPresetType;
   confidence: 'high' | 'medium' | 'low';
+  /** Set by drift helper when persisting */
+  version?: number;
+  updatedAt?: string;
 }
 
 // Skin tone detection
@@ -178,6 +181,16 @@ export interface ReasoningExplanation {
   context_logic?: string;
 }
 
+/** Chain-of-Style score breakdown (0–1 per dimension), from Decision Engine */
+export interface ScoreBreakdown {
+  body_harmony?: number;
+  color_harmony?: number;
+  event_appropriateness?: number;
+  psychological_projection?: number;
+  weather_compatibility?: number;
+  user_preference_match?: number;
+}
+
 export interface Outfit {
   id: number;
   title: string;
@@ -194,4 +207,6 @@ export interface Outfit {
   reasoning?: ReasoningExplanation;
   /** 0-100, from Decision Engine */
   confidence?: number;
+  /** Chain-of-Style sub-scores when present */
+  score_breakdown?: ScoreBreakdown;
 }

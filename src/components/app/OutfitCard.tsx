@@ -249,6 +249,11 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
                   Praxis confidence: {Math.round(outfit.confidence)}%
                 </span>
               )}
+              {outfit.score_breakdown && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-background/90 text-muted-foreground border border-border">
+                  Event {Math.round((outfit.score_breakdown.event_appropriateness ?? 0) * 100)}% · Vibe {Math.round((outfit.score_breakdown.user_preference_match ?? 0) * 100)}% · Color {Math.round((outfit.score_breakdown.color_harmony ?? 0) * 100)}%
+                </span>
+              )}
               {user && (
                 <button
                   onClick={handleToggleFavorite}
@@ -414,6 +419,11 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
                   </li>
                 ))}
               </ul>
+              {outfit.score_breakdown && (
+                <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">
+                  Score: Event {Math.round((outfit.score_breakdown.event_appropriateness ?? 0) * 100)}% · Color {Math.round((outfit.score_breakdown.color_harmony ?? 0) * 100)}% · Vibe {Math.round((outfit.score_breakdown.user_preference_match ?? 0) * 100)}% · Weather {Math.round((outfit.score_breakdown.weather_compatibility ?? 0) * 100)}%
+                </p>
+              )}
             </div>
           )}
 

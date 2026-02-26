@@ -48,6 +48,13 @@ function buildMetadata(
       extras: { role: 'extras', description: opts.extras, retailer_id: `demo_${outfitId}_extras` },
     }),
   };
+  const retailer_ids = [
+    modular_parts.jacket?.retailer_id,
+    modular_parts.top?.retailer_id,
+    modular_parts.bottom?.retailer_id,
+    modular_parts.shoes?.retailer_id,
+    modular_parts.extras?.retailer_id,
+  ].filter(Boolean) as string[];
   return {
     outfitId,
     formality: opts.formality,
@@ -56,6 +63,7 @@ function buildMetadata(
     silhouette: opts.silhouette,
     retailer_compatibility: opts.retailer,
     modular_parts,
+    retailer_ids,
     abstract,
   };
 }

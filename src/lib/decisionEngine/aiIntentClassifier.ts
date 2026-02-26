@@ -16,8 +16,8 @@ User choices:
 - Priority (vibe): {{priority}}
 
 Respond with ONLY a JSON object (no markdown, no explanation) with these exact keys:
-occasion (string, same as input), formality ("low"|"medium"|"high"), temperature ("cool"|"mild"|"hot"), vibe ("sharp"|"comfort"|"relaxed"|"classic"|"expressive"), risk ("low"|"medium"|"high"), location (string), when (string), setting (string), budget (string), priority (string), constraints (array of strings, optional, e.g. ["heat_management"] for outdoor).
-Example: {"occasion":"DATE","formality":"medium","temperature":"mild","vibe":"sharp","risk":"low","location":"RESTAURANT","when":"NIGHT","setting":"INDOOR","budget":"MID_RANGE","priority":"SHARP","constraints":[]}`;
+occasion (string), formality ("low"|"medium"|"high"), temperature ("cool"|"mild"|"hot"), vibe ("sharp"|"comfort"|"relaxed"|"classic"|"expressive"), risk ("low"|"medium"|"high"), domain ("advisory"|"functional"|"educational"|"contextual"), psychological_goal (string, e.g. "competent_but_relaxed" or "sharp_but_approachable"), mood (string, optional), location, when, setting, budget, priority, constraints (array of strings, optional).
+Example: {"occasion":"DATE","formality":"medium","temperature":"mild","vibe":"sharp","risk":"low","domain":"advisory","psychological_goal":"approachable_but_put_together","mood":"confident","location":"RESTAURANT","when":"NIGHT","setting":"INDOOR","budget":"MID_RANGE","priority":"SHARP","constraints":[]}`;
 
 function buildPrompt(flowData: FlowData): string {
   const o = flowData?.occasion?.event ?? '';
@@ -61,12 +61,16 @@ export async function classifyIntentWithAI(
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) return null;
     const parsed = JSON.parse(text) as Record<string, unknown>;
+    const domain = parsed.domain as IntentProfile['domain'];
     return {
+      domain: domain === 'advisory' || domain === 'functional' || domain === 'educational' || domain === 'contextual' ? domain : 'advisory',
       occasion: String(parsed.occasion || flowData.occasion?.event || ''),
       formality: (parsed.formality as IntentProfile['formality']) || 'medium',
       temperature: (parsed.temperature as IntentProfile['temperature']) || 'mild',
       vibe: (parsed.vibe as IntentProfile['vibe']) || 'classic',
       risk: (parsed.risk as IntentProfile['risk']) || 'low',
+      psychological_goal: parsed.psychological_goal != null ? String(parsed.psychological_goal) : undefined,
+      mood: parsed.mood != null ? String(parsed.mood) : undefined,
       location: parsed.location != null ? String(parsed.location) : undefined,
       when: parsed.when != null ? String(parsed.when) : undefined,
       setting: parsed.setting != null ? String(parsed.setting) : undefined,

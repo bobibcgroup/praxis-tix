@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { PersonalData, Outfit, StyleDNA } from '@/types/praxis';
+import { applyStyleDNAWithDrift } from './styleDnaDrift';
 
 export interface OutfitHistoryEntry {
   id: string;
@@ -35,9 +36,14 @@ export async function saveUserProfile(
   }
 
   try {
+    let styleDnaToSave = personalData.styleDNA || null;
+    if (personalData.styleDNA) {
+      const existing = await getUserProfile(userId).catch(() => null);
+      styleDnaToSave = applyStyleDNAWithDrift(personalData.styleDNA, existing?.styleDNA ?? null);
+    }
     const profileData: any = {
       user_id: userId,
-      style_dna: personalData.styleDNA || null,
+      style_dna: styleDnaToSave || null,
       fit_calibration: personalData.fitCalibration || null,
       lifestyle: personalData.lifestyle || null,
       updated_at: new Date().toISOString(),

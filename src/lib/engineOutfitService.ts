@@ -54,6 +54,7 @@ export async function getOutfitsWithTrend(
       imageUrl: entry?.image_url ?? '',
       reasoning: o.reasoning,
       confidence: o.confidence,
+      score_breakdown: o.score_breakdown,
     };
   });
 
