@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, Trash2, Mail, User as UserIcon, Moon, Sun, Monitor, AlertCircle } from 'lucide-react';
 import { getOutfitHistory, getUserProfile, getFavorites } from '@/lib/userService';
 import { migrateLocalStorageToSupabase, hasLocalStorageData } from '@/lib/migrateLocalStorage';
+import { getRetailMode, setRetailMode } from '@/lib/retailMode';
 import Header from '@/components/Header';
 import {
   AlertDialog,
@@ -21,6 +22,7 @@ import { useTheme } from 'next-themes';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 const Settings = () => {
   const { user, isLoaded } = useUser();
@@ -29,6 +31,11 @@ const Settings = () => {
   const { theme, setTheme } = useTheme();
   const [hasLocalData, setHasLocalData] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const [retailMode, setRetailModeState] = useState(false);
+
+  useEffect(() => {
+    setRetailModeState(getRetailMode());
+  }, []);
 
   useEffect(() => {
     if (isLoaded) {
@@ -145,41 +152,52 @@ const Settings = () => {
         </div>
 
         <div className="space-y-8">
-          {/* Appearance Settings */}
+          {/* Appearance */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sun className="w-5 h-5" />
                 Appearance
               </CardTitle>
-              <CardDescription>
-                Choose your preferred theme. Changes apply immediately.
-              </CardDescription>
+              <CardDescription>Choose your preferred theme.</CardDescription>
             </CardHeader>
             <CardContent>
               <RadioGroup value={theme} onValueChange={setTheme} className="space-y-3">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="light" id="light" />
-                  <Label htmlFor="light" className="flex items-center gap-2 cursor-pointer">
-                    <Sun className="w-4 h-4" />
-                    <span>Light</span>
-                  </Label>
+                  <Label htmlFor="light" className="flex items-center gap-2 cursor-pointer"><Sun className="w-4 h-4" /><span>Light</span></Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="dark" id="dark" />
-                  <Label htmlFor="dark" className="flex items-center gap-2 cursor-pointer">
-                    <Moon className="w-4 h-4" />
-                    <span>Dark</span>
-                  </Label>
+                  <Label htmlFor="dark" className="flex items-center gap-2 cursor-pointer"><Moon className="w-4 h-4" /><span>Dark</span></Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="system" id="system" />
-                  <Label htmlFor="system" className="flex items-center gap-2 cursor-pointer">
-                    <Monitor className="w-4 h-4" />
-                    <span>System</span>
-                  </Label>
+                  <Label htmlFor="system" className="flex items-center gap-2 cursor-pointer"><Monitor className="w-4 h-4" /><span>System</span></Label>
                 </div>
               </RadioGroup>
+            </CardContent>
+          </Card>
+
+          {/* Retail / Demo mode */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Retail mode</CardTitle>
+              <CardDescription>Demo uses Praxis curated looks. Retail will use partner inventory (coming soon).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="retail-mode" className="cursor-pointer">Use partner inventory (retail)</Label>
+                <Switch
+                  id="retail-mode"
+                  checked={retailMode}
+                  onCheckedChange={(checked) => {
+                    setRetailMode(checked);
+                    setRetailModeState(checked);
+                    toast.success(checked ? 'Retail mode on' : 'Demo mode on');
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
 

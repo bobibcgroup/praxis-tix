@@ -170,6 +170,14 @@ export type OutfitLabel = 'Safest choice' | 'Sharper choice' | 'More relaxed cho
 
 // ============= OUTFIT STRUCTURE (UI) =============
 
+/** Optional backend-generated reasoning (Decision Engine) */
+export interface ReasoningExplanation {
+  summary: string;
+  silhouette?: string;
+  color_logic?: string;
+  context_logic?: string;
+}
+
 export interface Outfit {
   id: number;
   title: string;
@@ -182,4 +190,8 @@ export interface Outfit {
   };
   reason: string;
   imageUrl: string;
+  /** From Decision Engine */
+  reasoning?: ReasoningExplanation;
+  /** 0-100, from Decision Engine */
+  confidence?: number;
 }

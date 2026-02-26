@@ -19,7 +19,8 @@ import StepPersonalLoading from '@/components/app/StepPersonalLoading';
 import StepVirtualTryOn from '@/components/app/StepVirtualTryOn';
 import StyleNameModal from '@/components/app/StyleNameModal';
 import { generateOutfits, generateAlternativeOutfits, hasAlternativeOutfits } from '@/lib/outfitGenerator';
-import { generateTrendOutfits, mergeTrendImagesIntoOutfits } from '@/lib/trendOutfitService';
+import { getOutfitsWithTrend } from '@/lib/engineOutfitService';
+import { logEvent } from '@/lib/eventLog';
 import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory, updateOutfitHistoryTryOn, updateOutfitHistoryStyleName } from '@/lib/userService';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
@@ -136,37 +137,38 @@ const Flow = () => {
   // Guard: Show sign-in prompt at step 10 (Photo) if not authenticated
   // Allow users to start personal flow but require auth at photo step
 
-  // Quick flow handlers
+  // Quick flow handlers — primary path: Decision Engine + Trend API
   const handleGetOutfits = () => {
-    const flowData: FlowData = { occasion, context, preferences };
-    const { outfits: generatedOutfits, usedIds } = generateOutfits(flowData, []);
-    setOutfits(generatedOutfits);
-    setUsedOutfitIds(usedIds);
+    logEvent({ event: 'outfits_requested', mode: 'quick', occasion: occasion.event, location: context.location, when: context.when, budget: preferences.budget, priority: preferences.priority });
+    setOutfits([]);
+    setUsedOutfitIds([]);
     setIsQuickFlowGenerating(true);
     setStep(4);
   };
 
-  // When on results step with trend generation loading, call API and merge images
+  // When on results step with trend generation loading, run engine + trend (primary path)
   useEffect(() => {
-    if (step !== 4 || !isQuickFlowGenerating || outfits.length === 0) return;
+    if (step !== 4 || !isQuickFlowGenerating) return;
     const flowData: FlowData = { occasion, context, preferences };
     let cancelled = false;
-    generateTrendOutfits(flowData, outfits)
-      .then((result) => {
+    getOutfitsWithTrend(flowData)
+      .then(({ outfits: nextOutfits, thinkingSteps }) => {
         if (cancelled) return;
-        const merged = mergeTrendImagesIntoOutfits(outfits, result);
-        setOutfits(merged);
+        setOutfits(nextOutfits);
+        setUsedOutfitIds(nextOutfits.map((o) => String(o.id)));
       })
       .catch((err) => {
         if (cancelled) return;
-        console.warn('Trend outfit generation failed, using library images:', err);
-        toast.error('Trend images unavailable. Showing curated looks.');
+        console.warn('Engine+trend failed, fallback to library:', err);
+        toast.error('Trend looks unavailable. Showing curated looks.');
+        const { outfits: generatedOutfits, usedIds } = generateOutfits(flowData, []);
+        setOutfits(generatedOutfits);
+        setUsedOutfitIds(usedIds);
       })
       .finally(() => {
         if (!cancelled) setIsQuickFlowGenerating(false);
       });
     return () => { cancelled = true; };
-    // Intentionally depend only on step and isQuickFlowGenerating so we run once per "Show my looks"
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, isQuickFlowGenerating]);
 
@@ -332,6 +334,7 @@ const Flow = () => {
           <StepOccasion
             value={occasion.event}
             onNext={(event: OccasionType) => {
+              logEvent({ event: 'occasion_selected', mode: 'quick', occasion: event });
               setOccasion({ event });
               setStep(2);
             }}
@@ -370,6 +373,7 @@ const Flow = () => {
               setSelectedOutfitId(outfitId);
               const outfit = outfits.find(o => o.id === outfitId);
               if (outfit) {
+                logEvent({ event: 'outfit_selected', mode: 'quick', occasion: occasion.event, outfitId, outfitLabel: outfit.label });
                 setSelectedOutfit(outfit);
                 // Store selection for analytics
                 localStorage.setItem('praxis_selected_outfit', JSON.stringify({

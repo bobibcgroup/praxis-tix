@@ -1,11 +1,12 @@
 import { Button } from '@/components/ui/button';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PersonalData } from '@/types/praxis';
 import { 
   getRecommendedSwatches,
   getMetalRecommendations,
 } from '@/lib/personalOutfitGenerator';
 import { saveUserProfile } from '@/lib/userService';
+import { generateStyleDNACopy } from '@/lib/styleDnaService';
 import { useUser, SignInButton } from '@clerk/clerk-react';
 import { toast } from 'sonner';
 import { User, Save } from 'lucide-react';
@@ -30,6 +31,46 @@ const DEFAULT_METALS = 'Silver, Gold, Rose Gold';
 const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps) => {
   const { user, isLoaded } = useUser();
   const hasAutoSaved = useRef(false);
+  const [dnaCopy, setDnaCopy] = useState<{
+    identityPhrase: string;
+    paletteReasoning: string;
+    leanInto: string[];
+    avoid: string[];
+    closingLine: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    generateStyleDNACopy({
+      lifestyle: personalData.lifestyle || undefined,
+      inspirationPreset: personalData.inspirationPreset || undefined,
+      skinToneBucket: personalData.skinTone?.bucket,
+      contrastLevel: personalData.contrastLevel,
+    })
+      .then((r) => {
+        if (!cancelled) {
+          setDnaCopy({
+            identityPhrase: r.identityPhrase,
+            paletteReasoning: r.paletteReasoning,
+            leanInto: r.leanInto,
+            avoid: r.avoid,
+            closingLine: r.closingLine,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDnaCopy({
+            identityPhrase: 'Understated. Refined. Effortless.',
+            paletteReasoning: 'Balanced tones that enhance your natural contrast and complexion.',
+            leanInto: ['Balanced warm and cool tones', 'Medium-contrast outfits that feel grounded', 'Jewel tones for structure and emphasis'],
+            avoid: ['Overly bright neons that overpower', 'Very pale shades that flatten contrast'],
+            closingLine: 'Style is clarity. You now have yours.',
+          });
+        }
+      });
+    return () => { cancelled = true; };
+  }, [personalData.lifestyle, personalData.inspirationPreset, personalData.skinTone?.bucket, personalData.contrastLevel]);
   
   // Get color swatches - use detected or defaults
   const skinToneBucket = personalData.skinTone?.bucket;
@@ -156,7 +197,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
       {/* Style Name - Hero */}
       <div className="mb-12">
         <p className="text-3xl md:text-4xl text-foreground font-serif italic text-center font-medium">
-          "Understated. Refined. Effortless."
+          {dnaCopy?.identityPhrase ?? '"Understated. Refined. Effortless."'}
         </p>
       </div>
 
@@ -166,7 +207,7 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
           Your optimal palette
         </h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Balanced tones that enhance your natural contrast and complexion.
+          {dnaCopy?.paletteReasoning ?? 'Balanced tones that enhance your natural contrast and complexion.'}
         </p>
         <div className="flex justify-start gap-4">
           {colorSwatches.map((swatch, index) => (
@@ -195,18 +236,12 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
           Lean into
         </h2>
         <ul className="space-y-2">
-          <li className="flex items-start gap-3 text-foreground">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Balanced warm and cool tones</span>
-          </li>
-          <li className="flex items-start gap-3 text-foreground">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Medium-contrast outfits that feel grounded</span>
-          </li>
-          <li className="flex items-start gap-3 text-foreground">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Jewel tones for structure and emphasis</span>
-          </li>
+          {(dnaCopy?.leanInto ?? ['Balanced warm and cool tones', 'Medium-contrast outfits that feel grounded', 'Jewel tones for structure and emphasis']).map((item, i) => (
+            <li key={i} className="flex items-start gap-3 text-foreground">
+              <span className="text-primary mt-0.5">•</span>
+              <span>{item}</span>
+            </li>
+          ))}
         </ul>
       </div>
 
@@ -216,21 +251,19 @@ const StepStyleDNA = ({ personalData, onStyleAgain, onBack }: StepStyleDNAProps)
           Avoid
         </h2>
         <ul className="space-y-2">
-          <li className="flex items-start gap-3 text-foreground">
-            <span className="text-muted-foreground mt-0.5">•</span>
-            <span>Overly bright neons that overpower</span>
-          </li>
-          <li className="flex items-start gap-3 text-foreground">
-            <span className="text-muted-foreground mt-0.5">•</span>
-            <span>Very pale shades that flatten contrast</span>
-          </li>
+          {(dnaCopy?.avoid ?? ['Overly bright neons that overpower', 'Very pale shades that flatten contrast']).map((item, i) => (
+            <li key={i} className="flex items-start gap-3 text-foreground">
+              <span className="text-muted-foreground mt-0.5">•</span>
+              <span>{item}</span>
+            </li>
+          ))}
         </ul>
       </div>
 
       {/* Closing line */}
       <div className="mb-10 text-center">
         <p className="text-sm text-muted-foreground">
-          Style is clarity. You now have yours.
+          {dnaCopy?.closingLine ?? 'Style is clarity. You now have yours.'}
         </p>
       </div>
 

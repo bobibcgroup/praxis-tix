@@ -10,6 +10,8 @@ const API_BASE =
     ? (import.meta.env.VITE_API_BASE ?? '')
     : '';
 const TREND_OUTFITS_URL = `${API_BASE || ''}/api/generate-trend-outfits`;
+
+export interface GenerateTrendOutfitsResult {
   success: boolean;
   trendSummary?: string;
   outfits: { id: number; imageUrl: string }[];

@@ -216,7 +216,9 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
     return null;
   }
 
-  const whyBullets = getWhyBullets(outfit.label);
+  const whyBullets = outfit.reasoning
+    ? [outfit.reasoning.silhouette, outfit.reasoning.color_logic, outfit.reasoning.context_logic].filter(Boolean)
+    : getWhyBullets(outfit.label);
   const currentImage = carouselImages[currentImageIndex];
 
   return (
@@ -238,10 +240,15 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
           
           {/* Outfit tier label - only show on outfit image */}
           {!currentImage.isUserPiece && (
-            <div className="absolute top-3 left-3 flex items-center gap-2">
+            <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2">
               <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${getLabelStyle(outfit.label)}`}>
                 {outfit.label}
               </span>
+              {typeof outfit.confidence === 'number' && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-background/90 text-muted-foreground border border-border">
+                  Praxis confidence: {Math.round(outfit.confidence)}%
+                </span>
+              )}
               {user && (
                 <button
                   onClick={handleToggleFavorite}

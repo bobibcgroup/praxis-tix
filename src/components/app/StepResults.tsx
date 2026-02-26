@@ -1,14 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Check, Maximize2 } from 'lucide-react';
-import OutfitCard from './OutfitCard';
-import OutfitComparison from './OutfitComparison';
-import type { Outfit, OccasionType, OutfitLabel } from '@/types/praxis';
-import { getValidOutfits, getTierLabel, type TierType } from '@/lib/outfitLibrary';
-import { generateMotivationalMessage } from '@/lib/openaiService';
-
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { ArrowLeft, Check, Maximize2, Loader2 } from 'lucide-react';
 import OutfitCard from './OutfitCard';
 import OutfitComparison from './OutfitComparison';
@@ -28,6 +19,12 @@ interface StepResultsProps {
   loading?: boolean;
 }
 
+const THINKING_STEPS = [
+  'Analyzing event context…',
+  'Balancing formality and comfort…',
+  'Selecting optimal silhouettes…',
+];
+
 // ============= RESULTS SCREEN =============
 // CRITICAL: Outfits are from locked library only.
 // Image and text always come from the same outfit object.
@@ -46,6 +43,16 @@ const StepResults = ({
   const [selectedOutfitId, setSelectedOutfitId] = useState<number | null>(null);
   const [motivationalMessage, setMotivationalMessage] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState(false);
+  const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
+
+  // Rotate thinking message every 1s while loading
+  useEffect(() => {
+    if (!loading) return;
+    const t = setInterval(() => {
+      setThinkingStepIndex((i) => (i + 1) % THINKING_STEPS.length);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [loading]);
 
   // Generate motivational message when outfits are displayed
   useEffect(() => {
@@ -144,7 +151,7 @@ const StepResults = ({
         <div className="flex flex-col items-center justify-center py-16 gap-4">
           <Loader2 className="w-10 h-10 text-primary animate-spin" />
           <p className="text-muted-foreground text-center">
-            Researching trends & generating your looks…
+            {THINKING_STEPS[thinkingStepIndex]}
           </p>
         </div>
       ) : (
