@@ -14,6 +14,11 @@ const apiRoutesToBundle = [
   { entry: 'api/generate-outfits.ts', stub: "export { default } from './generate-outfits.js';\n" },
   { entry: 'api/generate-outfits-stream.ts', stub: "export { default, config } from './generate-outfits-stream.js';\n" },
   { entry: 'api/interpret-intent.ts', stub: "export { default } from './interpret-intent.js';\n" },
+  { entry: 'api/biometrics/session/start.ts', stub: "export { default } from './start.js';\n" },
+  { entry: 'api/biometrics/session/face.ts', stub: "export { default } from './face.js';\n" },
+  { entry: 'api/biometrics/session/body.ts', stub: "export { default } from './body.js';\n" },
+  { entry: 'api/biometrics/session/finalize.ts', stub: "export { default } from './finalize.js';\n" },
+  { entry: 'api/biometrics/session/result.ts', stub: "export { default } from './result.js';\n" },
 ];
 
 async function build() {
