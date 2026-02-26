@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart, Check } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart, Check, Shirt } from 'lucide-react';
 import { getUserProfile } from '@/lib/userService';
 import { syncUserDataOnSignIn } from '@/lib/userSync';
 import type { PersonalData } from '@/types/praxis';
@@ -259,12 +259,15 @@ const Profile = () => {
               </div>
             )}
 
-            {profile?.styleDNA?.identity_core && (
+            {/* Identity - radar chart: always show when user has a style profile */}
+            {profile && (profile.styleDNA || profile.lifestyle) && (
               <div className="bg-card rounded-xl border border-border p-6 mb-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Identity</span>
                 </div>
-                <p className="text-sm text-foreground font-medium mb-2">Current archetype: {archetype ?? '—'}</p>
+                <p className="text-sm text-foreground font-medium mb-2">
+                  Current archetype: {archetype ?? 'Building…'}
+                </p>
                 <div className="flex justify-center py-2">
                   <StyleDNARadarChart values={radarValues} size={160} className="w-[160px] h-[160px] mx-auto" />
                 </div>
@@ -426,6 +429,14 @@ const Profile = () => {
             </div>
 
             <div className="pt-4 space-y-2">
+              <Button
+                onClick={() => navigate('/')}
+                variant="cta"
+                className="w-full"
+              >
+                <Shirt className="w-4 h-4 mr-2" />
+                Try virtual try-on
+              </Button>
               <Button onClick={() => navigate('/history')} variant="outline" className="w-full">
                 View Outfit History
               </Button>
