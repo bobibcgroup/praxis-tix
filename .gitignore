@@ -18,6 +18,7 @@ api/generate-outfits.js
 api/generate-outfits-stream.js
 api/interpret-intent.js
 api/biometrics/session/*.js
+api/biometrics-session-*.js
 
 # IDE
 .vscode/

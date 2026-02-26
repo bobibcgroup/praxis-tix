@@ -14,7 +14,7 @@ interface StepQuickPhotoCaptureProps {
 }
 
 async function startBiometricsSession(userId: string, flow: 'occasion' | 'dna'): Promise<string> {
-  const res = await fetch(`${API_BASE}/api/biometrics/session/start`, {
+  const res = await fetch(`${API_BASE}/api/biometrics-session-start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: userId, flow }),
@@ -28,7 +28,7 @@ async function startBiometricsSession(userId: string, flow: 'occasion' | 'dna'):
 }
 
 async function uploadFaceImage(sessionId: string, imageBase64: string): Promise<{ accepted: boolean; reject_reason?: string; how_to_fix?: string }> {
-  const res = await fetch(`${API_BASE}/api/biometrics/session/face`, {
+  const res = await fetch(`${API_BASE}/api/biometrics-session-face`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId, image: imageBase64 }),
@@ -38,7 +38,7 @@ async function uploadFaceImage(sessionId: string, imageBase64: string): Promise<
 }
 
 async function uploadBodyImage(sessionId: string, imageBase64: string): Promise<{ accepted: boolean; reject_reason?: string; how_to_fix?: string }> {
-  const res = await fetch(`${API_BASE}/api/biometrics/session/body`, {
+  const res = await fetch(`${API_BASE}/api/biometrics-session-body`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId, image: imageBase64 }),
@@ -48,7 +48,7 @@ async function uploadBodyImage(sessionId: string, imageBase64: string): Promise<
 }
 
 async function finalizeSession(sessionId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/biometrics/session/finalize`, {
+  const res = await fetch(`${API_BASE}/api/biometrics-session-finalize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId }),
@@ -174,18 +174,28 @@ const StepQuickPhotoCapture = ({ onDone, onBack }: StepQuickPhotoCaptureProps) =
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setCameraReady(true);
-        };
-      }
       setShowCamera(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not access camera');
     }
   }, [phase]);
+
+  // When camera view is shown, attach stream to video element (video only mounts when showCamera is true)
+  useEffect(() => {
+    if (!showCamera || !streamRef.current || !videoRef.current) return;
+    setCameraReady(false);
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    video.srcObject = stream;
+    const onLoaded = () => {
+      video.play().then(() => setCameraReady(true)).catch(() => setCameraReady(true));
+    };
+    video.onloadedmetadata = onLoaded;
+    if (video.readyState >= 1) onLoaded();
+    return () => {
+      video.srcObject = null;
+    };
+  }, [showCamera]);
 
   const handleBack = () => {
     if (phase === 'body') {
