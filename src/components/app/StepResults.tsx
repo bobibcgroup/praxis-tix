@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Check, Maximize2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Maximize2, Calendar, SlidersHorizontal, Sparkles } from 'lucide-react';
 import OutfitCard from './OutfitCard';
 import OutfitComparison from './OutfitComparison';
 import type { Outfit, OccasionType, OutfitLabel } from '@/types/praxis';
@@ -25,6 +25,13 @@ const THINKING_STEPS = [
   'Selecting optimal silhouettes…',
 ];
 
+/** Same card-of-tasks design as Build my DNA loading (StepPersonalLoading) */
+const PROCESS_STEPS = [
+  { id: 'context', label: 'Analyzing event context…', icon: Calendar },
+  { id: 'balance', label: 'Balancing formality and comfort…', icon: SlidersHorizontal },
+  { id: 'silhouettes', label: 'Selecting optimal silhouettes…', icon: Sparkles },
+];
+
 // ============= RESULTS SCREEN =============
 // CRITICAL: Outfits are from locked library only.
 // Image and text always come from the same outfit object.
@@ -45,11 +52,11 @@ const StepResults = ({
   const [showComparison, setShowComparison] = useState(false);
   const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
 
-  // Rotate thinking message every 1s while loading
+  // Optional: cycle step highlight (kept for any future use; card shows all steps)
   useEffect(() => {
     if (!loading) return;
     const t = setInterval(() => {
-      setThinkingStepIndex((i) => (i + 1) % THINKING_STEPS.length);
+      setThinkingStepIndex((i) => (i + 1) % PROCESS_STEPS.length);
     }, 1000);
     return () => clearInterval(t);
   }, [loading]);
@@ -148,12 +155,55 @@ const StepResults = ({
       </button>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
-          <p className="text-muted-foreground text-center">
-            {THINKING_STEPS[thinkingStepIndex]}
-          </p>
-        </div>
+        <>
+          <div className="text-center mb-6">
+            <h1 className="text-2xl md:text-3xl font-medium text-foreground mb-2">
+              Styling your moment…
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Finding the best options for this occasion.
+            </p>
+          </div>
+          {/* Same card-of-tasks design as Build my DNA loading (StepPersonalLoading) */}
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Processing
+              </span>
+            </div>
+            <ul className="space-y-4">
+              {PROCESS_STEPS.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = index === thinkingStepIndex;
+                return (
+                  <li
+                    key={step.id}
+                    className="flex items-start gap-3 animate-fade-in"
+                    style={{ animationDelay: `${index * 120}ms`, animationFillMode: 'backwards' }}
+                  >
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <Icon className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">{step.label}</p>
+                    </div>
+                    {isActive && (
+                      <div className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-primary" />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-4 text-xs text-muted-foreground">
+              This usually takes a few seconds. Feel free to stay on this screen.
+            </p>
+          </div>
+          <div className="mt-8 flex justify-center">
+            <div className="relative">
+              <div className="h-12 w-12 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+            </div>
+          </div>
+        </>
       ) : (
         <>
       <div className="text-center mb-6">
