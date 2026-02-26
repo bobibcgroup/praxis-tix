@@ -14,6 +14,8 @@ interface OutfitCardProps {
   hasPhotoAnalysis?: boolean; // Whether user uploaded a photo for color analysis
   hasProportionAnalysis?: boolean; // Whether body proportions were detected
   hasFaceAnalysis?: boolean; // Whether face shape was detected
+  /** When true, show "Best for you" pill in description (e.g. first recommendation on results) */
+  isFirstRecommendation?: boolean;
 }
 
 // "Why this works" explanations based on tier
@@ -76,7 +78,7 @@ interface CarouselImage {
   label?: string;
 }
 
-const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasPhotoAnalysis = false, hasProportionAnalysis = false, hasFaceAnalysis = false }: OutfitCardProps) => {
+const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasPhotoAnalysis = false, hasProportionAnalysis = false, hasFaceAnalysis = false, isFirstRecommendation = false }: OutfitCardProps) => {
   const { user } = useUser();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -238,22 +240,9 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
             onError={handleImageError}
           />
           
-          {/* Outfit tier label - only show on outfit image */}
+          {/* Outfit image: only show favorite button overlay (tags moved to description pills) */}
           {!currentImage.isUserPiece && (
-            <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2">
-              <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${getLabelStyle(outfit.label)}`}>
-                {outfit.label}
-              </span>
-              {typeof outfit.confidence === 'number' && (
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-background/90 text-muted-foreground border border-border">
-                  Praxis confidence: {Math.round(outfit.confidence)}%
-                </span>
-              )}
-              {outfit.score_breakdown && (
-                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-background/90 text-muted-foreground border border-border">
-                  Event {Math.round((outfit.score_breakdown.event_appropriateness ?? 0) * 100)}% · Vibe {Math.round((outfit.score_breakdown.user_preference_match ?? 0) * 100)}% · Color {Math.round((outfit.score_breakdown.color_harmony ?? 0) * 100)}%
-                </span>
-              )}
+            <div className="absolute top-3 right-3 flex items-center gap-2">
               {user && (
                 <button
                   onClick={handleToggleFavorite}
@@ -360,6 +349,29 @@ const OutfitCard = ({ outfit, onImageError, inspirationNote, wardrobeItems, hasP
                 <span className="text-muted-foreground w-16 shrink-0">Extras</span>
                 <span className="text-foreground">{outfit.items.extras}</span>
               </div>
+            )}
+          </div>
+
+          {/* Description-area pills: label, confidence, score breakdown (theme-styled) */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {isFirstRecommendation ? (
+              <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary text-primary-foreground">
+                Best for you
+              </span>
+            ) : (
+              <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${getLabelStyle(outfit.label)}`}>
+                {outfit.label}
+              </span>
+            )}
+            {typeof outfit.confidence === 'number' && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-muted/80 text-muted-foreground border border-border">
+                Praxis confidence: {Math.round(outfit.confidence)}%
+              </span>
+            )}
+            {outfit.score_breakdown && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-muted/80 text-muted-foreground border border-border">
+                Event {Math.round((outfit.score_breakdown.event_appropriateness ?? 0) * 100)}% · Vibe {Math.round((outfit.score_breakdown.user_preference_match ?? 0) * 100)}% · Color {Math.round((outfit.score_breakdown.color_harmony ?? 0) * 100)}%
+              </span>
             )}
           </div>
 

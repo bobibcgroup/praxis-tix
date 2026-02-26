@@ -184,11 +184,6 @@ const StepResults = ({
                   : 'hover:ring-1 hover:ring-border'
             }`}
           >
-            {index === 0 && (
-              <div className="absolute top-3 left-3 z-10 px-2 py-1 bg-primary text-primary-foreground text-xs font-medium rounded">
-                Best for you
-              </div>
-            )}
             {selectedOutfitId === outfit.id && (
               <div className="absolute top-3 right-3 z-10 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                 <Check className="w-4 h-4 text-primary-foreground" />
@@ -197,6 +192,7 @@ const StepResults = ({
             <OutfitCard 
               outfit={outfit} 
               onImageError={() => handleImageError(outfit.id)}
+              isFirstRecommendation={index === 0}
             />
           </div>
         ))}
