@@ -27,12 +27,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       inspirationPreset?: string;
       skinToneBucket?: string;
       contrastLevel?: string;
+      colorSeason?: string;
+      undertone?: string;
+      archetype?: string;
+      verticalLine?: string;
+      shoulder?: string;
+      confidencePercent?: number;
     };
-    const { lifestyle = '', inspirationPreset = '', skinToneBucket = '', contrastLevel = '' } = body;
+    const {
+      lifestyle = '',
+      inspirationPreset = '',
+      skinToneBucket = '',
+      contrastLevel = '',
+      colorSeason = '',
+      undertone = '',
+      archetype = '',
+      verticalLine = '',
+      shoulder = '',
+      confidencePercent,
+    } = body;
+
+    const biometricLine =
+      [colorSeason, undertone, archetype, verticalLine, shoulder].some(Boolean)
+        ? `Biometric analysis: color season=${colorSeason || 'not set'}, undertone=${undertone || 'not set'}, archetype=${archetype || 'not set'}, vertical line=${verticalLine || 'not set'}, shoulder=${shoulder || 'not set'}${confidencePercent != null ? `, confidence=${confidencePercent}%` : ''}. Use this to ground the identity phrase and recommendations.`
+        : '';
 
     const prompt = `You are a men's style consultant. Generate a short "Style DNA" summary for a user.
 
 User context: lifestyle=${lifestyle || 'not specified'}, style inspiration=${inspirationPreset || 'not specified'}, skin tone=${skinToneBucket || 'not specified'}, contrast=${contrastLevel || 'not specified'}.
+${biometricLine ? '\n' + biometricLine + '\n' : ''}
 
 Respond with ONLY a JSON object (no markdown):
 {

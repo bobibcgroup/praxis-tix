@@ -21,11 +21,31 @@ export function identityCoreFromBiometrics(
   const bodyOk = bodyProfile?.status === 'ok' && bodyProfile.confidence >= CONFIDENCE_THRESHOLD;
   const provisional = !faceOk || !bodyOk;
 
+  const verticalLine =
+    bodyProfile?.measurements?.vertical_ratio != null
+      ? bodyProfile.measurements.vertical_ratio >= 0.85
+        ? 'Long'
+        : bodyProfile.measurements.vertical_ratio >= 0.75
+          ? 'Moderate'
+          : 'Short'
+      : undefined;
+  const shoulder =
+    bodyProfile?.measurements?.shoulder_angle_deg != null
+      ? bodyProfile.measurements.shoulder_angle_deg >= 18
+        ? 'Sharp'
+        : bodyProfile.measurements.shoulder_angle_deg >= 10
+          ? 'Blunt'
+          : 'Soft'
+      : undefined;
+
   return {
     color_season: faceOk && faceProfile?.color_season ? faceProfile.color_season : undefined,
     kibbe: bodyOk && bodyProfile?.kibbe_cluster ? bodyProfile.kibbe_cluster : undefined,
     assessed_date: (faceOk || bodyOk) ? now : undefined,
     provisional: provisional || undefined,
+    undertone: faceOk && faceProfile?.undertone ? faceProfile.undertone : undefined,
+    vertical_line: bodyOk ? verticalLine : undefined,
+    shoulder: bodyOk ? shoulder : undefined,
   };
 }
 

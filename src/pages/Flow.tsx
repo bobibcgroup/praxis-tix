@@ -25,6 +25,7 @@ import { getOutfitsWithTrend } from '@/lib/engineOutfitService';
 import { logEvent } from '@/lib/eventLog';
 import { generatePersonalOutfits, deriveStyleColorProfile, getRecommendedSwatches } from '@/lib/personalOutfitGenerator';
 import { saveOutfitToHistory, updateOutfitHistoryTryOn, updateOutfitHistoryStyleName } from '@/lib/userService';
+import { mergeBiometricsIntoStyleDNA } from '@/lib/biometricStyleDnaIntegration';
 import { useUser, UserButton, SignInButton } from '@clerk/clerk-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -299,7 +300,7 @@ const Flow = () => {
 
   // Show "Start over" in header for intermediate steps
   const showStartOver = (mode === 'quick' && ((step >= 1 && step <= 6) || step === 35 || step === 36)) || 
-                        (mode === 'personal' && step >= 10 && step <= 17);
+                        (mode === 'personal' && step >= 10 && step <= 18);
 
   const progress = getProgressInfo();
 
@@ -514,14 +515,18 @@ const Flow = () => {
               contrastLevel?: ContrastLevel;
               bodyProportions?: BodyProportions;
               faceShape?: FaceShapeData;
+              faceProfile?: import('@/types/praxis').FaceProfile;
+              bodyProfile?: import('@/types/praxis').BodyProfile;
             }) => {
-              // Derive style color profile from photo analysis
               const styleColorProfile = result.skinTone ? deriveStyleColorProfile({
                 ...personal,
                 skinTone: result.skinTone,
                 contrastLevel: result.contrastLevel,
               }) : undefined;
-              
+              const mergedStyleDNA =
+                result.faceProfile != null || result.bodyProfile != null
+                  ? mergeBiometricsIntoStyleDNA(personal.styleDNA, result.faceProfile, result.bodyProfile)
+                  : personal.styleDNA;
               setPersonal(p => ({ 
                 ...p, 
                 hasPhoto: true, 
@@ -533,6 +538,9 @@ const Flow = () => {
                 styleColorProfile,
                 bodyProportions: result.bodyProportions,
                 faceShape: result.faceShape,
+                faceProfile: result.faceProfile,
+                bodyProfile: result.bodyProfile,
+                styleDNA: mergedStyleDNA ?? p.styleDNA,
               }));
               setStep(11);
             }}
@@ -687,7 +695,7 @@ const Flow = () => {
                 } else {
                   console.warn('User not authenticated, skipping history save');
                 }
-                // Go to virtual try-on if photo available
+                // Go to DNA card first (step 17); virtual try-on is optional from there
                 setStep(17);
               }
             }}
@@ -695,33 +703,37 @@ const Flow = () => {
           />
         );
       case 17:
-        // Virtual Try-On for personal flow
+        // DNA card (Build my DNA result). Virtual try-on is optional via onTryVirtualTryOn.
+        return (
+          <StepStyleDNA
+            personalData={personal}
+            onStyleAgain={handleRestart}
+            onBack={() => setStep(16)}
+            onTryVirtualTryOn={
+              personal.hasPhoto && personal.photoCropped && selectedOutfit
+                ? () => setStep(18)
+                : undefined
+            }
+          />
+        );
+      case 18:
+        // Virtual Try-On (optional, only when user chose it from DNA card)
         if (selectedOutfit && personal.hasPhoto && personal.photoCropped) {
           return (
             <StepVirtualTryOn
               outfit={selectedOutfit}
               userPhoto={personal.photoCropped}
               personalData={personal}
-              onBack={() => setStep(16)}
+              onBack={() => setStep(17)}
               onComplete={async (tryOnUrl: string, styleName?: string) => {
                 setTryOnImageUrl(tryOnUrl);
-                
-                console.log('📝 onComplete called with style name:', styleName);
-                
-                // Update history entry with try-on URL, style name, DNA, and colors
+
                 if (user && historyEntryId && selectedOutfit) {
                   try {
                     const colorPalette = personal.skinTone?.bucket
                       ? getRecommendedSwatches(personal.skinTone.bucket).slice(0, 4).map(s => ({ name: s.name, hex: s.hex }))
                       : null;
-                    
-                    console.log('🔄 Updating history entry from onComplete:', {
-                      historyEntryId,
-                      userId: user.id,
-                      styleName,
-                      hasTryOnUrl: !!tryOnUrl
-                    });
-                    
+
                     await updateOutfitHistoryTryOn(
                       user.id,
                       historyEntryId,
@@ -729,42 +741,24 @@ const Flow = () => {
                       styleName,
                       personal.styleDNA || undefined,
                       colorPalette || undefined,
-                      selectedOutfit.id, // Pass outfitId as fallback
-                      user.primaryEmailAddress?.emailAddress // Email for cross-device sync
+                      selectedOutfit.id,
+                      user.primaryEmailAddress?.emailAddress
                     );
-                    
-                    console.log('✅ History updated successfully from onComplete');
                   } catch (err) {
                     console.error('❌ Error updating history with try-on URL:', err);
                   }
-                } else {
-                  console.warn('⚠️ Missing data for history update:', {
-                    hasUser: !!user,
-                    hasHistoryEntryId: !!historyEntryId,
-                    hasSelectedOutfit: !!selectedOutfit
-                  });
                 }
-                
-                setStep(18);
+                setStep(17);
               }}
-              onSkip={() => setStep(18)}
+              onSkip={() => setStep(17)}
             />
           );
         }
-        // No photo, go directly to Style DNA
         return (
           <StepStyleDNA
             personalData={personal}
             onStyleAgain={handleRestart}
             onBack={() => setStep(16)}
-          />
-        );
-      case 18:
-        return (
-          <StepStyleDNA
-            personalData={personal}
-            onStyleAgain={handleRestart}
-            onBack={() => setStep(17)}
           />
         );
       

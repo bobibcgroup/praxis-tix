@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, Upload, AlertCircle, X, User, Sun, Maximize } from 'lucide-react';
+import { Camera, Upload, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser, SignInButton } from '@clerk/clerk-react';
 import FlowStep from './FlowStep';
 import PhotoCropModal from './PhotoCropModal';
 import { analyzePhoto } from '@/lib/photoAnalysis';
-import type { SkinToneData, ContrastLevel, BodyProportions, FaceShapeData } from '@/types/praxis';
+import { runBiometricAnalysis } from '@/lib/biometricApi';
+import type { SkinToneData, ContrastLevel, BodyProportions, FaceShapeData, FaceProfile, BodyProfile } from '@/types/praxis';
 
 interface PhotoAnalysisResult {
   originalPhoto: string;
@@ -14,6 +15,9 @@ interface PhotoAnalysisResult {
   contrastLevel?: ContrastLevel;
   bodyProportions?: BodyProportions;
   faceShape?: FaceShapeData;
+  /** From biometric API (face + body pipelines); saved into DNA card */
+  faceProfile?: FaceProfile;
+  bodyProfile?: BodyProfile;
 }
 
 interface StepPhotoProps {
@@ -157,45 +161,46 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
 
   // Process photo with smart auto-confirm
   const processPhotoWithAutoConfirm = useCallback(async (imageUrl: string, photoSource: 'camera' | 'upload') => {
-    // Camera photos always skip crop (like desktop) - no framing check needed
     if (photoSource === 'camera') {
-      // Auto-confirm: skip crop, go directly to confirmation message
       setShowConfirmation(true);
-      
-      // After showing confirmation, proceed with analysis
+
       setTimeout(async () => {
         setShowConfirmation(false);
         setIsAnalyzing(true);
-        
+
         try {
-        const analysis = await analyzePhoto(imageUrl);
-        
-        const result: PhotoAnalysisResult = {
-          originalPhoto: imageUrl,
-          croppedPhoto: imageUrl,
-          skinTone: analysis?.skinTone,
-          contrastLevel: analysis?.contrastLevel,
-          bodyProportions: analysis?.bodyProportions,
-          faceShape: analysis?.faceShape,
-        };
-          
+          const userId = typeof user?.id === 'string' ? user.id : 'anonymous';
+          const [analysis, biometricResult] = await Promise.all([
+            analyzePhoto(imageUrl).catch(() => null),
+            runBiometricAnalysis(userId, imageUrl).catch(() => null),
+          ]);
+
+          const result: PhotoAnalysisResult = {
+            originalPhoto: imageUrl,
+            croppedPhoto: imageUrl,
+            skinTone: analysis?.skinTone,
+            contrastLevel: analysis?.contrastLevel,
+            bodyProportions: analysis?.bodyProportions,
+            faceShape: analysis?.faceShape,
+            faceProfile: biometricResult?.face_profile ?? undefined,
+            bodyProfile: biometricResult?.body_profile ?? undefined,
+          };
           onPhotoConfirmed(result);
         } catch {
-          onPhotoConfirmed({ 
-            originalPhoto: imageUrl, 
-            croppedPhoto: imageUrl 
+          onPhotoConfirmed({
+            originalPhoto: imageUrl,
+            croppedPhoto: imageUrl,
           });
         } finally {
           setIsAnalyzing(false);
         }
       }, 1000);
     } else {
-      // Uploads always show crop modal (user likely needs to adjust)
       setRawPhoto(imageUrl);
       setSource(photoSource);
       setShowCropModal(true);
     }
-  }, [onPhotoConfirmed]);
+  }, [onPhotoConfirmed, user?.id]);
 
   // Capture photo from video stream
   const captureFromStream = useCallback(() => {
@@ -313,15 +318,18 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
   const handleCropConfirmed = useCallback(async (croppedImageUrl: string) => {
     setShowCropModal(false);
     setShowConfirmation(true);
-    
-    // Show confirmation for 1 second, then proceed
+
     setTimeout(async () => {
       setShowConfirmation(false);
       setIsAnalyzing(true);
-      
+
       try {
-        const analysis = await analyzePhoto(croppedImageUrl);
-        
+        const userId = typeof user?.id === 'string' ? user.id : 'anonymous';
+        const [analysis, biometricResult] = await Promise.all([
+          analyzePhoto(croppedImageUrl).catch(() => null),
+          runBiometricAnalysis(userId, croppedImageUrl).catch(() => null),
+        ]);
+
         const result: PhotoAnalysisResult = {
           originalPhoto: rawPhoto || croppedImageUrl,
           croppedPhoto: croppedImageUrl,
@@ -329,19 +337,20 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
           contrastLevel: analysis?.contrastLevel,
           bodyProportions: analysis?.bodyProportions,
           faceShape: analysis?.faceShape,
+          faceProfile: biometricResult?.face_profile ?? undefined,
+          bodyProfile: biometricResult?.body_profile ?? undefined,
         };
-        
         onPhotoConfirmed(result);
       } catch {
-        onPhotoConfirmed({ 
-          originalPhoto: rawPhoto || croppedImageUrl, 
-          croppedPhoto: croppedImageUrl 
+        onPhotoConfirmed({
+          originalPhoto: rawPhoto || croppedImageUrl,
+          croppedPhoto: croppedImageUrl,
         });
       } finally {
         setIsAnalyzing(false);
       }
     }, 1000);
-  }, [onPhotoConfirmed, rawPhoto]);
+  }, [onPhotoConfirmed, rawPhoto, user?.id]);
 
   // Handle retake from crop modal
   const handleRetakeFromCrop = useCallback(() => {
@@ -426,30 +435,10 @@ const StepPhoto = ({ onPhotoConfirmed, onSkip, onBack }: StepPhotoProps) => {
                 className="w-full h-full object-contain"
                 style={{ transform: 'scaleX(-1)' }}
               />
-              
-              {/* Ghost silhouette overlay - head and shoulders guidance */}
+              {/* Minimal corner guides only - no dummy person layer; features are auto-detected after capture */}
               {isStreamReady && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  {/* Subtle vignette */}
-                  <div className="absolute inset-0" style={{ 
-                    background: 'radial-gradient(ellipse 75% 80% at 50% 50%, transparent 0%, rgba(0,0,0,0.25) 100%)' 
-                  }} />
-                  
-                  {/* Head and shoulders outline - encourages wider framing */}
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[240px]">
-                    <div 
-                      className="absolute left-1/2 top-[12%] -translate-x-1/2 w-[70px] h-[82px] rounded-full"
-                      style={{ border: '1.5px dashed rgba(255,255,255,0.3)' }}
-                    />
-                    <div 
-                      className="absolute left-1/2 top-[42%] -translate-x-1/2 w-[150px] h-[110px]"
-                      style={{ 
-                        border: '1.5px dashed rgba(255,255,255,0.3)',
-                        borderRadius: '75px 75px 0 0',
-                        borderBottom: 'none',
-                      }}
-                    />
-                  </div>
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[260px] rounded-lg border border-dashed border-white/25" aria-hidden />
                 </div>
               )}
             </>

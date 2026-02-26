@@ -124,6 +124,12 @@ export interface IdentityCore {
   assessed_date?: string;
   /** true when confidence was below threshold at capture */
   provisional?: boolean;
+  /** From face pipeline for Analysis card */
+  undertone?: UndertoneType;
+  /** e.g. "Moderate" from body vertical_ratio */
+  vertical_line?: string;
+  /** e.g. "Blunt" from body measurements */
+  shoulder?: string;
 }
 
 // Skin tone detection
@@ -194,6 +200,10 @@ export interface PersonalData {
   styleColorProfile?: StyleColorProfile; // Derived color profile for styling
   bodyProportions?: BodyProportions; // Detected body proportions
   faceShape?: FaceShapeData; // Detected face shape
+  /** From biometric API (face pipeline); used for DNA card and copy generation */
+  faceProfile?: FaceProfile;
+  /** From biometric API (body pipeline); used for DNA card and copy generation */
+  bodyProfile?: BodyProfile;
   fitCalibration?: FitCalibration; // Height and fit preference
   lifestyle: LifestyleType | '';
   hasInspiration: boolean;

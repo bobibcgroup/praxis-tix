@@ -20,6 +20,12 @@ export async function generateStyleDNACopy(params: {
   inspirationPreset?: string;
   skinToneBucket?: string;
   contrastLevel?: string;
+  colorSeason?: string;
+  undertone?: string;
+  archetype?: string;
+  verticalLine?: string;
+  shoulder?: string;
+  confidencePercent?: number;
 }): Promise<StyleDNAResponse> {
   const res = await fetch(STYLE_DNA_URL, {
     method: 'POST',

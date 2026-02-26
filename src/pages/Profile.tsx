@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart, RotateCcw } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, Palette, Ruler, Heart, Check } from 'lucide-react';
 import { getUserProfile } from '@/lib/userService';
 import { syncUserDataOnSignIn } from '@/lib/userSync';
 import type { PersonalData } from '@/types/praxis';
@@ -142,6 +142,11 @@ const Profile = () => {
   const metalRecommendation = skinToneBucket 
     ? getMetalRecommendations(skinToneBucket) 
     : DEFAULT_METALS;
+  const identity = profile?.styleDNA?.identity_core;
+  const showAnalysisCard = identity && (identity.color_season || identity.kibbe || identity.undertone || identity.vertical_line || identity.shoulder);
+  const archetype = identity?.kibbe && typeof identity.kibbe === 'object'
+    ? (Object.entries(identity.kibbe) as [string, number][]).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0]?.[0] ?? identity.color_season ?? null
+    : identity?.color_season ?? null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -201,12 +206,46 @@ const Profile = () => {
               </p>
             </div>
 
-            {/* Identity Anchor */}
+            {/* Identity - hero card */}
             {profile.styleDNA && (
-              <div className="mb-8 text-center">
-                <p className="text-xl md:text-2xl text-foreground font-serif italic">
-                  "Understated. Refined. Effortless."
+              <div className="bg-card rounded-xl border border-border p-6 mb-4 shadow-sm transition-all duration-300 hover:shadow-md">
+                <p className="text-xl md:text-2xl text-foreground font-serif italic text-center">
+                  &quot;Understated. Refined. Effortless.&quot;
                 </p>
+              </div>
+            )}
+
+            {/* Analysis complete - when we have biometric identity_core */}
+            {showAnalysisCard && identity && (
+              <div className="bg-card rounded-xl border border-border p-6 mb-4 shadow-sm transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Biometric</span>
+                </div>
+                {archetype && (
+                  <p className="text-sm text-foreground font-medium mb-3">
+                    Your profile suggests a <span className="capitalize">{archetype}</span> archetype.
+                  </p>
+                )}
+                <ul className="space-y-2">
+                  {identity.undertone && (
+                    <li className="flex items-center gap-2 text-sm text-foreground">
+                      <Check className="w-4 h-4 text-primary shrink-0" />
+                      <span>Undertone {identity.undertone}</span>
+                    </li>
+                  )}
+                  {identity.vertical_line && (
+                    <li className="flex items-center gap-2 text-sm text-foreground">
+                      <Check className="w-4 h-4 text-primary shrink-0" />
+                      <span>Vertical line {identity.vertical_line}</span>
+                    </li>
+                  )}
+                  {identity.shoulder && (
+                    <li className="flex items-center gap-2 text-sm text-foreground">
+                      <Check className="w-4 h-4 text-primary shrink-0" />
+                      <span>Shoulder {identity.shoulder}</span>
+                    </li>
+                  )}
+                </ul>
               </div>
             )}
 
