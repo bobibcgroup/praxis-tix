@@ -167,28 +167,3 @@ export function hasLocalStorageData(userId: string): boolean {
   });
   return userEntries.length > 0;
 }
-
-// Make it available globally for debugging
-if (typeof window !== 'undefined') {
-  // Expose functions immediately
-  (window as any).migrateLocalStorageToSupabase = migrateLocalStorageToSupabase;
-  (window as any).hasLocalStorageData = hasLocalStorageData;
-  
-  // Also expose a helper that ensures the function is available
-  (window as any).__migrateHistory = async (userId: string, email?: string) => {
-    console.log('🔄 Starting migration...');
-    try {
-      const result = await migrateLocalStorageToSupabase(userId, email);
-      console.log('✅ Migration complete:', result);
-      return result;
-    } catch (error) {
-      console.error('❌ Migration failed:', error);
-      throw error;
-    }
-  };
-  
-  console.log('✅ Migration functions available:');
-  console.log('   - window.migrateLocalStorageToSupabase(userId, email?)');
-  console.log('   - window.__migrateHistory(userId, email?)');
-  console.log('   - window.hasLocalStorageData(userId)');
-}

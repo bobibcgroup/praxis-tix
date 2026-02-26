@@ -113,13 +113,6 @@ const Flow = () => {
   const [showQuickFlowNameModal, setShowQuickFlowNameModal] = useState(false);
   
   const { user, isLoaded } = useUser();
-  
-  // Debug: Log user state changes
-  useEffect(() => {
-    if (isLoaded) {
-      console.log('User state loaded:', { userId: user?.id, isAuthenticated: !!user });
-    }
-  }, [user, isLoaded]);
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
