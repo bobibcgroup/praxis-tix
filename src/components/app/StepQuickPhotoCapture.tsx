@@ -95,61 +95,6 @@ const StepQuickPhotoCapture = ({ onDone, onBack }: StepQuickPhotoCaptureProps) =
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
-  const startCamera = useCallback(async () => {
-    setError(null);
-    setHowToFix(null);
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError('Camera not supported');
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: phase === 'face' ? 'user' : 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setCameraReady(true);
-        };
-      }
-      setShowCamera(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not access camera');
-    }
-  }, [phase]);
-
-  const captureFromCamera = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !streamRef.current) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d')?.drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-    stopCamera();
-    submitImage(dataUrl);
-  }, [stopCamera, submitImage]);
-
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setError(null);
-      setHowToFix(null);
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        submitImage(dataUrl);
-      };
-      reader.readAsDataURL(file);
-      e.target.value = '';
-    },
-    [submitImage]
-  );
-
   const submitImage = useCallback(
     async (imageBase64: string) => {
       if (!sessionId) {
@@ -186,6 +131,61 @@ const StepQuickPhotoCapture = ({ onDone, onBack }: StepQuickPhotoCaptureProps) =
     },
     [sessionId, phase, onDone]
   );
+
+  const captureFromCamera = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !streamRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d')?.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    stopCamera();
+    submitImage(dataUrl);
+  }, [stopCamera, submitImage]);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setError(null);
+      setHowToFix(null);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        submitImage(dataUrl);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    },
+    [submitImage]
+  );
+
+  const startCamera = useCallback(async () => {
+    setError(null);
+    setHowToFix(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Camera not supported');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: phase === 'face' ? 'user' : 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          setCameraReady(true);
+        };
+      }
+      setShowCamera(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not access camera');
+    }
+  }, [phase]);
 
   const handleBack = () => {
     if (phase === 'body') {
