@@ -1,0 +1,4 @@
+# Bundled by scripts/build-api.mjs; Vercel should run the .js versions only
+api/generate-outfits.ts
+api/generate-outfits-stream.ts
+api/interpret-intent.ts
