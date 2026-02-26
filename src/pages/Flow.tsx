@@ -5,6 +5,8 @@ import StepModeSelect from '@/components/app/StepModeSelect';
 import StepOccasion from '@/components/app/StepOccasion';
 import StepContext from '@/components/app/StepContext';
 import StepPreferences from '@/components/app/StepPreferences';
+import StepQuickPhotoGate from '@/components/app/StepQuickPhotoGate';
+import StepQuickPhotoCapture from '@/components/app/StepQuickPhotoCapture';
 import StepResults from '@/components/app/StepResults';
 import StepComplete from '@/components/app/StepComplete';
 import StepPurchase from '@/components/app/StepPurchase';
@@ -277,9 +279,11 @@ const Flow = () => {
   // Progress indicator logic
   const getProgressInfo = () => {
     if (mode === 'quick') {
-      // Quick flow: 1=Occasion, 2=Context, 3=Preferences, 4=Results, 5=Purchase
-      if (step >= 1 && step <= 5) {
-        return { current: step, total: 5, show: true };
+      // Quick flow: 1=Occasion, 2=Context, 3=Preferences, 35=Photo gate, 36=Photo capture, 4=Results, 5=Purchase, 6=Complete
+      const quickSteps = [1, 2, 3, 35, 36, 4, 5, 6];
+      const current = step === 35 || step === 36 ? 4 : step;
+      if (quickSteps.includes(step)) {
+        return { current: current <= 6 ? current : 4, total: 6, show: true };
       }
     }
     if (mode === 'personal') {
@@ -294,7 +298,7 @@ const Flow = () => {
   };
 
   // Show "Start over" in header for intermediate steps
-  const showStartOver = (mode === 'quick' && step >= 1 && step <= 5) || 
+  const showStartOver = (mode === 'quick' && ((step >= 1 && step <= 6) || step === 35 || step === 36)) || 
                         (mode === 'personal' && step >= 10 && step <= 17);
 
   const progress = getProgressInfo();
@@ -356,8 +360,23 @@ const Flow = () => {
           <StepPreferences
             data={preferences}
             onUpdate={setPreferences}
-            onSubmit={handleGetOutfits}
+            onSubmit={() => setStep(35)}
             onBack={() => setStep(2)}
+          />
+        );
+      case 35:
+        return (
+          <StepQuickPhotoGate
+            onAddPhotos={() => setStep(36)}
+            onSkip={handleGetOutfits}
+            onBack={() => setStep(3)}
+          />
+        );
+      case 36:
+        return (
+          <StepQuickPhotoCapture
+            onDone={handleGetOutfits}
+            onBack={() => setStep(35)}
           />
         );
       case 4:
