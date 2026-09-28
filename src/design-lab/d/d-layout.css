@@ -1,0 +1,453 @@
+/* Concept D: structure. Brief lines, detail rows, progress, thumbnails, the stage and the print. Tokens live in d.css. */
+
+/* ---------- Brief line: 96 px label column, value, 24 px chevron column; 52 px row. ---------- */
+[data-concept="d"] .d-line {
+  display: grid;
+  grid-template-columns: 96px 1fr 24px;
+  align-items: center;
+  height: 52px;
+  width: 100%;
+  text-align: left;
+  border-bottom: var(--brief-rule);
+  color: var(--text);
+}
+
+[data-concept="d"] .d-line[aria-expanded="true"] {
+  border-bottom-color: transparent;
+}
+
+/* Below 1024 px the six rows must all stay in the lower half, so rows are 44 px (the control height). */
+@media (max-width: 1023px) {
+  [data-concept="d"] .d-line {
+    height: 44px;
+  }
+}
+
+[data-concept="d"] .d-line .label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+[data-concept="d"] .d-line .value {
+  font-size: 16px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-concept="d"] .d-line .value.empty {
+  color: var(--muted);
+}
+
+[data-concept="d"] .d-line .note {
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+[data-concept="d"] .d-line .chev {
+  width: 16px;
+  height: 16px;
+  justify-self: end;
+  color: var(--muted);
+  transition: transform 200ms ease;
+}
+
+[data-concept="d"] .d-line[aria-expanded="true"] .chev {
+  transform: rotate(180deg);
+}
+
+[data-concept="d"] .d-line-open {
+  border-bottom: var(--brief-rule);
+  padding: 8px 0 16px 96px;
+}
+
+/* Equal columns so option rows align instead of wrapping unevenly. */
+[data-concept="d"] .d-line-open .chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/*
+ * On a phone the options take the full width (the 96 px indent would leave
+ * 123 px columns, too narrow for "Launch or gallery"), and lines with short
+ * labels sit three across so an open line is never more than two rows.
+ */
+@media (max-width: 639px) {
+  [data-concept="d"] .d-line-open {
+    padding: 8px 0;
+  }
+
+  [data-concept="d"] .d-line-open .chips {
+    grid-template-columns: repeat(var(--chip-cols, 2), minmax(0, 1fr));
+  }
+}
+
+[data-concept="d"] .d-line-open .chips > * {
+  justify-self: stretch;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+/* Desktop keeps the hints, so options stack in one column and never clip. */
+@media (min-width: 1024px) {
+  [data-concept="d"] .d-line-open .chips {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Detail rows: tabular prices on one right edge. ---------- */
+[data-concept="d"] .d-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: 16px;
+  padding: 8px 0;
+}
+
+[data-concept="d"] .d-row .vendor {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+[data-concept="d"] .d-total {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  padding: 12px 0 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--rule);
+  font-weight: 500;
+}
+
+/* ---------- Progress: segmented hairline, then one continuous line during a build. ---------- */
+[data-concept="d"] .d-segments {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 16px;
+  margin-top: 16px;
+}
+
+[data-concept="d"] .d-segments .count {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+[data-concept="d"] .d-segments .track {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+[data-concept="d"] .d-segments .track.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+[data-concept="d"] .d-segments .seg {
+  height: 2px;
+  background: var(--rule);
+  transition: background-color 200ms ease;
+}
+
+[data-concept="d"] .d-segments .seg.done {
+  background: var(--accent);
+}
+
+[data-concept="d"] .d-segments .line {
+  height: 2px;
+  background: var(--rule);
+}
+
+[data-concept="d"] .d-segments .line > div {
+  height: 2px;
+  width: 100%;
+  transform-origin: left;
+  background: var(--accent);
+}
+
+/* ---------- Thumbnails: 64 x 85, 12 px gaps, active underline flush to the print, 6 px below. ---------- */
+[data-concept="d"] .d-thumbs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding-bottom: 8px;
+}
+
+[data-concept="d"] .d-thumb {
+  position: relative;
+  width: 64px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  display: block;
+}
+
+[data-concept="d"] .d-thumb img {
+  display: block;
+  width: 64px;
+  height: 85px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: var(--r-thumb);
+  opacity: 0.7;
+  transition: opacity 160ms ease;
+}
+
+[data-concept="d"] .d-thumb.is-active img,
+[data-concept="d"] .d-thumb:hover img {
+  opacity: 1;
+}
+
+[data-concept="d"] .d-thumb.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: var(--accent);
+}
+
+[data-concept="d"] .d-thumb:focus-visible {
+  box-shadow: none;
+}
+
+[data-concept="d"] .d-thumb:focus-visible img {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+/* ---------- Structure: one page, top bar plus the split. ---------- */
+.d-stage {
+  display: grid;
+  grid-template-rows: 56px minmax(0, 1fr);
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+/* The top bar and the two-column stage stop at 1600 px; beyond that the gutters grow. */
+.d-max {
+  width: 100%;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/*
+ * Phone: the print band is 38% of the stage under the top bar while the
+ * brief is being answered, so the six rows, an open line and the action row
+ * fit below it; it returns to half once looks, a build or a portrait need it.
+ */
+.d-split {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(0, 38fr) minmax(0, 62fr);
+}
+
+[data-band="looks"] .d-split {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.d-split > .d-canvas {
+  order: 0;
+}
+
+.d-split > .d-brief {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The crossfading column: the pinned header, then the body. */
+.d-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* The lines scroll inside the body if they ever must; the action row stays pinned below them. */
+.d-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* The orientation: pinned above the scroll, so it never leaves. The title is desktop-only. */
+[data-concept="d"] .d-brief-head {
+  flex: none;
+  padding: 4px 0 8px;
+}
+
+[data-concept="d"] .d-orient {
+  max-width: 44ch;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+@media (min-width: 1024px) {
+  [data-concept="d"] .d-brief-head {
+    padding: 16px 0 24px;
+  }
+
+  [data-concept="d"] .d-brief-head .d-display {
+    margin-bottom: 8px;
+  }
+
+  [data-concept="d"] .d-orient {
+    line-height: 24px;
+  }
+}
+
+/* Before the required lines are answered: no dead button, one muted line with the count. */
+[data-concept="d"] .d-waiting {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
+}
+
+@media (min-width: 1024px) {
+  [data-concept="d"] .d-waiting {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* The action row carries the only rule at the foot of the brief. */
+[data-concept="d"] .d-body [class*="d-line"]:last-child {
+  border-bottom: 0;
+}
+
+[data-concept="d"] .d-actions {
+  flex: none;
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+  [data-concept="d"] .d-actions {
+    padding-top: 24px;
+    padding-bottom: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .d-split,
+  [data-band="looks"] .d-split {
+    grid-template-rows: none;
+    grid-template-columns: 2fr 3fr;
+  }
+
+  .d-split > .d-brief {
+    order: 0;
+  }
+
+  .d-split > .d-canvas {
+    order: 1;
+  }
+
+  /* The surface field stays full-bleed under the print column, past the 1600 px cap; the top bar row stays bone. */
+  [data-concept="d"].d-stage {
+    background:
+      linear-gradient(var(--bg), var(--bg)) 0 0 / 100% 56px no-repeat,
+      linear-gradient(to right, var(--bg) max(40%, calc(50% - 160px)), var(--surface) max(40%, calc(50% - 160px)));
+  }
+}
+
+/*
+ * The 3:4 print sizes itself from the height it is given: the band minus the
+ * canvas paddings (16 px on a phone, 112 px on a desktop) minus what sits
+ * under it (hairline, thumbnails, caption), and never wider than the column.
+ * --room-h is the viewport arithmetic; the container units below refine it
+ * from the measured room where they are supported.
+ */
+.d-canvas {
+  --room-h: calc((100dvh - 56px) * 0.38 - 16px);
+}
+
+[data-band="looks"] .d-canvas {
+  --room-h: calc((100dvh - 56px) * 0.5 - 16px);
+}
+
+@media (min-width: 1024px) {
+  .d-canvas,
+  [data-band="looks"] .d-canvas {
+    --room-h: calc(100dvh - 56px - 112px);
+  }
+}
+
+.d-frame-room {
+  container-type: size;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.d-print {
+  position: relative;
+  width: min(100%, calc((var(--room-h) - var(--below, 0px)) * 0.75));
+  width: min(100cqw, calc((100cqh - var(--below, 0px)) * 0.75));
+  max-width: 100%;
+}
+
+.d-frame {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--r-frame);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.d-frame-inner {
+  border-radius: var(--r-frame);
+}
+
+.d-drawer {
+  border-radius: var(--r-drawer);
+}
+
+[data-concept="d"] .d-swatch {
+  border-radius: var(--r-control);
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+/* Lab-only mode button, bottom right. On a phone it leaves while a line is open so it never covers the last row. */
+[data-concept="d"] .d-mode-button {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  min-width: 44px;
+  padding: 0 12px;
+}
+
+@media (max-width: 639px) {
+  [data-concept="d"][data-line-open="true"] .d-mode-button {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-concept="d"] .d-control,
+  [data-concept="d"] .d-thumb img,
+  [data-concept="d"] .d-segments .seg {
+    transition: none;
+  }
+}

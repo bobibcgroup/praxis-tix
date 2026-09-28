@@ -1,0 +1,211 @@
+/*
+ * Concept D: Atelier. Brand "Forest and Bone", element system "Hairline".
+ * Tokens from src/design-lab/system/brands.ts; construction rules from
+ * system.css. Everything visual reads through a variable.
+ */
+
+[data-concept="d"] {
+  --font-display: "Source Serif 4", "Times New Roman", Georgia, serif;
+  --font-display-weight: 600;
+  --font-display-tracking: -0.01em;
+  --font-body: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r-control: 2px;
+  --r-frame: 0px;
+  --r-thumb: 0px;
+  --r-drawer: 0px;
+  --control-border: 1px solid var(--rule);
+  --control-bg: transparent;
+  --control-hover-bg: var(--surface);
+  --selected-bg: var(--ink);
+  --selected-fg: var(--ink-fg);
+  --selected-border: 1px solid var(--ink);
+  --secondary-border: 1px solid var(--text);
+  --brief-rule: 1px solid var(--rule);
+
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  border-color: var(--rule);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Body text: 16 px on a phone, 15 px on a desktop. */
+@media (min-width: 1024px) {
+  [data-concept="d"] {
+    font-size: 15px;
+  }
+}
+
+[data-concept="d"][data-mode="light"] {
+  --bg: #efeae0;
+  --surface: #e4ded2;
+  --text: #1b1f1c;
+  --muted: #5a5e56;
+  --rule: #d0c9ba;
+  --accent: #1f3a2e;
+  --accent-fg: #efeae0;
+  --accent-tint: #dbe4db;
+  --ink: #1b1f1c;
+  --ink-fg: #efeae0;
+  --scrim: rgba(27, 31, 28, 0.42);
+  color-scheme: light;
+}
+
+[data-concept="d"][data-mode="dark"] {
+  --bg: #121614;
+  --surface: #1a201c;
+  --text: #ece7dc;
+  --muted: #9a9b95;
+  --rule: #263029;
+  --accent: #7fb090;
+  --accent-fg: #121614;
+  --accent-tint: #1f2e26;
+  --ink: #ece7dc;
+  --ink-fg: #121614;
+  --scrim: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+[data-concept="d"] * {
+  border-color: var(--rule);
+}
+
+[data-concept="d"] :focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+[data-concept="d"] button,
+[data-concept="d"] a {
+  cursor: pointer;
+}
+
+/* Type. Scoped under the root so the lab's heading reset does not win. */
+[data-concept="d"] .d-display {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight);
+  font-optical-sizing: auto;
+  letter-spacing: var(--font-display-tracking);
+  font-size: 30px;
+  line-height: 32px;
+  text-wrap: balance;
+}
+
+@media (min-width: 1024px) {
+  [data-concept="d"] .d-display {
+    font-size: 40px;
+    line-height: 40px;
+  }
+}
+
+[data-concept="d"] .d-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-concept="d"] .d-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Controls: the box sets the height; text is centred by flex, never by padding. ---------- */
+[data-concept="d"] .d-control {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--r-control);
+  border: var(--control-border);
+  background: var(--control-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 120ms ease;
+  outline: none;
+}
+
+[data-concept="d"] .d-control:hover {
+  background: var(--control-hover-bg);
+}
+
+[data-concept="d"] .d-control:active {
+  transform: scale(0.98);
+}
+
+[data-concept="d"] .d-control:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+[data-concept="d"] .d-control[aria-checked="true"],
+[data-concept="d"] .d-control[aria-pressed="true"],
+[data-concept="d"] .d-control.is-selected {
+  background: var(--selected-bg);
+  color: var(--selected-fg);
+  border: var(--selected-border);
+}
+
+[data-concept="d"] .d-control .hint {
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+[data-concept="d"] .d-control[aria-checked="true"] .hint,
+[data-concept="d"] .d-control[aria-pressed="true"] .hint {
+  color: inherit;
+  opacity: 0.72;
+}
+
+[data-concept="d"] .d-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 1px solid var(--accent);
+  padding: 0 20px;
+  min-width: 120px;
+  justify-content: center;
+}
+
+[data-concept="d"] .d-primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
+}
+
+[data-concept="d"] .d-secondary {
+  background: transparent;
+  border: var(--secondary-border);
+  padding: 0 20px;
+  min-width: 120px;
+  justify-content: center;
+}
+
+[data-concept="d"] .d-tertiary {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0 8px;
+  color: var(--muted);
+}
+
+[data-concept="d"] .d-tertiary:hover {
+  color: var(--text);
+  background: transparent;
+}
+
+/* A text control whose label may take two lines inside the 44 px box, so a row never wraps under the primary. */
+[data-concept="d"] .d-control.d-wrap {
+  white-space: normal;
+  text-align: left;
+  line-height: 16px;
+  max-width: 30ch;
+}
+
+[data-concept="d"] .d-control:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}

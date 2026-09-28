@@ -56,3 +56,6 @@ coverage/
 *.key
 secrets/
 .secrets
+
+# Founder research documents (not for a public repo)
+Praxis-Docs-Research/

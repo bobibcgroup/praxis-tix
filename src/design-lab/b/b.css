@@ -1,0 +1,206 @@
+/*
+ * Concept B: Brief. Tokens live on the concept root only.
+ * Paper, ink, one rule colour, one accent. 6 px radius everywhere.
+ * Dark tokens are defined but the prototype locks light.
+ */
+[data-concept="b"] {
+  --paper: #f7f6f2;
+  --ink: #1a1b1e;
+  --muted: #6a6d72;
+  --rule: #d8d6cf;
+  --accent: #1f3a93;
+  --on-accent: #f7f6f2;
+  --scrim: rgba(26, 27, 30, 0.12);
+  --drawer-shadow: -24px 0 24px -16px rgba(26, 27, 30, 0.1);
+  --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 6px;
+  --gutter: 40px;
+  --line: 56px;
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+}
+
+[data-concept="b"][data-theme="dark"] {
+  --paper: #141517;
+  --ink: #ecebe6;
+  --muted: #9a9da3;
+  --rule: #2a2c30;
+  --accent: #8fa7f5;
+  --on-accent: #141517;
+  --scrim: rgba(0, 0, 0, 0.4);
+}
+
+/* Below 1024 px the page uses the mobile model: one brief, results as a sheet. Columns never squeeze. */
+@media (max-width: 1023px) {
+  [data-concept="b"] {
+    --gutter: 20px;
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  [data-concept="b"] {
+    --gutter: 32px;
+  }
+}
+
+[data-concept="b"] .b-mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-concept="b"] button {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: inherit;
+}
+
+[data-concept="b"] button:disabled {
+  cursor: default;
+}
+
+[data-concept="b"] :is(button, a, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+[data-concept="b"] img {
+  display: block;
+}
+
+/* Chip: one option inside a brief line. Selected is ink on paper inverted. */
+[data-concept="b"] .b-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+[data-concept="b"] .b-chip:hover {
+  border-color: var(--ink);
+}
+
+[data-concept="b"] .b-chip:active {
+  transform: scale(0.98);
+}
+
+[data-concept="b"] .b-chip[aria-checked="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+[data-concept="b"] .b-chip[aria-checked="true"] .b-hint {
+  color: var(--paper);
+  opacity: 0.72;
+}
+
+@media (max-width: 1023px) {
+  [data-concept="b"] .b-chip {
+    min-height: 44px;
+    padding: 8px 14px;
+  }
+}
+
+/* Buttons: one primary in accent, quiet secondaries, text links. */
+[data-concept="b"] .b-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+[data-concept="b"] .b-primary:hover {
+  opacity: 0.92;
+}
+
+[data-concept="b"] .b-primary:active {
+  transform: translateY(1px);
+}
+
+[data-concept="b"] .b-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+[data-concept="b"] .b-secondary:hover {
+  border-color: var(--ink);
+}
+
+[data-concept="b"] .b-secondary:active {
+  transform: translateY(1px);
+}
+
+[data-concept="b"] .b-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: 15px;
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+
+[data-concept="b"] .b-link.b-wrap {
+  white-space: normal;
+  line-height: 1.35;
+}
+
+[data-concept="b"] .b-link:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+
+@media (max-width: 1023px) {
+  [data-concept="b"] .b-secondary,
+  [data-concept="b"] .b-link {
+    min-height: 44px;
+  }
+}
+
+[data-concept="b"] .b-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+
+[data-concept="b"] .b-frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+}

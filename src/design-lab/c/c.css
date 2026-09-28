@@ -1,0 +1,340 @@
+/*
+ * Concept C: Mirror. Tokens and the few structural rules that Tailwind
+ * arbitrary values cannot express cleanly (dvh-derived frame size, the
+ * SVG ring geometry, the desktop stage grid, the sheet placement).
+ */
+[data-concept="c"] {
+  --stage: #141516;
+  --sheet: #1c1d1f;
+  --edge: #2a2c2f;
+  --edge-strong: #3a3d41;
+  --text: #ede9e1;
+  --muted: #9a9891;
+  --accent: #8ed1a6;
+  --accent-hover: #a3dcb7;
+  --accent-ink: #141516;
+  --frame-h: 62dvh;
+  --stage-pad: 24px;
+  --frame-w: min(calc(var(--frame-h) * 0.75), calc(100vw - 2 * var(--stage-pad)));
+  --peek: 20px;
+  --dock-h: 64px;
+  --font-display: "Bricolage Grotesque", "Manrope", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
+
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--stage);
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 1024 to 1279: the frame yields a little height so the rail keeps 280 px and 64 px of stage. */
+@media (min-width: 1024px) {
+  [data-concept="c"] {
+    --frame-h: 70dvh;
+    --stage-pad: 64px;
+    --peek: 28px;
+  }
+}
+
+@media (min-width: 1280px) {
+  [data-concept="c"] {
+    --frame-h: 78dvh;
+    --peek: 40px;
+  }
+}
+
+[data-concept="c"] .c-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+[data-concept="c"] :is(button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+[data-concept="c"] button {
+  cursor: pointer;
+}
+
+/* Stage layout: column on mobile, three-column grid on desktop. */
+[data-concept="c"] .c-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: max(12px, env(safe-area-inset-top)) var(--stage-pad) 0;
+}
+
+/* Always as wide as the deck so nothing shifts when results replace the frame. */
+[data-concept="c"] .c-frame-slot {
+  flex: 0 0 auto;
+  order: 1;
+  width: calc(var(--frame-w) + 2 * var(--peek));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+[data-concept="c"] .c-rail {
+  order: 2;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 14px;
+  gap: 10px;
+}
+
+[data-concept="c"] .c-dock {
+  order: 3;
+  flex: 0 0 auto;
+  width: calc(100% + 2 * var(--stage-pad));
+  margin: 0 calc(-1 * var(--stage-pad));
+  height: calc(var(--dock-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  border-top: 1px solid var(--edge);
+}
+
+@media (min-width: 1024px) {
+  [data-concept="c"] .c-main {
+    display: grid;
+    grid-template-columns: minmax(80px, 1fr) auto minmax(280px, 1fr);
+    align-items: center;
+    column-gap: 32px;
+    height: 100%;
+    padding: var(--stage-pad);
+  }
+  [data-concept="c"] .c-dock {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+    justify-self: start;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border-top: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  [data-concept="c"] .c-frame-slot {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  [data-concept="c"] .c-rail {
+    grid-column: 3;
+    grid-row: 1;
+    align-items: flex-start;
+    text-align: left;
+    justify-content: center;
+    padding-top: 0;
+    max-width: 420px;
+    gap: 12px;
+  }
+}
+
+@media (min-width: 1280px) {
+  [data-concept="c"] .c-main {
+    column-gap: 40px;
+  }
+}
+
+/* The frame and everything sized like it. */
+[data-concept="c"] .c-frame-size {
+  width: var(--frame-w);
+  aspect-ratio: 3 / 4;
+}
+
+[data-concept="c"] .c-deck {
+  width: calc(var(--frame-w) + 2 * var(--peek));
+  height: calc(var(--frame-w) * 4 / 3);
+}
+
+/* Progress ring drawn just outside the frame edge. */
+[data-concept="c"] .c-ring rect {
+  fill: none;
+  stroke-width: 2px;
+  stroke-linecap: round;
+}
+
+[data-concept="c"] .c-ring .c-ring-track {
+  stroke: var(--edge-strong);
+}
+
+[data-concept="c"] .c-ring .c-ring-fill {
+  stroke: var(--accent);
+}
+
+/* The dial: a single row, overflow hidden, edges fade to signal more. */
+[data-concept="c"] .c-dial {
+  width: 100%;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+}
+
+[data-concept="c"] .c-dial-track {
+  position: relative;
+  display: flex;
+  width: max-content;
+  gap: 8px;
+  padding: 4px 50%;
+}
+
+/* Reduced motion: same row, native scrolling, no transforms. */
+[data-concept="c"] .c-dial-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+[data-concept="c"] .c-dial-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Desktop: the rail has room, so the chips wrap into rows and nothing leaves the screen. */
+[data-concept="c"] .c-dial-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  padding: 4px 0;
+}
+
+[data-concept="c"] .c-chip {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 9999px;
+  border: 1px solid var(--edge-strong);
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: border-color 160ms, background-color 160ms, color 160ms;
+}
+
+[data-concept="c"] .c-chip:hover {
+  border-color: var(--muted);
+}
+
+[data-concept="c"] .c-chip[data-focus="true"] {
+  border-color: var(--muted);
+}
+
+[data-concept="c"] .c-chip[aria-checked="true"],
+[data-concept="c"] .c-chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+@media (min-width: 1024px) {
+  [data-concept="c"] .c-chip {
+    height: 40px;
+  }
+}
+
+/* Primary and quiet actions. */
+[data-concept="c"] .c-primary {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 160ms;
+}
+
+[data-concept="c"] .c-primary:hover {
+  background: var(--accent-hover);
+}
+
+[data-concept="c"] .c-secondary {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 9999px;
+  border: 1px solid var(--edge-strong);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color 160ms;
+}
+
+[data-concept="c"] .c-secondary:hover {
+  border-color: var(--muted);
+}
+
+[data-concept="c"] .c-quiet {
+  min-height: 44px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 160ms;
+}
+
+[data-concept="c"] .c-quiet:hover {
+  color: var(--text);
+}
+
+/* The sheet: fixed to the viewport bottom on mobile, over the frame on desktop. */
+[data-concept="c"] .c-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: transparent;
+  cursor: default;
+}
+
+[data-concept="c"] .c-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  height: min(52dvh, 470px);
+  background: var(--sheet);
+  border-top: 1px solid var(--edge);
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  [data-concept="c"] .c-sheet {
+    position: absolute;
+    height: 60%;
+    border: 1px solid var(--edge);
+    border-bottom: 0;
+    border-radius: 20px 20px 20px 20px;
+    bottom: 0;
+  }
+}
+
+[data-concept="c"] .c-swatch {
+  border-radius: 6px;
+  border: 1px solid rgba(237, 233, 225, 0.12);
+}
